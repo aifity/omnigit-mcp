@@ -564,6 +564,7 @@ The following sets of tools are available:
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/comment-discussion-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/comment-discussion-light.png"><img src="pkg/octicons/icons/comment-discussion-light.png" width="20" height="20" alt="comment-discussion"></picture> | `discussions` | GitHub Discussions related tools |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/logo-gist-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/logo-gist-light.png"><img src="pkg/octicons/icons/logo-gist-light.png" width="20" height="20" alt="logo-gist"></picture> | `gists` | GitHub Gist related tools |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/git-branch-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/git-branch-light.png"><img src="pkg/octicons/icons/git-branch-light.png" width="20" height="20" alt="git-branch"></picture> | `git` | GitHub Git API related tools for low-level Git operations |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/git-branch-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/git-branch-light.png"><img src="pkg/octicons/icons/git-branch-light.png" width="20" height="20" alt="git-branch"></picture> | `local_git` | Local Git repository operations on your filesystem (local server only) |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/issue-opened-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/issue-opened-light.png"><img src="pkg/octicons/icons/issue-opened-light.png" width="20" height="20" alt="issue-opened"></picture> | `issues` | GitHub Issues related tools |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/tag-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/tag-light.png"><img src="pkg/octicons/icons/tag-light.png" width="20" height="20" alt="tag"></picture> | `labels` | GitHub Labels related tools |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/bell-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/bell-light.png"><img src="pkg/octicons/icons/bell-light.png" width="20" height="20" alt="bell"></picture> | `notifications` | GitHub Notifications related tools |
@@ -780,6 +781,74 @@ The following sets of tools are available:
   - `recursive`: Setting this parameter to true returns the objects or subtrees referenced by the tree. Default is false (boolean, optional)
   - `repo`: Repository name (string, required)
   - `tree_sha`: The SHA1 value or ref (branch or tag) name of the tree. Defaults to the repository's default branch (string, optional)
+
+</details>
+
+<details>
+
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/git-branch-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/git-branch-light.png"><img src="pkg/octicons/icons/git-branch-light.png" width="20" height="20" alt="git-branch"></picture> Local Git</summary>
+
+These tools operate on local repositories and are only available in the local server.
+See `pkg/git/README.md` for background and security notes.
+
+- **git_status** - Shows the working tree status of a local Git repository
+  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
+
+- **git_diff_unstaged** - Shows changes in the working directory that are not yet staged
+  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
+
+- **git_diff_staged** - Shows changes that are staged for commit
+  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
+
+- **git_diff** - Shows differences between branches or commits
+  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
+  - `target`: Target branch or commit to compare with (string, required)
+
+- **git_log** - Shows the commit logs
+  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
+  - `max_count`: Maximum number of commits to show (default: 10) (number, optional)
+
+- **git_show** - Shows the contents of a commit
+  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
+  - `revision`: The revision (commit hash, branch name, tag) to show (string, required)
+
+- **git_list_repositories** - Lists all available Git repositories
+
+- **git_add** - Adds file contents to the staging area
+  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
+  - `files`: Comma-separated list of file paths to stage (string, required)
+
+- **git_commit** - Records changes to the repository
+  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
+  - `message`: Commit message (string, required)
+
+- **git_reset** - Unstages all staged changes
+  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
+
+- **git_create_branch** - Creates a new branch from an optional base branch
+  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
+  - `branch_name`: Name of the new branch (string, required)
+  - `base_branch`: Starting point for the new branch (string, optional)
+
+- **git_checkout** - Switches branches
+  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
+  - `branch_name`: Name of branch to checkout (string, required)
+
+- **git_init** - Initialize a new Git repository
+  - `repo_path`: Path to directory to initialize git repo (string, required)
+
+- **git_push** - Pushes local commits to a remote repository
+  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
+  - `remote`: Remote name (default: origin) (string, optional)
+  - `branch`: Branch name to push (default: current branch) (string, optional)
+
+- **git_apply_patch_string** - Applies a patch from a string to a git repository
+  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
+  - `patch_string`: Patch string to apply (string, required)
+
+- **git_apply_patch_file** - Applies a patch from a file to a git repository
+  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
+  - `patch_file`: Path to the patch file (string, required)
 
 </details>
 
@@ -1495,11 +1564,27 @@ Following tools will filter out content from users lacking the push access:
 The descriptions of the tools can be overridden by creating a
 `github-mcp-server-config.json` file in the same directory as the binary.
 
-The file should contain a JSON object with the tool names as keys and the new
-descriptions as values. For example:
+In addition to translation overrides, the same config file can also define a
+`filter_patterns` array (Go regex patterns) used to filter out unwanted trailers
+from:
+
+- issue bodies (create / update)
+- pull request bodies (create / update)
+- local git commit messages (when using the `local_git` toolset)
+
+By default, the server filters:
+
+- `Co-Authored-By:` trailers
+- a generic PR footer like `---\nPull Request opened by [Tool](url) with guidance from ...`
+
+Example:
 
 ```json
 {
+  "filter_patterns": [
+    "(?m)^Co-Authored-By:.*$",
+    "(?s)---\\s*Pull Request opened by \\[[^\\]]+\\]\\([^)]+\\) with guidance from [^\\n]+"
+  ],
   "TOOL_ADD_ISSUE_COMMENT_DESCRIPTION": "an alternative description",
   "TOOL_CREATE_BRANCH_DESCRIPTION": "Create a new branch in a GitHub repository"
 }
@@ -1508,9 +1593,9 @@ descriptions as values. For example:
 You can create an export of the current translations by running the binary with
 the `--export-translations` flag.
 
-This flag will preserve any translations/overrides you have made, while adding
-any new translations that have been added to the binary since the last time you
-exported.
+This flag will preserve any translations/overrides you have made (and will keep
+any existing `filter_patterns`), while adding any new translations that have been
+added to the binary since the last time you exported.
 
 ```sh
 ./github-mcp-server --export-translations
