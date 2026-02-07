@@ -8,6 +8,7 @@ import (
 	"os"
 
 	ghcontext "github.com/github/github-mcp-server/pkg/context"
+	"github.com/github/github-mcp-server/pkg/git/gitops"
 	"github.com/github/github-mcp-server/pkg/http/transport"
 	"github.com/github/github-mcp-server/pkg/inventory"
 	"github.com/github/github-mcp-server/pkg/lockdown"
@@ -94,6 +95,12 @@ type ToolDependencies interface {
 
 	// IsFeatureEnabled checks if a feature flag is enabled.
 	IsFeatureEnabled(ctx context.Context, flagName string) bool
+
+	// GetGitOps returns the git operations implementation for local git tools
+	GetGitOps() gitops.GitOperations
+
+	// GetRepoPaths returns the list of allowed repository paths for local git operations
+	GetRepoPaths() []string
 }
 
 // BaseDeps is the standard implementation of ToolDependencies for the local server.
@@ -110,6 +117,10 @@ type BaseDeps struct {
 	T                 translations.TranslationHelperFunc
 	Flags             FeatureFlags
 	ContentWindowSize int
+
+	// Local git operations
+	GitOps    gitops.GitOperations
+	RepoPaths []string
 
 	// Feature flag checker for runtime checks
 	featureChecker inventory.FeatureFlagChecker
@@ -128,6 +139,8 @@ func NewBaseDeps(
 	flags FeatureFlags,
 	contentWindowSize int,
 	featureChecker inventory.FeatureFlagChecker,
+	gitOps gitops.GitOperations,
+	repoPaths []string,
 ) *BaseDeps {
 	return &BaseDeps{
 		Client:            client,
@@ -137,6 +150,8 @@ func NewBaseDeps(
 		T:                 t,
 		Flags:             flags,
 		ContentWindowSize: contentWindowSize,
+		GitOps:            gitOps,
+		RepoPaths:         repoPaths,
 		featureChecker:    featureChecker,
 	}
 }
@@ -186,6 +201,16 @@ func (d BaseDeps) IsFeatureEnabled(ctx context.Context, flagName string) bool {
 	}
 
 	return enabled
+}
+
+// GetGitOps implements ToolDependencies.
+func (d BaseDeps) GetGitOps() gitops.GitOperations {
+	return d.GitOps
+}
+
+// GetRepoPaths implements ToolDependencies.
+func (d BaseDeps) GetRepoPaths() []string {
+	return d.RepoPaths
 }
 
 // NewTool creates a ServerTool that retrieves ToolDependencies from context at call time.
@@ -388,4 +413,16 @@ func (d *RequestDeps) IsFeatureEnabled(ctx context.Context, flagName string) boo
 	}
 
 	return enabled
+}
+
+// GetGitOps implements ToolDependencies.
+// RequestDeps doesn't support git operations - returns nil.
+func (d *RequestDeps) GetGitOps() gitops.GitOperations {
+	return nil
+}
+
+// GetRepoPaths implements ToolDependencies.
+// RequestDeps doesn't support git operations - returns empty slice.
+func (d *RequestDeps) GetRepoPaths() []string {
+	return []string{}
 }

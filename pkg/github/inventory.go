@@ -1,6 +1,7 @@
 package github
 
 import (
+	"github.com/github/github-mcp-server/pkg/git"
 	"github.com/github/github-mcp-server/pkg/inventory"
 	"github.com/github/github-mcp-server/pkg/translations"
 )
@@ -11,8 +12,11 @@ import (
 // Handlers are generated on-demand during registration via RegisterAll(ctx, server, deps).
 // The "default" keyword in WithToolsets will expand to toolsets marked with Default: true.
 func NewInventory(t translations.TranslationHelperFunc) *inventory.Builder {
+	// Combine GitHub tools and local git tools
+	allTools := append(AllTools(t), git.AllGitTools(t)...)
+
 	return inventory.NewBuilder().
-		SetTools(AllTools(t)).
+		SetTools(allTools).
 		SetResources(AllResources(t)).
 		SetPrompts(AllPrompts(t))
 }

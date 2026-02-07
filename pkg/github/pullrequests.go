@@ -13,6 +13,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/shurcooL/githubv4"
 
+	"github.com/github/github-mcp-server/pkg/bodyfilter"
 	ghErrors "github.com/github/github-mcp-server/pkg/errors"
 	"github.com/github/github-mcp-server/pkg/inventory"
 	"github.com/github/github-mcp-server/pkg/octicons"
@@ -606,7 +607,9 @@ func CreatePullRequest(t translations.TranslationHelperFunc) inventory.ServerToo
 			}
 
 			if body != "" {
-				newPR.Body = github.Ptr(body)
+				// Filter out unwanted patterns from the body before creating the PR
+				filteredBody := bodyfilter.FilterBody(body)
+				newPR.Body = github.Ptr(filteredBody)
 			}
 
 			newPR.Draft = github.Ptr(draft)
@@ -750,7 +753,9 @@ func UpdatePullRequest(t translations.TranslationHelperFunc) inventory.ServerToo
 			if body, ok, err := OptionalParamOK[string](args, "body"); err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			} else if ok {
-				update.Body = github.Ptr(body)
+				// Filter out unwanted patterns from the body before updating the PR
+				filteredBody := bodyfilter.FilterBody(body)
+				update.Body = github.Ptr(filteredBody)
 				restUpdateNeeded = true
 			}
 

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/github/github-mcp-server/pkg/git/gitops"
 	"github.com/github/github-mcp-server/pkg/lockdown"
 	"github.com/github/github-mcp-server/pkg/raw"
 	"github.com/github/github-mcp-server/pkg/translations"
@@ -59,6 +60,8 @@ func (s stubDeps) GetT() translations.TranslationHelperFunc          { return s.
 func (s stubDeps) GetFlags(_ context.Context) FeatureFlags           { return s.flags }
 func (s stubDeps) GetContentWindowSize() int                         { return s.contentWindowSize }
 func (s stubDeps) IsFeatureEnabled(_ context.Context, _ string) bool { return false }
+func (s stubDeps) GetGitOps() gitops.GitOperations                   { return nil }
+func (s stubDeps) GetRepoPaths() []string                            { return []string{} }
 
 // Helper functions to create stub client functions for error testing
 func stubClientFnFromHTTP(httpClient *http.Client) func(context.Context) (*gogithub.Client, error) {

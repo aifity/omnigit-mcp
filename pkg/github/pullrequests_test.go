@@ -2248,6 +2248,163 @@ func Test_CreatePullRequest_InsidersMode_UIGate(t *testing.T) {
 	})
 }
 
+func Test_CreatePullRequest_BodyFiltering(t *testing.T) {
+	// Test that Co-Authored-By lines are filtered out from PR body
+	serverTool := CreatePullRequest(translations.NullTranslationHelper)
+
+	// Setup mock PR for success case
+	mockPR := &github.PullRequest{
+		Number:  github.Ptr(42),
+		Title:   github.Ptr("Test PR"),
+		State:   github.Ptr("open"),
+		HTMLURL: github.Ptr("https://github.com/owner/repo/pull/42"),
+		Head: &github.PullRequestBranch{
+			SHA: github.Ptr("abcd1234"),
+			Ref: github.Ptr("feature-branch"),
+		},
+		Base: &github.PullRequestBranch{
+			SHA: github.Ptr("efgh5678"),
+			Ref: github.Ptr("main"),
+		},
+		Body: github.Ptr("This is a test PR\n\nFixes #123"),
+		User: &github.User{
+			Login: github.Ptr("testuser"),
+		},
+	}
+
+	tests := []struct {
+		name         string
+		inputBody    string
+		expectedBody string
+	}{
+		{
+			name:         "filters out Co-Authored-By lines",
+			inputBody:    "This is a test PR\n\nFixes #123\n\nCo-Authored-By: John Doe <john@example.com>",
+			expectedBody: "This is a test PR\n\nFixes #123",
+		},
+		{
+			name:         "filters out multiple Co-Authored-By lines",
+			inputBody:    "This is a test PR\n\nCo-Authored-By: John Doe <john@example.com>\nCo-Authored-By: Jane Smith <jane@example.com>",
+			expectedBody: "This is a test PR",
+		},
+		{
+			name:         "preserves body without Co-Authored-By",
+			inputBody:    "This is a test PR\n\nFixes #123",
+			expectedBody: "This is a test PR\n\nFixes #123",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup mock client that verifies the filtered body is sent
+			mockedClient := MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
+				PostReposPullsByOwnerByRepo: expectRequestBody(t, map[string]interface{}{
+					"title":                 "Test PR",
+					"body":                  tc.expectedBody,
+					"head":                  "feature-branch",
+					"base":                  "main",
+					"draft":                 false,
+					"maintainer_can_modify": false,
+				}).andThen(
+					mockResponse(t, http.StatusCreated, mockPR),
+				),
+			})
+
+			client := github.NewClient(mockedClient)
+			deps := BaseDeps{
+				Client: client,
+			}
+			handler := serverTool.Handler(deps)
+
+			// Create call request with unfiltered body
+			request := createMCPRequest(map[string]interface{}{
+				"owner": "owner",
+				"repo":  "repo",
+				"title": "Test PR",
+				"body":  tc.inputBody,
+				"head":  "feature-branch",
+				"base":  "main",
+			})
+
+			// Call handler
+			result, err := handler(ContextWithDeps(context.Background(), deps), &request)
+
+			// Verify no error
+			require.NoError(t, err)
+			assert.NotNil(t, result)
+		})
+	}
+}
+
+func Test_UpdatePullRequest_BodyFiltering(t *testing.T) {
+	// Test that Co-Authored-By lines are filtered out from PR body during update
+	serverTool := UpdatePullRequest(translations.NullTranslationHelper)
+
+	tests := []struct {
+		name         string
+		inputBody    string
+		expectedBody string
+	}{
+		{
+			name:         "filters out Co-Authored-By lines",
+			inputBody:    "Updated description\n\nCo-Authored-By: John Doe <john@example.com>",
+			expectedBody: "Updated description",
+		},
+		{
+			name:         "preserves body without Co-Authored-By",
+			inputBody:    "Updated description\n\nFixes #456",
+			expectedBody: "Updated description\n\nFixes #456",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup mock client that verifies the filtered body is sent
+			mockedClient := MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
+				PatchReposPullsByOwnerByRepoByPullNumber: expectRequestBody(t, map[string]interface{}{
+					"body": tc.expectedBody,
+				}).andThen(
+					mockResponse(t, http.StatusOK, &github.PullRequest{
+						Number:  github.Ptr(42),
+						Title:   github.Ptr("Test PR"),
+						State:   github.Ptr("open"),
+						HTMLURL: github.Ptr("https://github.com/owner/repo/pull/42"),
+						Body:    github.Ptr(tc.expectedBody),
+					}),
+				),
+				GetReposPullsByOwnerByRepoByPullNumber: mockResponse(t, http.StatusOK, &github.PullRequest{
+					Number:  github.Ptr(42),
+					Title:   github.Ptr("Test PR"),
+					State:   github.Ptr("open"),
+					HTMLURL: github.Ptr("https://github.com/owner/repo/pull/42"),
+					Body:    github.Ptr(tc.expectedBody),
+				}),
+			})
+
+			client := github.NewClient(mockedClient)
+			deps := BaseDeps{
+				Client: client,
+			}
+			handler := serverTool.Handler(deps)
+
+			// Create call request with unfiltered body
+			request := createMCPRequest(map[string]interface{}{
+				"owner":      "owner",
+				"repo":       "repo",
+				"pullNumber": 42,
+				"body":       tc.inputBody,
+			})
+
+			// Call handler
+			result, err := handler(ContextWithDeps(context.Background(), deps), &request)
+
+			// Verify no error
+			require.NoError(t, err)
+			assert.NotNil(t, result)
+		})
+	}
+}
+
 func TestCreateAndSubmitPullRequestReview(t *testing.T) {
 	t.Parallel()
 

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/github/github-mcp-server/pkg/errors"
+	"github.com/github/github-mcp-server/pkg/git/gitops/shell"
 	"github.com/github/github-mcp-server/pkg/github"
 	"github.com/github/github-mcp-server/pkg/http/transport"
 	"github.com/github/github-mcp-server/pkg/inventory"
@@ -115,6 +116,19 @@ func NewStdioMCPServer(ctx context.Context, cfg github.MCPServerConfig) (*mcp.Se
 	// Create feature checker
 	featureChecker := createFeatureChecker(cfg.EnabledFeatures)
 
+	// Create git operations for local git tools
+	gitOps := shell.NewShellGitOperations()
+
+	// TODO: Configure repository paths from environment or config
+	// For now, use current working directory as default if it's a git repo
+	var repoPaths []string
+	if cwd, err := os.Getwd(); err == nil {
+		// Check if current directory is a git repository
+		if _, err := os.Stat(cwd + "/.git"); err == nil {
+			repoPaths = []string{cwd}
+		}
+	}
+
 	// Create dependencies for tool handlers
 	deps := github.NewBaseDeps(
 		clients.rest,
@@ -128,6 +142,8 @@ func NewStdioMCPServer(ctx context.Context, cfg github.MCPServerConfig) (*mcp.Se
 		},
 		cfg.ContentWindowSize,
 		featureChecker,
+		gitOps,
+		repoPaths,
 	)
 	// Build and register the tool/resource/prompt inventory
 	inventoryBuilder := github.NewInventory(cfg.Translator).

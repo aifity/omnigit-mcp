@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/github/github-mcp-server/pkg/bodyfilter"
 	"github.com/spf13/viper"
 )
 
@@ -29,6 +30,15 @@ func TranslationHelper() (TranslationHelperFunc, func()) {
 		// ignore error if file not found as it is not required
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			log.Printf("Could not read JSON config: %v", err)
+		}
+	}
+
+	// Load filter patterns from config if present
+	if v.IsSet("filter_patterns") {
+		patterns := v.GetStringSlice("filter_patterns")
+		if len(patterns) > 0 {
+			log.Printf("Loading %d filter patterns from config", len(patterns))
+			bodyfilter.SetFilterPatterns(patterns)
 		}
 	}
 
@@ -57,7 +67,33 @@ func TranslationHelper() (TranslationHelperFunc, func()) {
 }
 
 // DumpTranslationKeyMap writes the translation map to a json file called github-mcp-server-config.json
+// It preserves any existing filter_patterns configuration.
 func DumpTranslationKeyMap(translationKeyMap map[string]string) error {
+	// Read existing config to preserve filter_patterns
+	v := viper.New()
+	v.SetConfigName("github-mcp-server-config")
+	v.SetConfigType("json")
+	v.AddConfigPath(".")
+
+	var existingFilterPatterns []string
+	if err := v.ReadInConfig(); err == nil {
+		// Config file exists, preserve filter_patterns if present
+		if v.IsSet("filter_patterns") {
+			existingFilterPatterns = v.GetStringSlice("filter_patterns")
+		}
+	}
+
+	// Create output map with translations
+	output := make(map[string]interface{})
+	for k, v := range translationKeyMap {
+		output[k] = v
+	}
+
+	// Add filter_patterns if they exist
+	if len(existingFilterPatterns) > 0 {
+		output["filter_patterns"] = existingFilterPatterns
+	}
+
 	file, err := os.Create("github-mcp-server-config.json")
 	if err != nil {
 		return fmt.Errorf("error creating file: %v", err)
@@ -65,7 +101,7 @@ func DumpTranslationKeyMap(translationKeyMap map[string]string) error {
 	defer func() { _ = file.Close() }()
 
 	// marshal the map to json
-	jsonData, err := json.MarshalIndent(translationKeyMap, "", "  ")
+	jsonData, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling map to JSON: %v", err)
 	}

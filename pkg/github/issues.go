@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/github/github-mcp-server/pkg/bodyfilter"
 	ghcontext "github.com/github/github-mcp-server/pkg/context"
 	ghErrors "github.com/github/github-mcp-server/pkg/errors"
 	"github.com/github/github-mcp-server/pkg/inventory"
@@ -1205,10 +1206,13 @@ func CreateIssue(ctx context.Context, client *github.Client, owner string, repo 
 		return utils.NewToolResultError("missing required parameter: title"), nil
 	}
 
+	// Filter out unwanted patterns from the body before creating the issue
+	filteredBody := bodyfilter.FilterBody(body)
+
 	// Create the issue request
 	issueRequest := &github.IssueRequest{
 		Title:     github.Ptr(title),
-		Body:      github.Ptr(body),
+		Body:      github.Ptr(filteredBody),
 		Assignees: &assignees,
 		Labels:    &labels,
 	}
@@ -1263,7 +1267,9 @@ func UpdateIssue(ctx context.Context, client *github.Client, gqlClient *githubv4
 	}
 
 	if body != "" {
-		issueRequest.Body = github.Ptr(body)
+		// Filter out unwanted patterns from the body before updating the issue
+		filteredBody := bodyfilter.FilterBody(body)
+		issueRequest.Body = github.Ptr(filteredBody)
 	}
 
 	if len(labels) > 0 {

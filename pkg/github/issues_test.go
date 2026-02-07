@@ -1003,6 +1003,153 @@ func Test_IssueWrite_InsidersMode_UIGate(t *testing.T) {
 	})
 }
 
+func Test_CreateIssue_BodyFiltering(t *testing.T) {
+	// Test that Co-Authored-By lines are filtered out from issue body
+	serverTool := IssueWrite(translations.NullTranslationHelper)
+
+	// Setup mock issue for success case
+	mockIssue := &github.Issue{
+		Number:  github.Ptr(123),
+		Title:   github.Ptr("Test Issue"),
+		State:   github.Ptr("open"),
+		HTMLURL: github.Ptr("https://github.com/owner/repo/issues/123"),
+		Body:    github.Ptr("This is a test issue"),
+	}
+
+	tests := []struct {
+		name         string
+		inputBody    string
+		expectedBody string
+	}{
+		{
+			name:         "filters out Co-Authored-By lines",
+			inputBody:    "This is a test issue\n\nFixes #123\n\nCo-Authored-By: John Doe <john@example.com>",
+			expectedBody: "This is a test issue\n\nFixes #123",
+		},
+		{
+			name:         "filters out multiple Co-Authored-By lines",
+			inputBody:    "This is a test issue\n\nCo-Authored-By: John Doe <john@example.com>\nCo-Authored-By: Jane Smith <jane@example.com>",
+			expectedBody: "This is a test issue",
+		},
+		{
+			name:         "filters out John Doe Co-Authored-By",
+			inputBody:    "This is a test issue\n\nCo-Authored-By: John <john@doe.example>",
+			expectedBody: "This is a test issue",
+		},
+		{
+			name:         "preserves body without Co-Authored-By",
+			inputBody:    "This is a test issue\n\nFixes #123",
+			expectedBody: "This is a test issue\n\nFixes #123",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup mock client that verifies the filtered body is sent
+			mockedClient := MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
+				PostReposIssuesByOwnerByRepo: expectRequestBody(t, map[string]interface{}{
+					"title":     "Test Issue",
+					"body":      tc.expectedBody,
+					"labels":    []any{},
+					"assignees": []any{},
+				}).andThen(
+					mockResponse(t, http.StatusCreated, mockIssue),
+				),
+			})
+
+			client := github.NewClient(mockedClient)
+			deps := BaseDeps{
+				Client: client,
+			}
+			handler := serverTool.Handler(deps)
+
+			// Create call request with unfiltered body
+			request := createMCPRequest(map[string]interface{}{
+				"method": "create",
+				"owner":  "owner",
+				"repo":   "repo",
+				"title":  "Test Issue",
+				"body":   tc.inputBody,
+			})
+
+			// Call handler
+			result, err := handler(ContextWithDeps(context.Background(), deps), &request)
+
+			// Verify no error
+			require.NoError(t, err)
+			assert.NotNil(t, result)
+		})
+	}
+}
+
+func Test_UpdateIssue_BodyFiltering(t *testing.T) {
+	// Test that Co-Authored-By lines are filtered out from issue body during update
+	serverTool := IssueWrite(translations.NullTranslationHelper)
+
+	tests := []struct {
+		name         string
+		inputBody    string
+		expectedBody string
+	}{
+		{
+			name:         "filters out Co-Authored-By lines",
+			inputBody:    "Updated description\n\nCo-Authored-By: John Doe <john@example.com>",
+			expectedBody: "Updated description",
+		},
+		{
+			name:         "filters out John Doe Co-Authored-By",
+			inputBody:    "Updated description\n\nCo-Authored-By: John <john@doe.example>",
+			expectedBody: "Updated description",
+		},
+		{
+			name:         "preserves body without Co-Authored-By",
+			inputBody:    "Updated description\n\nFixes #456",
+			expectedBody: "Updated description\n\nFixes #456",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup mock client that verifies the filtered body is sent
+			mockedClient := MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
+				PatchReposIssuesByOwnerByRepoByIssueNumber: expectRequestBody(t, map[string]interface{}{
+					"body": tc.expectedBody,
+				}).andThen(
+					mockResponse(t, http.StatusOK, &github.Issue{
+						Number:  github.Ptr(123),
+						Title:   github.Ptr("Test Issue"),
+						State:   github.Ptr("open"),
+						HTMLURL: github.Ptr("https://github.com/owner/repo/issues/123"),
+						Body:    github.Ptr(tc.expectedBody),
+					}),
+				),
+			})
+
+			client := github.NewClient(mockedClient)
+			deps := BaseDeps{
+				Client: client,
+			}
+			handler := serverTool.Handler(deps)
+
+			// Create call request with unfiltered body
+			request := createMCPRequest(map[string]interface{}{
+				"method":       "update",
+				"owner":        "owner",
+				"repo":         "repo",
+				"issue_number": 123,
+				"body":         tc.inputBody,
+			})
+
+			// Call handler
+			result, err := handler(ContextWithDeps(context.Background(), deps), &request)
+
+			// Verify no error
+			require.NoError(t, err)
+			assert.NotNil(t, result)
+		})
+	}
+}
+
 func Test_ListIssues(t *testing.T) {
 	// Verify tool definition
 	serverTool := ListIssues(translations.NullTranslationHelper)

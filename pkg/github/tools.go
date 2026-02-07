@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/github/github-mcp-server/pkg/git"
 	"github.com/github/github-mcp-server/pkg/inventory"
 	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/google/go-github/v82/github"
@@ -156,7 +157,7 @@ var (
 // AllTools returns all tools with their embedded toolset metadata.
 // Tool functions return ServerTool directly with toolset info.
 func AllTools(t translations.TranslationHelperFunc) []inventory.ServerTool {
-	return []inventory.ServerTool{
+	tools := []inventory.ServerTool{
 		// Context tools
 		GetMe(t),
 		GetTeams(t),
@@ -271,6 +272,11 @@ func AllTools(t translations.TranslationHelperFunc) []inventory.ServerTool {
 		ListLabels(t),
 		LabelWrite(t),
 	}
+
+	// Append local git tools
+	tools = append(tools, git.AllGitTools(t)...)
+
+	return tools
 }
 
 // ToBoolPtr converts a bool to a *bool pointer.

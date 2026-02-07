@@ -104,6 +104,8 @@ func TestHelloWorld_ConditionalBehavior_Featureflag(t *testing.T) {
 				FeatureFlags{},
 				0,
 				checker,
+				nil, // gitOps
+				nil, // repoPaths
 			)
 
 			// Get the tool and its handler
@@ -166,6 +168,8 @@ func TestHelloWorld_ConditionalBehavior_Config(t *testing.T) {
 				FeatureFlags{InsidersMode: tt.insidersMode},
 				0,
 				nil,
+				nil, // gitOps
+				nil, // repoPaths
 			)
 
 			// Get the tool and its handler
