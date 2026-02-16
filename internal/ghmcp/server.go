@@ -117,7 +117,7 @@ func NewStdioMCPServer(ctx context.Context, cfg github.MCPServerConfig) (*mcp.Se
 	featureChecker := createFeatureChecker(cfg.EnabledFeatures)
 
 	// Create git operations for local git tools
-	gitOps := shell.NewShellGitOperations()
+	gitOps := shell.NewGitOperations()
 
 	// TODO: Configure repository paths from environment or config
 	// For now, use current working directory as default if it's a git repo

@@ -2298,7 +2298,7 @@ func Test_CreatePullRequest_BodyFiltering(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup mock client that verifies the filtered body is sent
 			mockedClient := MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
-				PostReposPullsByOwnerByRepo: expectRequestBody(t, map[string]interface{}{
+				PostReposPullsByOwnerByRepo: expectRequestBody(t, map[string]any{
 					"title":                 "Test PR",
 					"body":                  tc.expectedBody,
 					"head":                  "feature-branch",
@@ -2317,7 +2317,7 @@ func Test_CreatePullRequest_BodyFiltering(t *testing.T) {
 			handler := serverTool.Handler(deps)
 
 			// Create call request with unfiltered body
-			request := createMCPRequest(map[string]interface{}{
+			request := createMCPRequest(map[string]any{
 				"owner": "owner",
 				"repo":  "repo",
 				"title": "Test PR",
@@ -2361,7 +2361,7 @@ func Test_UpdatePullRequest_BodyFiltering(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup mock client that verifies the filtered body is sent
 			mockedClient := MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
-				PatchReposPullsByOwnerByRepoByPullNumber: expectRequestBody(t, map[string]interface{}{
+				PatchReposPullsByOwnerByRepoByPullNumber: expectRequestBody(t, map[string]any{
 					"body": tc.expectedBody,
 				}).andThen(
 					mockResponse(t, http.StatusOK, &github.PullRequest{
@@ -2388,7 +2388,7 @@ func Test_UpdatePullRequest_BodyFiltering(t *testing.T) {
 			handler := serverTool.Handler(deps)
 
 			// Create call request with unfiltered body
-			request := createMCPRequest(map[string]interface{}{
+			request := createMCPRequest(map[string]any{
 				"owner":      "owner",
 				"repo":       "repo",
 				"pullNumber": 42,
@@ -3658,13 +3658,13 @@ func TestPullRequestCommentWrite(t *testing.T) {
 	tests := []struct {
 		name               string
 		mockedClient       *http.Client
-		requestArgs        map[string]interface{}
+		requestArgs        map[string]any
 		expectToolError    bool
 		expectedToolErrMsg string
 	}{
 		{
 			name: "successful comment update",
-			requestArgs: map[string]interface{}{
+			requestArgs: map[string]any{
 				"method":     "update",
 				"owner":      "owner",
 				"repo":       "repo",
@@ -3681,7 +3681,7 @@ func TestPullRequestCommentWrite(t *testing.T) {
 		},
 		{
 			name: "successful comment deletion",
-			requestArgs: map[string]interface{}{
+			requestArgs: map[string]any{
 				"method":     "delete",
 				"owner":      "owner",
 				"repo":       "repo",
@@ -3695,7 +3695,7 @@ func TestPullRequestCommentWrite(t *testing.T) {
 		},
 		{
 			name: "update fails - missing body",
-			requestArgs: map[string]interface{}{
+			requestArgs: map[string]any{
 				"method":     "update",
 				"owner":      "owner",
 				"repo":       "repo",
@@ -3706,7 +3706,7 @@ func TestPullRequestCommentWrite(t *testing.T) {
 		},
 		{
 			name: "invalid method",
-			requestArgs: map[string]interface{}{
+			requestArgs: map[string]any{
 				"method":     "invalid",
 				"owner":      "owner",
 				"repo":       "repo",
@@ -3717,7 +3717,7 @@ func TestPullRequestCommentWrite(t *testing.T) {
 		},
 		{
 			name: "missing required parameter owner",
-			requestArgs: map[string]interface{}{
+			requestArgs: map[string]any{
 				"method":     "update",
 				"repo":       "repo",
 				"comment_id": float64(456),
@@ -3734,7 +3734,7 @@ func TestPullRequestCommentWrite(t *testing.T) {
 					_, _ = w.Write([]byte(`{"message": "Not Found"}`))
 				},
 			}),
-			requestArgs: map[string]interface{}{
+			requestArgs: map[string]any{
 				"method":     "update",
 				"owner":      "owner",
 				"repo":       "repo",

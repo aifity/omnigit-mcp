@@ -14,7 +14,7 @@ The code has been adapted to integrate with the github-mcp-server architecture w
 
 ## Overview
 
-The git tools package provides 16 tools for working with local git repositories:
+The git tools package provides 17 tools for working with local git repositories:
 
 ### Read-Only Tools
 - **git_status** - Show the working tree status
@@ -29,10 +29,11 @@ The git tools package provides 16 tools for working with local git repositories:
 - **git_add** - Add file contents to the staging area
 - **git_commit** - Record changes to the repository
 - **git_reset** - Unstage all staged changes
-- **git_create_branch** - Create a new branch
+- **git_create_branch** - Create a new branch and automatically check it out
 - **git_checkout** - Switch branches
 - **git_init** - Initialize a new git repository
-- **git_push** - Push local commits to remote repository
+- **git_push** - Push local commits to remote repository with automatic upstream tracking
+- **git_pull** - Pull changes from remote repository with automatic rebase and prune
 - **git_apply_patch_string** - Apply a patch from a string
 - **git_apply_patch_file** - Apply a patch from a file
 

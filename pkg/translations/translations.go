@@ -84,7 +84,7 @@ func DumpTranslationKeyMap(translationKeyMap map[string]string) error {
 	}
 
 	// Create output map with translations
-	output := make(map[string]interface{})
+	output := make(map[string]any)
 	for k, v := range translationKeyMap {
 		output[k] = v
 	}

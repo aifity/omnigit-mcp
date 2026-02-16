@@ -564,9 +564,9 @@ The following sets of tools are available:
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/comment-discussion-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/comment-discussion-light.png"><img src="pkg/octicons/icons/comment-discussion-light.png" width="20" height="20" alt="comment-discussion"></picture> | `discussions` | GitHub Discussions related tools |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/logo-gist-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/logo-gist-light.png"><img src="pkg/octicons/icons/logo-gist-light.png" width="20" height="20" alt="logo-gist"></picture> | `gists` | GitHub Gist related tools |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/git-branch-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/git-branch-light.png"><img src="pkg/octicons/icons/git-branch-light.png" width="20" height="20" alt="git-branch"></picture> | `git` | GitHub Git API related tools for low-level Git operations |
-| <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/git-branch-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/git-branch-light.png"><img src="pkg/octicons/icons/git-branch-light.png" width="20" height="20" alt="git-branch"></picture> | `local_git` | Local Git repository operations on your filesystem (local server only) |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/issue-opened-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/issue-opened-light.png"><img src="pkg/octicons/icons/issue-opened-light.png" width="20" height="20" alt="issue-opened"></picture> | `issues` | GitHub Issues related tools |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/tag-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/tag-light.png"><img src="pkg/octicons/icons/tag-light.png" width="20" height="20" alt="tag"></picture> | `labels` | GitHub Labels related tools |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/git-branch-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/git-branch-light.png"><img src="pkg/octicons/icons/git-branch-light.png" width="20" height="20" alt="git-branch"></picture> | `local_git` | Local Git repository operations - work with git repositories on your local machine (status, diff, commit, push, pull, branches, etc.) |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/bell-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/bell-light.png"><img src="pkg/octicons/icons/bell-light.png" width="20" height="20" alt="bell"></picture> | `notifications` | GitHub Notifications related tools |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/organization-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/organization-light.png"><img src="pkg/octicons/icons/organization-light.png" width="20" height="20" alt="organization"></picture> | `orgs` | GitHub Organization related tools |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/project-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/project-light.png"><img src="pkg/octicons/icons/project-light.png" width="20" height="20" alt="project"></picture> | `projects` | GitHub Projects related tools |
@@ -786,74 +786,6 @@ The following sets of tools are available:
 
 <details>
 
-<summary><picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/git-branch-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/git-branch-light.png"><img src="pkg/octicons/icons/git-branch-light.png" width="20" height="20" alt="git-branch"></picture> Local Git</summary>
-
-These tools operate on local repositories and are only available in the local server.
-See `pkg/git/README.md` for background and security notes.
-
-- **git_status** - Shows the working tree status of a local Git repository
-  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
-
-- **git_diff_unstaged** - Shows changes in the working directory that are not yet staged
-  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
-
-- **git_diff_staged** - Shows changes that are staged for commit
-  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
-
-- **git_diff** - Shows differences between branches or commits
-  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
-  - `target`: Target branch or commit to compare with (string, required)
-
-- **git_log** - Shows the commit logs
-  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
-  - `max_count`: Maximum number of commits to show (default: 10) (number, optional)
-
-- **git_show** - Shows the contents of a commit
-  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
-  - `revision`: The revision (commit hash, branch name, tag) to show (string, required)
-
-- **git_list_repositories** - Lists all available Git repositories
-
-- **git_add** - Adds file contents to the staging area
-  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
-  - `files`: Comma-separated list of file paths to stage (string, required)
-
-- **git_commit** - Records changes to the repository
-  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
-  - `message`: Commit message (string, required)
-
-- **git_reset** - Unstages all staged changes
-  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
-
-- **git_create_branch** - Creates a new branch from an optional base branch
-  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
-  - `branch_name`: Name of the new branch (string, required)
-  - `base_branch`: Starting point for the new branch (string, optional)
-
-- **git_checkout** - Switches branches
-  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
-  - `branch_name`: Name of branch to checkout (string, required)
-
-- **git_init** - Initialize a new Git repository
-  - `repo_path`: Path to directory to initialize git repo (string, required)
-
-- **git_push** - Pushes local commits to a remote repository
-  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
-  - `remote`: Remote name (default: origin) (string, optional)
-  - `branch`: Branch name to push (default: current branch) (string, optional)
-
-- **git_apply_patch_string** - Applies a patch from a string to a git repository
-  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
-  - `patch_string`: Patch string to apply (string, required)
-
-- **git_apply_patch_file** - Applies a patch from a file to a git repository
-  - `repo_path`: Path to Git repository (optional if a default repository is configured) (string, optional)
-  - `patch_file`: Path to the patch file (string, required)
-
-</details>
-
-<details>
-
 <summary><picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/issue-opened-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/issue-opened-light.png"><img src="pkg/octicons/icons/issue-opened-light.png" width="20" height="20" alt="issue-opened"></picture> Issues</summary>
 
 - **add_issue_comment** - Add comment to issue
@@ -875,6 +807,18 @@ See `pkg/git/README.md` for background and security notes.
   - **Required OAuth Scopes**: `repo`
   - `name`: Label name. (string, required)
   - `owner`: Repository owner (username or organization name) (string, required)
+  - `repo`: Repository name (string, required)
+
+- **issue_comment_write** - Update or delete issue comment
+  - **Required OAuth Scopes**: `repo`
+  - `body`: New comment content (required for update method) (string, optional)
+  - `comment_id`: Comment ID to update or delete (number, required)
+  - `method`: The write operation to perform on a comment.
+    Options are:
+    - 'update' - updates an existing comment.
+    - 'delete' - deletes an existing comment.
+     (string, required)
+  - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
 
 - **issue_read** - Get issue details
@@ -981,6 +925,142 @@ See `pkg/git/README.md` for background and security notes.
   - **Required OAuth Scopes**: `repo`
   - `owner`: Repository owner (username or organization name) - required for all operations (string, required)
   - `repo`: Repository name - required for all operations (string, required)
+
+</details>
+
+<details>
+
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/git-branch-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/git-branch-light.png"><img src="pkg/octicons/icons/git-branch-light.png" width="20" height="20" alt="git-branch"></picture> Local Git</summary>
+
+- **git_add** - Git add
+  - `files`: Comma-separated list of file paths to stage (string, required)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_add** - Git add
+  - `files`: Comma-separated list of file paths to stage (string, required)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_apply_patch_file** - Git apply patch file
+  - `patch_file`: Path to the patch file (string, required)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_apply_patch_file** - Git apply patch file
+  - `patch_file`: Path to the patch file (string, required)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_apply_patch_string** - Git apply patch string
+  - `patch_string`: Patch string to apply (string, required)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_apply_patch_string** - Git apply patch string
+  - `patch_string`: Patch string to apply (string, required)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_checkout** - Git checkout
+  - `branch_name`: Name of branch to checkout (string, required)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_checkout** - Git checkout
+  - `branch_name`: Name of branch to checkout (string, required)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_commit** - Git commit
+  - `message`: Commit message (string, required)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_commit** - Git commit
+  - `message`: Commit message (string, required)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_create_branch** - Git create branch
+  - `base_branch`: Starting point for the new branch (optional) (string, optional)
+  - `branch_name`: Name of the new branch (string, required)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_create_branch** - Git create branch
+  - `base_branch`: Starting point for the new branch (optional) (string, optional)
+  - `branch_name`: Name of the new branch (string, required)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_diff** - Git diff
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+  - `target`: Target branch or commit to compare with (string, required)
+
+- **git_diff** - Git diff
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+  - `target`: Target branch or commit to compare with (string, required)
+
+- **git_diff_staged** - Git diff staged
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_diff_staged** - Git diff staged
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_diff_unstaged** - Git diff unstaged
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_diff_unstaged** - Git diff unstaged
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_init** - Git init
+  - `repo_path`: Path to directory to initialize git repo (string, required)
+
+- **git_init** - Git init
+  - `repo_path`: Path to directory to initialize git repo (string, required)
+
+- **git_list_repositories** - Git list repositories
+  - No parameters required
+
+- **git_list_repositories** - Git list repositories
+  - No parameters required
+
+- **git_log** - Git log
+  - `max_count`: Maximum number of commits to show (default: 10) (number, optional)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_log** - Git log
+  - `max_count`: Maximum number of commits to show (default: 10) (number, optional)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_pull** - Git pull
+  - `branch`: Branch name to pull (default: current branch's upstream) (string, optional)
+  - `remote`: Remote name (default: origin) (string, optional)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_pull** - Git pull
+  - `branch`: Branch name to pull (default: current branch's upstream) (string, optional)
+  - `remote`: Remote name (default: origin) (string, optional)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_push** - Git push
+  - `branch`: Branch name to push (default: current branch) (string, optional)
+  - `remote`: Remote name (default: origin) (string, optional)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_push** - Git push
+  - `branch`: Branch name to push (default: current branch) (string, optional)
+  - `remote`: Remote name (default: origin) (string, optional)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_reset** - Git reset
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_reset** - Git reset
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_show** - Git show
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+  - `revision`: The revision (commit hash, branch name, tag) to show (string, required)
+
+- **git_show** - Git show
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+  - `revision`: The revision (commit hash, branch name, tag) to show (string, required)
+
+- **git_status** - Git status
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_status** - Git status
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
 
 </details>
 
@@ -1145,6 +1225,18 @@ See `pkg/git/README.md` for background and security notes.
   - `merge_method`: Merge method (string, optional)
   - `owner`: Repository owner (string, required)
   - `pullNumber`: Pull request number (number, required)
+  - `repo`: Repository name (string, required)
+
+- **pull_request_comment_write** - Update or delete pull request review comment
+  - **Required OAuth Scopes**: `repo`
+  - `body`: New comment content (required for update method) (string, optional)
+  - `comment_id`: Review comment ID to update or delete (number, required)
+  - `method`: The write operation to perform on a review comment.
+    Options are:
+    - 'update' - updates an existing review comment.
+    - 'delete' - deletes an existing review comment.
+     (string, required)
+  - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
 
 - **pull_request_read** - Get details for a single pull request

@@ -20,6 +20,7 @@ type GitOperations interface {
 	InitRepo(repoPath string) (string, error)
 	ShowCommit(repoPath string, revision string) (string, error)
 	PushChanges(repoPath string, remote string, branch string) (string, error)
+	PullChanges(repoPath string, remote string, branch string) (string, error)
 	ApplyPatchFromString(repoPath string, patchString string) (string, error)
 	ApplyPatchFromFile(repoPath string, patchFilePath string) (string, error)
 }

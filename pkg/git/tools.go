@@ -8,6 +8,7 @@ package git
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -24,14 +25,53 @@ import (
 // ToolsetMetadataLocalGit defines the local git toolset metadata
 var ToolsetMetadataLocalGit = inventory.ToolsetMetadata{
 	ID:          "local_git",
-	Description: "Local Git repository operations (adapted from git-mcp-go)",
+	Description: "Local Git repository operations - work with git repositories on your local machine (status, diff, commit, push, pull, branches, etc.)",
 	Icon:        "git-branch",
 }
 
-// GitToolDependencies defines the dependencies needed by git tools
-type GitToolDependencies interface {
+// ToolDependencies defines the dependencies needed by git tools
+type ToolDependencies interface {
 	GetGitOps() gitops.GitOperations
 	GetRepoPaths() []string
+}
+
+// gitDepsContextKey is the context key for ToolDependencies.
+// Using a private type prevents collisions with other packages.
+type gitDepsContextKey struct{}
+
+// ErrGitDepsNotInContext is returned when ToolDependencies is not found in context.
+var ErrGitDepsNotInContext = errors.New("ToolDependencies not found in context; use ContextWithGitDeps to inject")
+
+// ContextWithGitDeps returns a new context with the ToolDependencies stored in it.
+// This is used to inject dependencies at request time rather than at registration time,
+// avoiding expensive closure creation during server initialization.
+func ContextWithGitDeps(ctx context.Context, deps ToolDependencies) context.Context {
+	return context.WithValue(ctx, gitDepsContextKey{}, deps)
+}
+
+// MustGitDepsFromContext extracts ToolDependencies from context.
+// Panics if deps are not found - callers must ensure ContextWithGitDeps was called.
+func MustGitDepsFromContext(ctx context.Context) ToolDependencies {
+	deps, ok := ctx.Value(gitDepsContextKey{}).(ToolDependencies)
+	if !ok {
+		panic(ErrGitDepsNotInContext)
+	}
+	return deps
+}
+
+// newToolFromHandler creates a ServerTool that retrieves ToolDependencies from context at call time.
+// Use this when you have a handler that conforms to mcp.ToolHandler directly.
+//
+// The handler function receives deps extracted from context via MustGitDepsFromContext.
+// Ensure ContextWithGitDeps is called to inject deps before any tool handlers are invoked.
+func newToolFromHandler(
+	tool mcp.Tool,
+	handler func(ctx context.Context, deps ToolDependencies, req *mcp.CallToolRequest) (*mcp.CallToolResult, error),
+) inventory.ServerTool {
+	return inventory.NewServerToolWithRawContextHandler(tool, ToolsetMetadataLocalGit, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		deps := MustGitDepsFromContext(ctx)
+		return handler(ctx, deps, req)
+	})
 }
 
 // validateRepoPath validates and normalizes a repository path
@@ -73,9 +113,9 @@ func validateRepoPath(requestedPath string, allowedPaths []string) (string, erro
 	return absPath, nil
 }
 
-// GitStatus creates a tool to show the working tree status
-func GitStatus(t translations.TranslationHelperFunc) inventory.ServerTool {
-	return inventory.NewServerToolFromHandler(
+// Status creates a tool to show the working tree status
+func Status(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
 		mcp.Tool{
 			Name:        "git_status",
 			Description: t("TOOL_GIT_STATUS_DESCRIPTION", "Shows the working tree status of a local Git repository"),
@@ -93,40 +133,36 @@ func GitStatus(t translations.TranslationHelperFunc) inventory.ServerTool {
 				},
 			},
 		},
-		ToolsetMetadataLocalGit,
-		func(deps any) mcp.ToolHandler {
-			gitDeps := deps.(GitToolDependencies)
-			return func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				// Unmarshal arguments
-				var args map[string]any
-				if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
-				}
-
-				requestedPath := ""
-				if val, ok := args["repo_path"].(string); ok {
-					requestedPath = val
-				}
-
-				repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
-				}
-
-				status, err := gitDeps.GetGitOps().GetStatus(repoPath)
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to get status: %v", err)), nil
-				}
-
-				return utils.NewToolResultText(fmt.Sprintf("Repository status for %s:\n%s", repoPath, status)), nil
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// Unmarshal arguments
+			var args map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
 			}
+
+			requestedPath := ""
+			if val, ok := args["repo_path"].(string); ok {
+				requestedPath = val
+			}
+
+			repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+			}
+
+			status, err := gitDeps.GetGitOps().GetStatus(repoPath)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to get status: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(fmt.Sprintf("Repository status for %s:\n%s", repoPath, status)), nil
 		},
 	)
 }
 
-// GitDiffUnstaged creates a tool to show unstaged changes
-func GitDiffUnstaged(t translations.TranslationHelperFunc) inventory.ServerTool {
-	return inventory.NewServerToolFromHandler(
+// DiffUnstaged creates a tool to show unstaged changes
+func DiffUnstaged(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
 		mcp.Tool{
 			Name:        "git_diff_unstaged",
 			Description: t("TOOL_GIT_DIFF_UNSTAGED_DESCRIPTION", "Shows changes in the working directory that are not yet staged"),
@@ -144,40 +180,36 @@ func GitDiffUnstaged(t translations.TranslationHelperFunc) inventory.ServerTool 
 				},
 			},
 		},
-		ToolsetMetadataLocalGit,
-		func(deps any) mcp.ToolHandler {
-			gitDeps := deps.(GitToolDependencies)
-			return func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				// Unmarshal arguments
-				var args map[string]any
-				if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
-				}
-
-				requestedPath := ""
-				if val, ok := args["repo_path"].(string); ok {
-					requestedPath = val
-				}
-
-				repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
-				}
-
-				diff, err := gitDeps.GetGitOps().GetDiffUnstaged(repoPath)
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to get unstaged diff: %v", err)), nil
-				}
-
-				return utils.NewToolResultText(fmt.Sprintf("Unstaged changes for %s:\n%s", repoPath, diff)), nil
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// Unmarshal arguments
+			var args map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
 			}
+
+			requestedPath := ""
+			if val, ok := args["repo_path"].(string); ok {
+				requestedPath = val
+			}
+
+			repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+			}
+
+			diff, err := gitDeps.GetGitOps().GetDiffUnstaged(repoPath)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to get unstaged diff: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(fmt.Sprintf("Unstaged changes for %s:\n%s", repoPath, diff)), nil
 		},
 	)
 }
 
-// GitDiffStaged creates a tool to show staged changes
-func GitDiffStaged(t translations.TranslationHelperFunc) inventory.ServerTool {
-	return inventory.NewServerToolFromHandler(
+// DiffStaged creates a tool to show staged changes
+func DiffStaged(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
 		mcp.Tool{
 			Name:        "git_diff_staged",
 			Description: t("TOOL_GIT_DIFF_STAGED_DESCRIPTION", "Shows changes that are staged for commit"),
@@ -195,40 +227,36 @@ func GitDiffStaged(t translations.TranslationHelperFunc) inventory.ServerTool {
 				},
 			},
 		},
-		ToolsetMetadataLocalGit,
-		func(deps any) mcp.ToolHandler {
-			gitDeps := deps.(GitToolDependencies)
-			return func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				// Unmarshal arguments
-				var args map[string]any
-				if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
-				}
-
-				requestedPath := ""
-				if val, ok := args["repo_path"].(string); ok {
-					requestedPath = val
-				}
-
-				repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
-				}
-
-				diff, err := gitDeps.GetGitOps().GetDiffStaged(repoPath)
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to get staged diff: %v", err)), nil
-				}
-
-				return utils.NewToolResultText(fmt.Sprintf("Staged changes for %s:\n%s", repoPath, diff)), nil
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// Unmarshal arguments
+			var args map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
 			}
+
+			requestedPath := ""
+			if val, ok := args["repo_path"].(string); ok {
+				requestedPath = val
+			}
+
+			repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+			}
+
+			diff, err := gitDeps.GetGitOps().GetDiffStaged(repoPath)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to get staged diff: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(fmt.Sprintf("Staged changes for %s:\n%s", repoPath, diff)), nil
 		},
 	)
 }
 
-// GitDiff creates a tool to show differences between branches or commits
-func GitDiff(t translations.TranslationHelperFunc) inventory.ServerTool {
-	return inventory.NewServerToolFromHandler(
+// Diff creates a tool to show differences between branches or commits
+func Diff(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
 		mcp.Tool{
 			Name:        "git_diff",
 			Description: t("TOOL_GIT_DIFF_DESCRIPTION", "Shows differences between branches or commits"),
@@ -251,46 +279,42 @@ func GitDiff(t translations.TranslationHelperFunc) inventory.ServerTool {
 				Required: []string{"target"},
 			},
 		},
-		ToolsetMetadataLocalGit,
-		func(deps any) mcp.ToolHandler {
-			gitDeps := deps.(GitToolDependencies)
-			return func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				// Unmarshal arguments
-				var args map[string]any
-				if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
-				}
-
-				requestedPath := ""
-				if val, ok := args["repo_path"].(string); ok {
-					requestedPath = val
-				}
-
-				repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
-				}
-
-				target, ok := args["target"].(string)
-				if !ok {
-					return utils.NewToolResultError("target must be a string"), nil
-				}
-
-				diff, err := gitDeps.GetGitOps().GetDiff(repoPath, target)
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to get diff: %v", err)), nil
-				}
-
-				return utils.NewToolResultText(fmt.Sprintf("Diff with %s for %s:\n%s", target, repoPath, diff)), nil
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// Unmarshal arguments
+			var args map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
 			}
+
+			requestedPath := ""
+			if val, ok := args["repo_path"].(string); ok {
+				requestedPath = val
+			}
+
+			repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+			}
+
+			target, ok := args["target"].(string)
+			if !ok {
+				return utils.NewToolResultError("target must be a string"), nil
+			}
+
+			diff, err := gitDeps.GetGitOps().GetDiff(repoPath, target)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to get diff: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(fmt.Sprintf("Diff with %s for %s:\n%s", target, repoPath, diff)), nil
 		},
 	)
 }
 
 
-// GitCommit creates a tool to commit changes
-func GitCommit(t translations.TranslationHelperFunc) inventory.ServerTool {
-	return inventory.NewServerToolFromHandler(
+// Commit creates a tool to commit changes
+func Commit(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
 		mcp.Tool{
 			Name:        "git_commit",
 			Description: t("TOOL_GIT_COMMIT_DESCRIPTION", "Records changes to the repository"),
@@ -313,45 +337,41 @@ func GitCommit(t translations.TranslationHelperFunc) inventory.ServerTool {
 				Required: []string{"message"},
 			},
 		},
-		ToolsetMetadataLocalGit,
-		func(deps any) mcp.ToolHandler {
-			gitDeps := deps.(GitToolDependencies)
-			return func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				// Unmarshal arguments
-				var args map[string]any
-				if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
-				}
-
-				requestedPath := ""
-				if val, ok := args["repo_path"].(string); ok {
-					requestedPath = val
-				}
-
-				repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
-				}
-
-				message, ok := args["message"].(string)
-				if !ok {
-					return utils.NewToolResultError("message must be a string"), nil
-				}
-
-				result, err := gitDeps.GetGitOps().CommitChanges(repoPath, message)
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to commit: %v", err)), nil
-				}
-
-				return utils.NewToolResultText(result), nil
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// Unmarshal arguments
+			var args map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
 			}
+
+			requestedPath := ""
+			if val, ok := args["repo_path"].(string); ok {
+				requestedPath = val
+			}
+
+			repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+			}
+
+			message, ok := args["message"].(string)
+			if !ok {
+				return utils.NewToolResultError("message must be a string"), nil
+			}
+
+			result, err := gitDeps.GetGitOps().CommitChanges(repoPath, message)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to commit: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(result), nil
 		},
 	)
 }
 
-// GitAdd creates a tool to add files to staging area
-func GitAdd(t translations.TranslationHelperFunc) inventory.ServerTool {
-	return inventory.NewServerToolFromHandler(
+// Add creates a tool to add files to staging area
+func Add(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
 		mcp.Tool{
 			Name:        "git_add",
 			Description: t("TOOL_GIT_ADD_DESCRIPTION", "Adds file contents to the staging area"),
@@ -374,61 +394,58 @@ func GitAdd(t translations.TranslationHelperFunc) inventory.ServerTool {
 				Required: []string{"files"},
 			},
 		},
-		ToolsetMetadataLocalGit,
-		func(deps any) mcp.ToolHandler {
-			gitDeps := deps.(GitToolDependencies)
-			return func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				// Unmarshal arguments
-				var argsMap map[string]any
-				if err := json.Unmarshal(request.Params.Arguments, &argsMap); err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
-				}
-
-				requestedPath := ""
-				if val, ok := argsMap["repo_path"].(string); ok {
-					requestedPath = val
-				}
-
-				repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
-				}
-
-				filesStr, ok := argsMap["files"].(string)
-				if !ok {
-					return utils.NewToolResultError("files must be a string"), nil
-				}
-
-				// Support either single file, comma-separated, or space-delimited
-				var files []string
-				if strings.Contains(filesStr, ",") {
-					files = strings.Split(filesStr, ",")
-					for i, file := range files {
-						files[i] = strings.TrimSpace(file)
-					}
-				} else if strings.Contains(filesStr, " ") {
-					files = strings.Split(filesStr, " ")
-					for i, file := range files {
-						files[i] = strings.TrimSpace(file)
-					}
-				} else {
-					files = []string{filesStr}
-				}
-
-				result, err := gitDeps.GetGitOps().AddFiles(repoPath, files)
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to add files: %v", err)), nil
-				}
-
-				return utils.NewToolResultText(result), nil
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// Unmarshal arguments
+			var argsMap map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &argsMap); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
 			}
+
+			requestedPath := ""
+			if val, ok := argsMap["repo_path"].(string); ok {
+				requestedPath = val
+			}
+
+			repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+			}
+
+			filesStr, ok := argsMap["files"].(string)
+			if !ok {
+				return utils.NewToolResultError("files must be a string"), nil
+			}
+
+			// Support either single file, comma-separated, or space-delimited
+			var files []string
+			switch {
+			case strings.Contains(filesStr, ","):
+				files = strings.Split(filesStr, ",")
+				for i, file := range files {
+					files[i] = strings.TrimSpace(file)
+				}
+			case strings.Contains(filesStr, " "):
+				files = strings.Split(filesStr, " ")
+				for i, file := range files {
+					files[i] = strings.TrimSpace(file)
+				}
+			default:
+				files = []string{filesStr}
+			}
+
+			result, err := gitDeps.GetGitOps().AddFiles(repoPath, files)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to add files: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(result), nil
 		},
 	)
 }
 
-// GitReset creates a tool to unstage changes
-func GitReset(t translations.TranslationHelperFunc) inventory.ServerTool {
-	return inventory.NewServerToolFromHandler(
+// Reset creates a tool to unstage changes
+func Reset(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
 		mcp.Tool{
 			Name:        "git_reset",
 			Description: t("TOOL_GIT_RESET_DESCRIPTION", "Unstages all staged changes"),
@@ -446,40 +463,36 @@ func GitReset(t translations.TranslationHelperFunc) inventory.ServerTool {
 				},
 			},
 		},
-		ToolsetMetadataLocalGit,
-		func(deps any) mcp.ToolHandler {
-			gitDeps := deps.(GitToolDependencies)
-			return func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				// Unmarshal arguments
-				var args map[string]any
-				if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
-				}
-
-				requestedPath := ""
-				if val, ok := args["repo_path"].(string); ok {
-					requestedPath = val
-				}
-
-				repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
-				}
-
-				result, err := gitDeps.GetGitOps().ResetStaged(repoPath)
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to reset: %v", err)), nil
-				}
-
-				return utils.NewToolResultText(result), nil
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// Unmarshal arguments
+			var args map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
 			}
+
+			requestedPath := ""
+			if val, ok := args["repo_path"].(string); ok {
+				requestedPath = val
+			}
+
+			repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+			}
+
+			result, err := gitDeps.GetGitOps().ResetStaged(repoPath)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to reset: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(result), nil
 		},
 	)
 }
 
-// GitLog creates a tool to show commit logs
-func GitLog(t translations.TranslationHelperFunc) inventory.ServerTool {
-	return inventory.NewServerToolFromHandler(
+// Log creates a tool to show commit logs
+func Log(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
 		mcp.Tool{
 			Name:        "git_log",
 			Description: t("TOOL_GIT_LOG_DESCRIPTION", "Shows the commit logs"),
@@ -501,50 +514,46 @@ func GitLog(t translations.TranslationHelperFunc) inventory.ServerTool {
 				},
 			},
 		},
-		ToolsetMetadataLocalGit,
-		func(deps any) mcp.ToolHandler {
-			gitDeps := deps.(GitToolDependencies)
-			return func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				// Unmarshal arguments
-				var args map[string]any
-				if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
-				}
-
-				requestedPath := ""
-				if val, ok := args["repo_path"].(string); ok {
-					requestedPath = val
-				}
-
-				repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
-				}
-
-				maxCount := 10
-				if maxCountInterface, ok := args["max_count"]; ok {
-					if maxCountFloat, ok := maxCountInterface.(float64); ok {
-						maxCount = int(maxCountFloat)
-					}
-				}
-
-				logs, err := gitDeps.GetGitOps().GetLog(repoPath, maxCount)
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to get log: %v", err)), nil
-				}
-
-				return utils.NewToolResultText(fmt.Sprintf("Commit history for %s:\n%s", repoPath, strings.Join(logs, "\n"))), nil
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// Unmarshal arguments
+			var args map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
 			}
+
+			requestedPath := ""
+			if val, ok := args["repo_path"].(string); ok {
+				requestedPath = val
+			}
+
+			repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+			}
+
+			maxCount := 10
+			if maxCountInterface, ok := args["max_count"]; ok {
+				if maxCountFloat, ok := maxCountInterface.(float64); ok {
+					maxCount = int(maxCountFloat)
+				}
+			}
+
+			logs, err := gitDeps.GetGitOps().GetLog(repoPath, maxCount)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to get log: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(fmt.Sprintf("Commit history for %s:\n%s", repoPath, strings.Join(logs, "\n"))), nil
 		},
 	)
 }
 
-// GitCreateBranch creates a tool to create a new branch
-func GitCreateBranch(t translations.TranslationHelperFunc) inventory.ServerTool {
-	return inventory.NewServerToolFromHandler(
+// CreateBranch creates a tool to create a new branch
+func CreateBranch(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
 		mcp.Tool{
 			Name:        "git_create_branch",
-			Description: t("TOOL_GIT_CREATE_BRANCH_DESCRIPTION", "Creates a new branch from an optional base branch"),
+			Description: t("TOOL_GIT_CREATE_BRANCH_DESCRIPTION", "Creates a new branch from an optional base branch and automatically checks it out"),
 			Annotations: &mcp.ToolAnnotations{
 				Title:        t("TOOL_GIT_CREATE_BRANCH_USER_TITLE", "Git create branch"),
 				ReadOnlyHint: false,
@@ -568,52 +577,48 @@ func GitCreateBranch(t translations.TranslationHelperFunc) inventory.ServerTool 
 				Required: []string{"branch_name"},
 			},
 		},
-		ToolsetMetadataLocalGit,
-		func(deps any) mcp.ToolHandler {
-			gitDeps := deps.(GitToolDependencies)
-			return func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				// Unmarshal arguments
-				var args map[string]any
-				if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
-				}
-
-				requestedPath := ""
-				if val, ok := args["repo_path"].(string); ok {
-					requestedPath = val
-				}
-
-				repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
-				}
-
-				branchName, ok := args["branch_name"].(string)
-				if !ok {
-					return utils.NewToolResultError("branch_name must be a string"), nil
-				}
-
-				baseBranch := ""
-				if baseBranchInterface, ok := args["base_branch"]; ok {
-					if baseBranchStr, ok := baseBranchInterface.(string); ok {
-						baseBranch = baseBranchStr
-					}
-				}
-
-				result, err := gitDeps.GetGitOps().CreateBranch(repoPath, branchName, baseBranch)
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to create branch: %v", err)), nil
-				}
-
-				return utils.NewToolResultText(result), nil
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// Unmarshal arguments
+			var args map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
 			}
+
+			requestedPath := ""
+			if val, ok := args["repo_path"].(string); ok {
+				requestedPath = val
+			}
+
+			repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+			}
+
+			branchName, ok := args["branch_name"].(string)
+			if !ok {
+				return utils.NewToolResultError("branch_name must be a string"), nil
+			}
+
+			baseBranch := ""
+			if baseBranchInterface, ok := args["base_branch"]; ok {
+				if baseBranchStr, ok := baseBranchInterface.(string); ok {
+					baseBranch = baseBranchStr
+				}
+			}
+
+			result, err := gitDeps.GetGitOps().CreateBranch(repoPath, branchName, baseBranch)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to create branch: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(result), nil
 		},
 	)
 }
 
-// GitCheckout creates a tool to switch branches
-func GitCheckout(t translations.TranslationHelperFunc) inventory.ServerTool {
-	return inventory.NewServerToolFromHandler(
+// Checkout creates a tool to switch branches
+func Checkout(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
 		mcp.Tool{
 			Name:        "git_checkout",
 			Description: t("TOOL_GIT_CHECKOUT_DESCRIPTION", "Switches branches"),
@@ -636,45 +641,41 @@ func GitCheckout(t translations.TranslationHelperFunc) inventory.ServerTool {
 				Required: []string{"branch_name"},
 			},
 		},
-		ToolsetMetadataLocalGit,
-		func(deps any) mcp.ToolHandler {
-			gitDeps := deps.(GitToolDependencies)
-			return func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				// Unmarshal arguments
-				var args map[string]any
-				if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
-				}
-
-				requestedPath := ""
-				if val, ok := args["repo_path"].(string); ok {
-					requestedPath = val
-				}
-
-				repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
-				}
-
-				branchName, ok := args["branch_name"].(string)
-				if !ok {
-					return utils.NewToolResultError("branch_name must be a string"), nil
-				}
-
-				result, err := gitDeps.GetGitOps().CheckoutBranch(repoPath, branchName)
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to checkout branch: %v", err)), nil
-				}
-
-				return utils.NewToolResultText(result), nil
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// Unmarshal arguments
+			var args map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
 			}
+
+			requestedPath := ""
+			if val, ok := args["repo_path"].(string); ok {
+				requestedPath = val
+			}
+
+			repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+			}
+
+			branchName, ok := args["branch_name"].(string)
+			if !ok {
+				return utils.NewToolResultError("branch_name must be a string"), nil
+			}
+
+			result, err := gitDeps.GetGitOps().CheckoutBranch(repoPath, branchName)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to checkout branch: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(result), nil
 		},
 	)
 }
 
-// GitShow creates a tool to show commit contents
-func GitShow(t translations.TranslationHelperFunc) inventory.ServerTool {
-	return inventory.NewServerToolFromHandler(
+// Show creates a tool to show commit contents
+func Show(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
 		mcp.Tool{
 			Name:        "git_show",
 			Description: t("TOOL_GIT_SHOW_DESCRIPTION", "Shows the contents of a commit"),
@@ -697,45 +698,41 @@ func GitShow(t translations.TranslationHelperFunc) inventory.ServerTool {
 				Required: []string{"revision"},
 			},
 		},
-		ToolsetMetadataLocalGit,
-		func(deps any) mcp.ToolHandler {
-			gitDeps := deps.(GitToolDependencies)
-			return func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				// Unmarshal arguments
-				var args map[string]any
-				if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
-				}
-
-				requestedPath := ""
-				if val, ok := args["repo_path"].(string); ok {
-					requestedPath = val
-				}
-
-				repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
-				}
-
-				revision, ok := args["revision"].(string)
-				if !ok {
-					return utils.NewToolResultError("revision must be a string"), nil
-				}
-
-				result, err := gitDeps.GetGitOps().ShowCommit(repoPath, revision)
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to show commit: %v", err)), nil
-				}
-
-				return utils.NewToolResultText(result), nil
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// Unmarshal arguments
+			var args map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
 			}
+
+			requestedPath := ""
+			if val, ok := args["repo_path"].(string); ok {
+				requestedPath = val
+			}
+
+			repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+			}
+
+			revision, ok := args["revision"].(string)
+			if !ok {
+				return utils.NewToolResultError("revision must be a string"), nil
+			}
+
+			result, err := gitDeps.GetGitOps().ShowCommit(repoPath, revision)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to show commit: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(result), nil
 		},
 	)
 }
 
-// GitInit creates a tool to initialize a new repository
-func GitInit(t translations.TranslationHelperFunc) inventory.ServerTool {
-	return inventory.NewServerToolFromHandler(
+// Init creates a tool to initialize a new repository
+func Init(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
 		mcp.Tool{
 			Name:        "git_init",
 			Description: t("TOOL_GIT_INIT_DESCRIPTION", "Initialize a new Git repository"),
@@ -754,44 +751,40 @@ func GitInit(t translations.TranslationHelperFunc) inventory.ServerTool {
 				Required: []string{"repo_path"},
 			},
 		},
-		ToolsetMetadataLocalGit,
-		func(deps any) mcp.ToolHandler {
-			gitDeps := deps.(GitToolDependencies)
-			return func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				// Unmarshal arguments
-				var args map[string]any
-				if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
-				}
-
-				requestedPath, ok := args["repo_path"].(string)
-				if !ok || requestedPath == "" {
-					return utils.NewToolResultError("repo_path must be specified for initialization"), nil
-				}
-
-				// Ensure the path is absolute
-				absPath, err := filepath.Abs(requestedPath)
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to get absolute path: %v", err)), nil
-				}
-
-				result, err := gitDeps.GetGitOps().InitRepo(absPath)
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to initialize repository: %v", err)), nil
-				}
-
-				return utils.NewToolResultText(result), nil
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// Unmarshal arguments
+			var args map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
 			}
+
+			requestedPath, ok := args["repo_path"].(string)
+			if !ok || requestedPath == "" {
+				return utils.NewToolResultError("repo_path must be specified for initialization"), nil
+			}
+
+			// Ensure the path is absolute
+			absPath, err := filepath.Abs(requestedPath)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to get absolute path: %v", err)), nil
+			}
+
+			result, err := gitDeps.GetGitOps().InitRepo(absPath)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to initialize repository: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(result), nil
 		},
 	)
 }
 
-// GitPush creates a tool to push changes to remote
-func GitPush(t translations.TranslationHelperFunc) inventory.ServerTool {
-	return inventory.NewServerToolFromHandler(
+// Push creates a tool to push changes to remote
+func Push(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
 		mcp.Tool{
 			Name:        "git_push",
-			Description: t("TOOL_GIT_PUSH_DESCRIPTION", "Pushes local commits to a remote repository"),
+			Description: t("TOOL_GIT_PUSH_DESCRIPTION", "Pushes local commits to a remote repository and automatically sets up tracking"),
 			Annotations: &mcp.ToolAnnotations{
 				Title:        t("TOOL_GIT_PUSH_USER_TITLE", "Git push"),
 				ReadOnlyHint: false,
@@ -814,54 +807,119 @@ func GitPush(t translations.TranslationHelperFunc) inventory.ServerTool {
 				},
 			},
 		},
-		ToolsetMetadataLocalGit,
-		func(deps any) mcp.ToolHandler {
-			gitDeps := deps.(GitToolDependencies)
-			return func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				// Unmarshal arguments
-				var args map[string]any
-				if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
-				}
-
-				requestedPath := ""
-				if val, ok := args["repo_path"].(string); ok {
-					requestedPath = val
-				}
-
-				repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
-				}
-
-				remote := ""
-				if remoteInterface, ok := args["remote"]; ok {
-					if remoteStr, ok := remoteInterface.(string); ok {
-						remote = remoteStr
-					}
-				}
-
-				branch := ""
-				if branchInterface, ok := args["branch"]; ok {
-					if branchStr, ok := branchInterface.(string); ok {
-						branch = branchStr
-					}
-				}
-
-				result, err := gitDeps.GetGitOps().PushChanges(repoPath, remote, branch)
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to push changes: %v", err)), nil
-				}
-
-				return utils.NewToolResultText(result), nil
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// Unmarshal arguments
+			var args map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
 			}
+
+			requestedPath := ""
+			if val, ok := args["repo_path"].(string); ok {
+				requestedPath = val
+			}
+
+			repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+			}
+
+			remote := ""
+			if remoteInterface, ok := args["remote"]; ok {
+				if remoteStr, ok := remoteInterface.(string); ok {
+					remote = remoteStr
+				}
+			}
+
+			branch := ""
+			if branchInterface, ok := args["branch"]; ok {
+				if branchStr, ok := branchInterface.(string); ok {
+					branch = branchStr
+				}
+			}
+
+			result, err := gitDeps.GetGitOps().PushChanges(repoPath, remote, branch)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to push changes: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(result), nil
 		},
 	)
 }
 
-// GitListRepositories creates a tool to list all available repositories
-func GitListRepositories(t translations.TranslationHelperFunc) inventory.ServerTool {
-	return inventory.NewServerToolFromHandler(
+// Pull creates a tool to pull changes from remote
+func Pull(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
+		mcp.Tool{
+			Name:        "git_pull",
+			Description: t("TOOL_GIT_PULL_DESCRIPTION", "Pulls changes from a remote repository with automatic rebase and prune"),
+			Annotations: &mcp.ToolAnnotations{
+				Title:        t("TOOL_GIT_PULL_USER_TITLE", "Git pull"),
+				ReadOnlyHint: false,
+			},
+			InputSchema: &jsonschema.Schema{
+				Type: "object",
+				Properties: map[string]*jsonschema.Schema{
+					"repo_path": {
+						Type:        "string",
+						Description: "Path to Git repository (optional if default repository is configured)",
+					},
+					"remote": {
+						Type:        "string",
+						Description: "Remote name (default: origin)",
+					},
+					"branch": {
+						Type:        "string",
+						Description: "Branch name to pull (default: current branch's upstream)",
+					},
+				},
+			},
+		},
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// Unmarshal arguments
+			var args map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
+			}
+
+			requestedPath := ""
+			if val, ok := args["repo_path"].(string); ok {
+				requestedPath = val
+			}
+
+			repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+			}
+
+			remote := ""
+			if remoteInterface, ok := args["remote"]; ok {
+				if remoteStr, ok := remoteInterface.(string); ok {
+					remote = remoteStr
+				}
+			}
+
+			branch := ""
+			if branchInterface, ok := args["branch"]; ok {
+				if branchStr, ok := branchInterface.(string); ok {
+					branch = branchStr
+				}
+			}
+
+			result, err := gitDeps.GetGitOps().PullChanges(repoPath, remote, branch)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to pull changes: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(result), nil
+		},
+	)
+}
+
+// ListRepositories creates a tool to list all available repositories
+func ListRepositories(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
 		mcp.Tool{
 			Name:        "git_list_repositories",
 			Description: t("TOOL_GIT_LIST_REPOSITORIES_DESCRIPTION", "Lists all available Git repositories"),
@@ -874,33 +932,29 @@ func GitListRepositories(t translations.TranslationHelperFunc) inventory.ServerT
 				Properties: map[string]*jsonschema.Schema{},
 			},
 		},
-		ToolsetMetadataLocalGit,
-		func(deps any) mcp.ToolHandler {
-			gitDeps := deps.(GitToolDependencies)
-			return func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				repoPaths := gitDeps.GetRepoPaths()
-				if len(repoPaths) == 0 {
-					return utils.NewToolResultText("No repositories configured"), nil
-				}
-
-				var result strings.Builder
-				result.WriteString(fmt.Sprintf("Available repositories (%d):\n\n", len(repoPaths)))
-
-				for i, repoPath := range repoPaths {
-					// Get the repository name (last part of the path)
-					repoName := filepath.Base(repoPath)
-					result.WriteString(fmt.Sprintf("%d. %s (%s)\n", i+1, repoName, repoPath))
-				}
-
-				return utils.NewToolResultText(result.String()), nil
+		func(_ context.Context, gitDeps ToolDependencies, _ *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			repoPaths := gitDeps.GetRepoPaths()
+			if len(repoPaths) == 0 {
+				return utils.NewToolResultText("No repositories configured"), nil
 			}
+
+			var result strings.Builder
+			result.WriteString(fmt.Sprintf("Available repositories (%d):\n\n", len(repoPaths)))
+
+			for i, repoPath := range repoPaths {
+				// Get the repository name (last part of the path)
+				repoName := filepath.Base(repoPath)
+				result.WriteString(fmt.Sprintf("%d. %s (%s)\n", i+1, repoName, repoPath))
+			}
+
+			return utils.NewToolResultText(result.String()), nil
 		},
 	)
 }
 
-// GitApplyPatchString creates a tool to apply a patch from a string
-func GitApplyPatchString(t translations.TranslationHelperFunc) inventory.ServerTool {
-	return inventory.NewServerToolFromHandler(
+// ApplyPatchString creates a tool to apply a patch from a string
+func ApplyPatchString(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
 		mcp.Tool{
 			Name:        "git_apply_patch_string",
 			Description: t("TOOL_GIT_APPLY_PATCH_STRING_DESCRIPTION", "Applies a patch from a string to a git repository"),
@@ -923,49 +977,45 @@ func GitApplyPatchString(t translations.TranslationHelperFunc) inventory.ServerT
 				Required: []string{"patch_string"},
 			},
 		},
-		ToolsetMetadataLocalGit,
-		func(deps any) mcp.ToolHandler {
-			gitDeps := deps.(GitToolDependencies)
-			return func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				// Unmarshal arguments
-				var args map[string]any
-				if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
-				}
-
-				requestedPath := ""
-				if val, ok := args["repo_path"].(string); ok {
-					requestedPath = val
-				}
-
-				repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
-				}
-
-				patchString, ok := args["patch_string"].(string)
-				if !ok {
-					return utils.NewToolResultError("patch_string must be a string"), nil
-				}
-
-				if strings.TrimSpace(patchString) == "" {
-					return utils.NewToolResultError("patch_string cannot be empty"), nil
-				}
-
-				result, err := gitDeps.GetGitOps().ApplyPatchFromString(repoPath, patchString)
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to apply patch: %v", err)), nil
-				}
-
-				return utils.NewToolResultText(result), nil
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// Unmarshal arguments
+			var args map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
 			}
+
+			requestedPath := ""
+			if val, ok := args["repo_path"].(string); ok {
+				requestedPath = val
+			}
+
+			repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+			}
+
+			patchString, ok := args["patch_string"].(string)
+			if !ok {
+				return utils.NewToolResultError("patch_string must be a string"), nil
+			}
+
+			if strings.TrimSpace(patchString) == "" {
+				return utils.NewToolResultError("patch_string cannot be empty"), nil
+			}
+
+			result, err := gitDeps.GetGitOps().ApplyPatchFromString(repoPath, patchString)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to apply patch: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(result), nil
 		},
 	)
 }
 
-// GitApplyPatchFile creates a tool to apply a patch from a file
-func GitApplyPatchFile(t translations.TranslationHelperFunc) inventory.ServerTool {
-	return inventory.NewServerToolFromHandler(
+// ApplyPatchFile creates a tool to apply a patch from a file
+func ApplyPatchFile(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
 		mcp.Tool{
 			Name:        "git_apply_patch_file",
 			Description: t("TOOL_GIT_APPLY_PATCH_FILE_DESCRIPTION", "Applies a patch from a file to a git repository"),
@@ -988,52 +1038,48 @@ func GitApplyPatchFile(t translations.TranslationHelperFunc) inventory.ServerToo
 				Required: []string{"patch_file"},
 			},
 		},
-		ToolsetMetadataLocalGit,
-		func(deps any) mcp.ToolHandler {
-			gitDeps := deps.(GitToolDependencies)
-			return func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				// Unmarshal arguments
-				var args map[string]any
-				if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
-				}
-
-				requestedPath := ""
-				if val, ok := args["repo_path"].(string); ok {
-					requestedPath = val
-				}
-
-				repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
-				}
-
-				patchFile, ok := args["patch_file"].(string)
-				if !ok {
-					return utils.NewToolResultError("patch_file must be a string"), nil
-				}
-
-				if strings.TrimSpace(patchFile) == "" {
-					return utils.NewToolResultError("patch_file cannot be empty"), nil
-				}
-
-				// Ensure the patch file exists
-				absPath, err := filepath.Abs(patchFile)
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Invalid patch file path: %v", err)), nil
-				}
-
-				if _, err := os.Stat(absPath); os.IsNotExist(err) {
-					return utils.NewToolResultError(fmt.Sprintf("Patch file does not exist: %s", absPath)), nil
-				}
-
-				result, err := gitDeps.GetGitOps().ApplyPatchFromFile(repoPath, absPath)
-				if err != nil {
-					return utils.NewToolResultError(fmt.Sprintf("Failed to apply patch: %v", err)), nil
-				}
-
-				return utils.NewToolResultText(result), nil
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// Unmarshal arguments
+			var args map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
 			}
+
+			requestedPath := ""
+			if val, ok := args["repo_path"].(string); ok {
+				requestedPath = val
+			}
+
+			repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+			}
+
+			patchFile, ok := args["patch_file"].(string)
+			if !ok {
+				return utils.NewToolResultError("patch_file must be a string"), nil
+			}
+
+			if strings.TrimSpace(patchFile) == "" {
+				return utils.NewToolResultError("patch_file cannot be empty"), nil
+			}
+
+			// Ensure the patch file exists
+			absPath, err := filepath.Abs(patchFile)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Invalid patch file path: %v", err)), nil
+			}
+
+			if _, err := os.Stat(absPath); os.IsNotExist(err) {
+				return utils.NewToolResultError(fmt.Sprintf("Patch file does not exist: %s", absPath)), nil
+			}
+
+			result, err := gitDeps.GetGitOps().ApplyPatchFromFile(repoPath, absPath)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to apply patch: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(result), nil
 		},
 	)
 }
@@ -1041,22 +1087,23 @@ func GitApplyPatchFile(t translations.TranslationHelperFunc) inventory.ServerToo
 // AllGitTools returns all git tools
 func AllGitTools(t translations.TranslationHelperFunc) []inventory.ServerTool {
 	return []inventory.ServerTool{
-		GitStatus(t),
-		GitDiffUnstaged(t),
-		GitDiffStaged(t),
-		GitDiff(t),
-		GitCommit(t),
-		GitAdd(t),
-		GitReset(t),
-		GitLog(t),
-		GitCreateBranch(t),
-		GitCheckout(t),
-		GitShow(t),
-		GitInit(t),
-		GitPush(t),
-		GitListRepositories(t),
-		GitApplyPatchString(t),
-		GitApplyPatchFile(t),
+		Status(t),
+		DiffUnstaged(t),
+		DiffStaged(t),
+		Diff(t),
+		Commit(t),
+		Add(t),
+		Reset(t),
+		Log(t),
+		CreateBranch(t),
+		Checkout(t),
+		Show(t),
+		Init(t),
+		Push(t),
+		Pull(t),
+		ListRepositories(t),
+		ApplyPatchString(t),
+		ApplyPatchFile(t),
 	}
 }
 

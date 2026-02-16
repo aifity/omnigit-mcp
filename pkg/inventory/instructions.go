@@ -15,11 +15,16 @@ func generateInstructions(inv *Inventory) string {
 	var instructions []string
 
 	// Base instruction with context management
-	baseInstruction := `The GitHub MCP Server provides tools to interact with GitHub platform.
+	baseInstruction := `The GitHub MCP Server provides tools to interact with both GitHub platform (remote) and local Git repositories.
+
+Available capabilities:
+	1. GitHub platform tools: Manage repos, issues, PRs, workflows, discussions, projects, and more on GitHub.com or GitHub Enterprise.
+	2. Local Git tools (local_git toolset): Perform git operations on local repositories - status, diff, commit, push, pull, branch management, etc.
 
 Tool selection guidance:
 	1. Use 'list_*' tools for broad, simple retrieval and pagination of all items of a type (e.g., all issues, all PRs, all branches) with basic filtering.
 	2. Use 'search_*' tools for targeted queries with specific criteria, keywords, or complex filters (e.g., issues with certain text, PRs by author, code containing functions).
+	3. Use 'git_*' tools for local repository operations (requires local_git toolset to be enabled).
 
 Context management:
 	1. Use pagination whenever possible with batches of 5-10 items.
