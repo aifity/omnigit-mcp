@@ -9,6 +9,7 @@ import (
 	"time"
 
 	gherrors "github.com/github/github-mcp-server/pkg/errors"
+	"github.com/github/github-mcp-server/pkg/git"
 	"github.com/github/github-mcp-server/pkg/inventory"
 	"github.com/github/github-mcp-server/pkg/octicons"
 	"github.com/github/github-mcp-server/pkg/translations"
@@ -108,6 +109,7 @@ func NewMCPServer(ctx context.Context, cfg *MCPServerConfig, deps ToolDependenci
 	ghServer.AddReceivingMiddleware(middleware...)
 	ghServer.AddReceivingMiddleware(InjectDepsMiddleware(deps))
 	ghServer.AddReceivingMiddleware(addGitHubAPIErrorToContext)
+	ghServer.AddReceivingMiddleware(InjectGitDepsMiddleware(deps))
 
 	if unrecognized := inv.UnrecognizedToolsets(); len(unrecognized) > 0 {
 		cfg.Logger.Warn("Warning: unrecognized toolsets ignored", "toolsets", strings.Join(unrecognized, ", "))
@@ -173,6 +175,18 @@ func addGitHubAPIErrorToContext(next mcp.MethodHandler) mcp.MethodHandler {
 		// as context isn't propagated through middleware
 		ctx = gherrors.ContextWithGitHubErrors(ctx)
 		return next(ctx, method, req)
+	}
+}
+
+// InjectGitDepsMiddleware creates a middleware that injects git.ToolDependencies into the context.
+// This allows git tools to retrieve their dependencies from context at call time.
+func InjectGitDepsMiddleware(deps ToolDependencies) mcp.Middleware {
+	return func(next mcp.MethodHandler) mcp.MethodHandler {
+		return func(ctx context.Context, method string, req mcp.Request) (result mcp.Result, err error) {
+			// Inject git dependencies into context
+			ctx = git.ContextWithGitDeps(ctx, deps)
+			return next(ctx, method, req)
+		}
 	}
 }
 
