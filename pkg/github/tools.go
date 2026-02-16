@@ -195,6 +195,7 @@ func AllTools(t translations.TranslationHelperFunc) []inventory.ServerTool {
 		ListIssueTypes(t),
 		IssueWrite(t),
 		AddIssueComment(t),
+		IssueCommentWrite(t),
 		AssignCopilotToIssue(t),
 		SubIssueWrite(t),
 
@@ -216,6 +217,7 @@ func AllTools(t translations.TranslationHelperFunc) []inventory.ServerTool {
 		PullRequestReviewWrite(t),
 		AddCommentToPendingReview(t),
 		AddReplyToPullRequestComment(t),
+		PullRequestCommentWrite(t),
 
 		// Code security tools
 		GetCodeScanningAlert(t),
