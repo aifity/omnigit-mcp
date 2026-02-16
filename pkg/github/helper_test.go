@@ -58,6 +58,8 @@ const (
 	PostReposIssuesByOwnerByRepo                                = "POST /repos/{owner}/{repo}/issues"
 	PostReposIssuesCommentsByOwnerByRepoByIssueNumber           = "POST /repos/{owner}/{repo}/issues/{issue_number}/comments"
 	PatchReposIssuesByOwnerByRepoByIssueNumber                  = "PATCH /repos/{owner}/{repo}/issues/{issue_number}"
+	PatchReposIssuesCommentsByOwnerByRepoByCommentID            = "PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}"
+	DeleteReposIssuesCommentsByOwnerByRepoByCommentID           = "DELETE /repos/{owner}/{repo}/issues/comments/{comment_id}"
 	GetReposIssuesSubIssuesByOwnerByRepoByIssueNumber           = "GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues"
 	PostReposIssuesSubIssuesByOwnerByRepoByIssueNumber          = "POST /repos/{owner}/{repo}/issues/{issue_number}/sub_issues"
 	DeleteReposIssuesSubIssueByOwnerByRepoByIssueNumber         = "DELETE /repos/{owner}/{repo}/issues/{issue_number}/sub_issue"
@@ -74,6 +76,8 @@ const (
 	PutReposPullsUpdateBranchByOwnerByRepoByPullNumber        = "PUT /repos/{owner}/{repo}/pulls/{pull_number}/update-branch"
 	PostReposPullsRequestedReviewersByOwnerByRepoByPullNumber = "POST /repos/{owner}/{repo}/pulls/{pull_number}/requested_reviewers"
 	PostReposPullsCommentsByOwnerByRepoByPullNumber           = "POST /repos/{owner}/{repo}/pulls/{pull_number}/comments"
+	PatchReposPullsCommentsByOwnerByRepoByCommentID           = "PATCH /repos/{owner}/{repo}/pulls/comments/{comment_id}"
+	DeleteReposPullsCommentsByOwnerByRepoByCommentID          = "DELETE /repos/{owner}/{repo}/pulls/comments/{comment_id}"
 
 	// Notifications endpoints
 	GetNotifications                                 = "GET /notifications"

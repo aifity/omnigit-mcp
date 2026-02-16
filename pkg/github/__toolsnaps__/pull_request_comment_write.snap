@@ -1,0 +1,42 @@
+{
+  "annotations": {
+    "title": "Update or delete pull request review comment"
+  },
+  "description": "Update or delete a review comment on a pull request in a GitHub repository.",
+  "inputSchema": {
+    "properties": {
+      "body": {
+        "description": "New comment content (required for update method)",
+        "type": "string"
+      },
+      "comment_id": {
+        "description": "Review comment ID to update or delete",
+        "type": "number"
+      },
+      "method": {
+        "description": "The write operation to perform on a review comment.\nOptions are:\n- 'update' - updates an existing review comment.\n- 'delete' - deletes an existing review comment.\n",
+        "enum": [
+          "update",
+          "delete"
+        ],
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo",
+      "comment_id"
+    ],
+    "type": "object"
+  },
+  "name": "pull_request_comment_write"
+}

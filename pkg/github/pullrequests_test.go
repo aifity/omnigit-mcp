@@ -3624,3 +3624,166 @@ func TestAddReplyToPullRequestComment(t *testing.T) {
 		})
 	}
 }
+
+func TestPullRequestCommentWrite(t *testing.T) {
+	t.Parallel()
+
+	// Verify tool definition once
+	serverTool := PullRequestCommentWrite(translations.NullTranslationHelper)
+	tool := serverTool.Tool
+	require.NoError(t, toolsnaps.Test(tool.Name, tool))
+
+	assert.Equal(t, "pull_request_comment_write", tool.Name)
+	assert.NotEmpty(t, tool.Description)
+	schema := tool.InputSchema.(*jsonschema.Schema)
+	assert.Contains(t, schema.Properties, "method")
+	assert.Contains(t, schema.Properties, "owner")
+	assert.Contains(t, schema.Properties, "repo")
+	assert.Contains(t, schema.Properties, "comment_id")
+	assert.Contains(t, schema.Properties, "body")
+	assert.ElementsMatch(t, schema.Required, []string{"method", "owner", "repo", "comment_id"})
+
+	// Setup mock comment for success case
+	mockComment := &github.PullRequestComment{
+		ID:      github.Ptr(int64(456)),
+		Body:    github.Ptr("Updated review comment"),
+		HTMLURL: github.Ptr("https://github.com/owner/repo/pull/42#discussion_r456"),
+		User: &github.User{
+			Login: github.Ptr("testuser"),
+		},
+		CreatedAt: &github.Timestamp{Time: time.Now()},
+		UpdatedAt: &github.Timestamp{Time: time.Now()},
+	}
+
+	tests := []struct {
+		name               string
+		mockedClient       *http.Client
+		requestArgs        map[string]interface{}
+		expectToolError    bool
+		expectedToolErrMsg string
+	}{
+		{
+			name: "successful comment update",
+			requestArgs: map[string]interface{}{
+				"method":     "update",
+				"owner":      "owner",
+				"repo":       "repo",
+				"comment_id": float64(456),
+				"body":       "Updated review comment",
+			},
+			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
+				PatchReposPullsCommentsByOwnerByRepoByCommentID: func(w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusOK)
+					responseData, _ := json.Marshal(mockComment)
+					_, _ = w.Write(responseData)
+				},
+			}),
+		},
+		{
+			name: "successful comment deletion",
+			requestArgs: map[string]interface{}{
+				"method":     "delete",
+				"owner":      "owner",
+				"repo":       "repo",
+				"comment_id": float64(456),
+			},
+			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
+				DeleteReposPullsCommentsByOwnerByRepoByCommentID: func(w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusNoContent)
+				},
+			}),
+		},
+		{
+			name: "update fails - missing body",
+			requestArgs: map[string]interface{}{
+				"method":     "update",
+				"owner":      "owner",
+				"repo":       "repo",
+				"comment_id": float64(456),
+			},
+			expectToolError:    true,
+			expectedToolErrMsg: "missing required parameter: body",
+		},
+		{
+			name: "invalid method",
+			requestArgs: map[string]interface{}{
+				"method":     "invalid",
+				"owner":      "owner",
+				"repo":       "repo",
+				"comment_id": float64(456),
+			},
+			expectToolError:    true,
+			expectedToolErrMsg: "invalid method",
+		},
+		{
+			name: "missing required parameter owner",
+			requestArgs: map[string]interface{}{
+				"method":     "update",
+				"repo":       "repo",
+				"comment_id": float64(456),
+				"body":       "Updated text",
+			},
+			expectToolError:    true,
+			expectedToolErrMsg: "missing required parameter: owner",
+		},
+		{
+			name: "comment update fails - not found",
+			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
+				PatchReposPullsCommentsByOwnerByRepoByCommentID: func(w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusNotFound)
+					_, _ = w.Write([]byte(`{"message": "Not Found"}`))
+				},
+			}),
+			requestArgs: map[string]interface{}{
+				"method":     "update",
+				"owner":      "owner",
+				"repo":       "repo",
+				"comment_id": float64(456),
+				"body":       "Updated text",
+			},
+			expectToolError:    true,
+			expectedToolErrMsg: "failed to update pull request comment",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup client with mock
+			client := github.NewClient(tc.mockedClient)
+			serverTool := PullRequestCommentWrite(translations.NullTranslationHelper)
+			deps := BaseDeps{
+				Client: client,
+			}
+			handler := serverTool.Handler(deps)
+
+			// Create call request
+			request := createMCPRequest(tc.requestArgs)
+
+			// Call handler
+			result, err := handler(ContextWithDeps(context.Background(), deps), &request)
+			require.NoError(t, err)
+
+			if tc.expectToolError {
+				require.True(t, result.IsError)
+				errorContent := getErrorResult(t, result)
+				assert.Contains(t, errorContent.Text, tc.expectedToolErrMsg)
+				return
+			}
+
+			// Parse the result and verify it's not an error
+			require.False(t, result.IsError)
+			textContent := getTextResult(t, result)
+
+			// For delete operation, check success message
+			if tc.requestArgs["method"] == "delete" {
+				assert.Contains(t, textContent.Text, "deleted successfully")
+				return
+			}
+
+			// For update operation, verify the returned comment
+			assert.Contains(t, textContent.Text, "Updated review comment")
+		})
+	}
+}

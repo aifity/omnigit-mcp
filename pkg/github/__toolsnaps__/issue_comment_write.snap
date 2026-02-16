@@ -1,0 +1,42 @@
+{
+  "annotations": {
+    "title": "Update or delete issue comment"
+  },
+  "description": "Update or delete a comment on an issue in a GitHub repository. Use this tool to update or delete comments on pull requests as well (in this case pass pull request number as issue_number), but only if user is not asking specifically to update or delete review comments.",
+  "inputSchema": {
+    "properties": {
+      "body": {
+        "description": "New comment content (required for update method)",
+        "type": "string"
+      },
+      "comment_id": {
+        "description": "Comment ID to update or delete",
+        "type": "number"
+      },
+      "method": {
+        "description": "The write operation to perform on a comment.\nOptions are:\n- 'update' - updates an existing comment.\n- 'delete' - deletes an existing comment.\n",
+        "enum": [
+          "update",
+          "delete"
+        ],
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo",
+      "comment_id"
+    ],
+    "type": "object"
+  },
+  "name": "issue_comment_write"
+}

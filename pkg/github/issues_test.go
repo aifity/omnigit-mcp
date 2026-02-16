@@ -470,6 +470,163 @@ func Test_AddIssueComment(t *testing.T) {
 	}
 }
 
+func Test_IssueCommentWrite(t *testing.T) {
+	// Verify tool definition once
+	serverTool := IssueCommentWrite(translations.NullTranslationHelper)
+	tool := serverTool.Tool
+	require.NoError(t, toolsnaps.Test(tool.Name, tool))
+
+	assert.Equal(t, "issue_comment_write", tool.Name)
+	assert.NotEmpty(t, tool.Description)
+
+	assert.Contains(t, tool.InputSchema.(*jsonschema.Schema).Properties, "method")
+	assert.Contains(t, tool.InputSchema.(*jsonschema.Schema).Properties, "owner")
+	assert.Contains(t, tool.InputSchema.(*jsonschema.Schema).Properties, "repo")
+	assert.Contains(t, tool.InputSchema.(*jsonschema.Schema).Properties, "comment_id")
+	assert.Contains(t, tool.InputSchema.(*jsonschema.Schema).Properties, "body")
+	assert.ElementsMatch(t, tool.InputSchema.(*jsonschema.Schema).Required, []string{"method", "owner", "repo", "comment_id"})
+
+	// Setup mock comment for success case
+	mockComment := &github.IssueComment{
+		ID:   github.Ptr(int64(123)),
+		Body: github.Ptr("Updated comment text"),
+		User: &github.User{
+			Login: github.Ptr("testuser"),
+		},
+		HTMLURL: github.Ptr("https://github.com/owner/repo/issues/42#issuecomment-123"),
+	}
+
+	tests := []struct {
+		name            string
+		mockedClient    *http.Client
+		requestArgs     map[string]interface{}
+		expectError     bool
+		expectedComment *github.IssueComment
+		expectedErrMsg  string
+	}{
+		{
+			name: "successful comment update",
+			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
+				PatchReposIssuesCommentsByOwnerByRepoByCommentID: mockResponse(t, http.StatusOK, mockComment),
+			}),
+			requestArgs: map[string]interface{}{
+				"method":     "update",
+				"owner":      "owner",
+				"repo":       "repo",
+				"comment_id": float64(123),
+				"body":       "Updated comment text",
+			},
+			expectError:     false,
+			expectedComment: mockComment,
+		},
+		{
+			name: "successful comment deletion",
+			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
+				DeleteReposIssuesCommentsByOwnerByRepoByCommentID: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusNoContent)
+				}),
+			}),
+			requestArgs: map[string]interface{}{
+				"method":     "delete",
+				"owner":      "owner",
+				"repo":       "repo",
+				"comment_id": float64(123),
+			},
+			expectError: false,
+		},
+		{
+			name: "update fails - missing body",
+			requestArgs: map[string]interface{}{
+				"method":     "update",
+				"owner":      "owner",
+				"repo":       "repo",
+				"comment_id": float64(123),
+			},
+			expectError:    false,
+			expectedErrMsg: "missing required parameter: body",
+		},
+		{
+			name: "invalid method",
+			requestArgs: map[string]interface{}{
+				"method":     "invalid",
+				"owner":      "owner",
+				"repo":       "repo",
+				"comment_id": float64(123),
+			},
+			expectError:    false,
+			expectedErrMsg: "invalid method",
+		},
+		{
+			name: "comment update fails",
+			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
+				PatchReposIssuesCommentsByOwnerByRepoByCommentID: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusNotFound)
+					_, _ = w.Write([]byte(`{"message": "Not Found"}`))
+				}),
+			}),
+			requestArgs: map[string]interface{}{
+				"method":     "update",
+				"owner":      "owner",
+				"repo":       "repo",
+				"comment_id": float64(123),
+				"body":       "Updated text",
+			},
+			expectError:    false,
+			expectedErrMsg: "failed to update comment",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup client with mock
+			client := github.NewClient(tc.mockedClient)
+			deps := BaseDeps{
+				Client: client,
+			}
+			handler := serverTool.Handler(deps)
+
+			// Create call request
+			request := createMCPRequest(tc.requestArgs)
+
+			// Call handler
+			result, err := handler(ContextWithDeps(context.Background(), deps), &request)
+
+			// Verify results
+			if tc.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedErrMsg)
+				return
+			}
+
+			if tc.expectedErrMsg != "" {
+				require.NotNil(t, result)
+				textContent := getTextResult(t, result)
+				assert.Contains(t, textContent.Text, tc.expectedErrMsg)
+				return
+			}
+
+			require.NoError(t, err)
+
+			// Parse the result and get the text content if no error
+			textContent := getTextResult(t, result)
+
+			// For delete operation, just check success message
+			if tc.requestArgs["method"] == "delete" {
+				assert.Contains(t, textContent.Text, "deleted successfully")
+				return
+			}
+
+			// For update operation, unmarshal and verify the result
+			var returnedComment github.IssueComment
+			err = json.Unmarshal([]byte(textContent.Text), &returnedComment)
+			require.NoError(t, err)
+			assert.Equal(t, *tc.expectedComment.ID, *returnedComment.ID)
+			assert.Equal(t, *tc.expectedComment.Body, *returnedComment.Body)
+			assert.Equal(t, *tc.expectedComment.User.Login, *returnedComment.User.Login)
+		})
+	}
+}
+
 func Test_SearchIssues(t *testing.T) {
 	// Verify tool definition once
 	serverTool := SearchIssues(translations.NullTranslationHelper)
