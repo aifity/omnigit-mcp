@@ -22,7 +22,7 @@ This is a fork of [github/github-mcp-server](https://github.com/github/github-mc
 
 ### Improved review comment ID resolution
 
-`get_review_comments` now returns a `databaseId` (numeric REST API ID) alongside the GraphQL `nodeId` for every comment node. Previously only the opaque base64 GraphQL node ID was returned, forcing the model to decode it or scrape the numeric ID from comment URLs before calling `add_reply_to_pull_request_comment` or `pull_request_comment_write`. The `commentId` / `comment_id` parameter descriptions in those tools now explicitly say to use `databaseId`.
+`get_review_comments` now returns a `CommentID` field extracted from the URL fragment (e.g., `#discussion_r2837328047`) alongside the GraphQL `NodeID` and `DatabaseID` for every comment node. This `CommentID` is the numeric ID that should be used when calling `add_reply_to_pull_request_comment` or `pull_request_comment_write`. Previously, the model had to manually extract this ID from the URL or decode the base64 GraphQL node ID. The `commentId` / `comment_id` parameter descriptions in those tools now explicitly say to use the `CommentID` field.
 
 ### Issue comment management (`issue_comment_write`)
 

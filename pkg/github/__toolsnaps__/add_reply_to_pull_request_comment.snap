@@ -10,7 +10,7 @@
         "type": "string"
       },
       "commentId": {
-        "description": "The ID of the comment to reply to. Use the databaseId field from get_review_comments.",
+        "description": "The ID of the comment to reply to. Use the CommentID field from get_review_comments (extracted from the URL fragment).",
         "type": "number"
       },
       "owner": {
