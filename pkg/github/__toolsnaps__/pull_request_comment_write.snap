@@ -10,7 +10,7 @@
         "type": "string"
       },
       "comment_id": {
-        "description": "Review comment ID to update or delete",
+        "description": "Review comment ID to update or delete. Use the databaseId field from get_review_comments.",
         "type": "number"
       },
       "method": {

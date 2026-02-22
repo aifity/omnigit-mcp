@@ -313,7 +313,7 @@ type reviewThreadsQuery struct {
 }
 
 type reviewThreadNode struct {
-	ID          githubv4.ID
+	NodeID      githubv4.ID `graphql:"id"`
 	IsResolved  githubv4.Boolean
 	IsOutdated  githubv4.Boolean
 	IsCollapsed githubv4.Boolean
@@ -324,11 +324,12 @@ type reviewThreadNode struct {
 }
 
 type reviewCommentNode struct {
-	ID     githubv4.ID
-	Body   githubv4.String
-	Path   githubv4.String
-	Line   *githubv4.Int
-	Author struct {
+	NodeID     githubv4.ID  `graphql:"id"`
+	DatabaseID githubv4.Int `graphql:"databaseId"`
+	Body       githubv4.String
+	Path       githubv4.String
+	Line       *githubv4.Int
+	Author     struct {
 		Login githubv4.String
 	}
 	CreatedAt githubv4.DateTime
@@ -965,9 +966,9 @@ func AddReplyToPullRequestComment(t translations.TranslationHelperFunc) inventor
 				Type:        "number",
 				Description: "Pull request number",
 			},
-			"commentId": {
+		"commentId": {
 				Type:        "number",
-				Description: "The ID of the comment to reply to",
+				Description: "The ID of the comment to reply to. Use the databaseId field from get_review_comments.",
 			},
 			"body": {
 				Type:        "string",
@@ -1070,10 +1071,10 @@ Options are:
 						Type:        "string",
 						Description: "Repository name",
 					},
-					"comment_id": {
-						Type:        "number",
-						Description: "Review comment ID to update or delete",
-					},
+				"comment_id": {
+					Type:        "number",
+					Description: "Review comment ID to update or delete. Use the databaseId field from get_review_comments.",
+				},
 					"body": {
 						Type:        "string",
 						Description: "New comment content (required for update method)",
