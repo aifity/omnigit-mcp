@@ -221,14 +221,14 @@ func CreateGist(t translations.TranslationHelperFunc) inventory.ServerTool {
 
 			files := make(map[github.GistFilename]github.GistFile)
 			files[github.GistFilename(filename)] = github.GistFile{
-				Filename: github.Ptr(filename),
-				Content:  github.Ptr(content),
+				Filename: new(filename),
+				Content:  new(content),
 			}
 
 			gist := &github.Gist{
 				Files:       files,
-				Public:      github.Ptr(public),
-				Description: github.Ptr(description),
+				Public:      new(public),
+				Description: new(description),
 			}
 
 			client, err := deps.GetClient(ctx)
@@ -323,13 +323,13 @@ func UpdateGist(t translations.TranslationHelperFunc) inventory.ServerTool {
 
 			files := make(map[github.GistFilename]github.GistFile)
 			files[github.GistFilename(filename)] = github.GistFile{
-				Filename: github.Ptr(filename),
-				Content:  github.Ptr(content),
+				Filename: new(filename),
+				Content:  new(content),
 			}
 
 			gist := &github.Gist{
 				Files:       files,
-				Description: github.Ptr(description),
+				Description: new(description),
 			}
 
 			client, err := deps.GetClient(ctx)

@@ -135,34 +135,34 @@ func Test_GetIssue(t *testing.T) {
 
 	// Setup mock issue for success case
 	mockIssue := &github.Issue{
-		Number:  github.Ptr(42),
-		Title:   github.Ptr("Test Issue"),
-		Body:    github.Ptr("This is a test issue"),
-		State:   github.Ptr("open"),
-		HTMLURL: github.Ptr("https://github.com/owner/repo/issues/42"),
+		Number:  new(42),
+		Title:   new("Test Issue"),
+		Body:    new("This is a test issue"),
+		State:   new("open"),
+		HTMLURL: new("https://github.com/owner/repo/issues/42"),
 		User: &github.User{
-			Login: github.Ptr("testuser"),
+			Login: new("testuser"),
 		},
 		Repository: &github.Repository{
-			Name: github.Ptr("repo"),
+			Name: new("repo"),
 			Owner: &github.User{
-				Login: github.Ptr("owner"),
+				Login: new("owner"),
 			},
 		},
 	}
 	mockIssue2 := &github.Issue{
-		Number:  github.Ptr(422),
-		Title:   github.Ptr("Test Issue 2"),
-		Body:    github.Ptr("This is a test issue 2"),
-		State:   github.Ptr("open"),
-		HTMLURL: github.Ptr("https://github.com/owner/repo/issues/42"),
+		Number:  new(422),
+		Title:   new("Test Issue 2"),
+		Body:    new("This is a test issue 2"),
+		State:   new("open"),
+		HTMLURL: new("https://github.com/owner/repo/issues/42"),
 		User: &github.User{
-			Login: github.Ptr("testuser2"),
+			Login: new("testuser2"),
 		},
 		Repository: &github.Repository{
-			Name: github.Ptr("repo2"),
+			Name: new("repo2"),
 			Owner: &github.User{
-				Login: github.Ptr("owner2"),
+				Login: new("owner2"),
 			},
 		},
 	}
@@ -375,12 +375,12 @@ func Test_AddIssueComment(t *testing.T) {
 
 	// Setup mock comment for success case
 	mockComment := &github.IssueComment{
-		ID:   github.Ptr(int64(123)),
-		Body: github.Ptr("This is a test comment"),
+		ID:   new(int64(123)),
+		Body: new("This is a test comment"),
 		User: &github.User{
-			Login: github.Ptr("testuser"),
+			Login: new("testuser"),
 		},
-		HTMLURL: github.Ptr("https://github.com/owner/repo/issues/42#issuecomment-123"),
+		HTMLURL: new("https://github.com/owner/repo/issues/42#issuecomment-123"),
 	}
 
 	tests := []struct {
@@ -488,12 +488,12 @@ func Test_IssueCommentWrite(t *testing.T) {
 
 	// Setup mock comment for success case
 	mockComment := &github.IssueComment{
-		ID:   github.Ptr(int64(123)),
-		Body: github.Ptr("Updated comment text"),
+		ID:   new(int64(123)),
+		Body: new("Updated comment text"),
 		User: &github.User{
-			Login: github.Ptr("testuser"),
+			Login: new("testuser"),
 		},
-		HTMLURL: github.Ptr("https://github.com/owner/repo/issues/42#issuecomment-123"),
+		HTMLURL: new("https://github.com/owner/repo/issues/42#issuecomment-123"),
 	}
 
 	tests := []struct {
@@ -646,29 +646,29 @@ func Test_SearchIssues(t *testing.T) {
 
 	// Setup mock search results
 	mockSearchResult := &github.IssuesSearchResult{
-		Total:             github.Ptr(2),
-		IncompleteResults: github.Ptr(false),
+		Total:             new(2),
+		IncompleteResults: new(false),
 		Issues: []*github.Issue{
 			{
-				Number:   github.Ptr(42),
-				Title:    github.Ptr("Bug: Something is broken"),
-				Body:     github.Ptr("This is a bug report"),
-				State:    github.Ptr("open"),
-				HTMLURL:  github.Ptr("https://github.com/owner/repo/issues/42"),
-				Comments: github.Ptr(5),
+				Number:   new(42),
+				Title:    new("Bug: Something is broken"),
+				Body:     new("This is a bug report"),
+				State:    new("open"),
+				HTMLURL:  new("https://github.com/owner/repo/issues/42"),
+				Comments: new(5),
 				User: &github.User{
-					Login: github.Ptr("user1"),
+					Login: new("user1"),
 				},
 			},
 			{
-				Number:   github.Ptr(43),
-				Title:    github.Ptr("Feature: Add new functionality"),
-				Body:     github.Ptr("This is a feature request"),
-				State:    github.Ptr("open"),
-				HTMLURL:  github.Ptr("https://github.com/owner/repo/issues/43"),
-				Comments: github.Ptr(3),
+				Number:   new(43),
+				Title:    new("Feature: Add new functionality"),
+				Body:     new("This is a feature request"),
+				State:    new("open"),
+				HTMLURL:  new("https://github.com/owner/repo/issues/43"),
+				Comments: new(3),
 				User: &github.User{
-					Login: github.Ptr("user2"),
+					Login: new("user2"),
 				},
 			},
 		},
@@ -955,15 +955,15 @@ func Test_CreateIssue(t *testing.T) {
 
 	// Setup mock issue for success case
 	mockIssue := &github.Issue{
-		Number:    github.Ptr(123),
-		Title:     github.Ptr("Test Issue"),
-		Body:      github.Ptr("This is a test issue"),
-		State:     github.Ptr("open"),
-		HTMLURL:   github.Ptr("https://github.com/owner/repo/issues/123"),
-		Assignees: []*github.User{{Login: github.Ptr("user1")}, {Login: github.Ptr("user2")}},
-		Labels:    []*github.Label{{Name: github.Ptr("bug")}, {Name: github.Ptr("help wanted")}},
-		Milestone: &github.Milestone{Number: github.Ptr(5)},
-		Type:      &github.IssueType{Name: github.Ptr("Bug")},
+		Number:    new(123),
+		Title:     new("Test Issue"),
+		Body:      new("This is a test issue"),
+		State:     new("open"),
+		HTMLURL:   new("https://github.com/owner/repo/issues/123"),
+		Assignees: []*github.User{{Login: new("user1")}, {Login: new("user2")}},
+		Labels:    []*github.Label{{Name: new("bug")}, {Name: new("help wanted")}},
+		Milestone: &github.Milestone{Number: new(5)},
+		Type:      &github.IssueType{Name: new("Bug")},
 	}
 
 	tests := []struct {
@@ -1006,10 +1006,10 @@ func Test_CreateIssue(t *testing.T) {
 			name: "successful issue creation with minimal fields",
 			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
 				PostReposIssuesByOwnerByRepo: mockResponse(t, http.StatusCreated, &github.Issue{
-					Number:  github.Ptr(124),
-					Title:   github.Ptr("Minimal Issue"),
-					HTMLURL: github.Ptr("https://github.com/owner/repo/issues/124"),
-					State:   github.Ptr("open"),
+					Number:  new(124),
+					Title:   new("Minimal Issue"),
+					HTMLURL: new("https://github.com/owner/repo/issues/124"),
+					State:   new("open"),
 				}),
 			}),
 			requestArgs: map[string]any{
@@ -1021,10 +1021,10 @@ func Test_CreateIssue(t *testing.T) {
 			},
 			expectError: false,
 			expectedIssue: &github.Issue{
-				Number:  github.Ptr(124),
-				Title:   github.Ptr("Minimal Issue"),
-				HTMLURL: github.Ptr("https://github.com/owner/repo/issues/124"),
-				State:   github.Ptr("open"),
+				Number:  new(124),
+				Title:   new("Minimal Issue"),
+				HTMLURL: new("https://github.com/owner/repo/issues/124"),
+				State:   new("open"),
 			},
 		},
 		{
@@ -1096,9 +1096,9 @@ func Test_IssueWrite_InsidersMode_UIGate(t *testing.T) {
 	t.Parallel()
 
 	mockIssue := &github.Issue{
-		Number:  github.Ptr(1),
-		Title:   github.Ptr("Test"),
-		HTMLURL: github.Ptr("https://github.com/owner/repo/issues/1"),
+		Number:  new(1),
+		Title:   new("Test"),
+		HTMLURL: new("https://github.com/owner/repo/issues/1"),
 	}
 
 	serverTool := IssueWrite(translations.NullTranslationHelper)
@@ -1166,11 +1166,11 @@ func Test_CreateIssue_BodyFiltering(t *testing.T) {
 
 	// Setup mock issue for success case
 	mockIssue := &github.Issue{
-		Number:  github.Ptr(123),
-		Title:   github.Ptr("Test Issue"),
-		State:   github.Ptr("open"),
-		HTMLURL: github.Ptr("https://github.com/owner/repo/issues/123"),
-		Body:    github.Ptr("This is a test issue"),
+		Number:  new(123),
+		Title:   new("Test Issue"),
+		State:   new("open"),
+		HTMLURL: new("https://github.com/owner/repo/issues/123"),
+		Body:    new("This is a test issue"),
 	}
 
 	tests := []struct {
@@ -1273,11 +1273,11 @@ func Test_UpdateIssue_BodyFiltering(t *testing.T) {
 					"body": tc.expectedBody,
 				}).andThen(
 					mockResponse(t, http.StatusOK, &github.Issue{
-						Number:  github.Ptr(123),
-						Title:   github.Ptr("Test Issue"),
-						State:   github.Ptr("open"),
-						HTMLURL: github.Ptr("https://github.com/owner/repo/issues/123"),
-						Body:    github.Ptr(tc.expectedBody),
+						Number:  new(123),
+						Title:   new("Test Issue"),
+						State:   new("open"),
+						HTMLURL: new("https://github.com/owner/repo/issues/123"),
+						Body:    new(tc.expectedBody),
 					}),
 				),
 			})
@@ -1656,36 +1656,36 @@ func Test_UpdateIssue(t *testing.T) {
 
 	// Mock issues for reuse across test cases
 	mockBaseIssue := &github.Issue{
-		Number:    github.Ptr(123),
-		Title:     github.Ptr("Title"),
-		Body:      github.Ptr("Description"),
-		State:     github.Ptr("open"),
-		HTMLURL:   github.Ptr("https://github.com/owner/repo/issues/123"),
-		Assignees: []*github.User{{Login: github.Ptr("assignee1")}, {Login: github.Ptr("assignee2")}},
-		Labels:    []*github.Label{{Name: github.Ptr("bug")}, {Name: github.Ptr("priority")}},
-		Milestone: &github.Milestone{Number: github.Ptr(5)},
-		Type:      &github.IssueType{Name: github.Ptr("Bug")},
+		Number:    new(123),
+		Title:     new("Title"),
+		Body:      new("Description"),
+		State:     new("open"),
+		HTMLURL:   new("https://github.com/owner/repo/issues/123"),
+		Assignees: []*github.User{{Login: new("assignee1")}, {Login: new("assignee2")}},
+		Labels:    []*github.Label{{Name: new("bug")}, {Name: new("priority")}},
+		Milestone: &github.Milestone{Number: new(5)},
+		Type:      &github.IssueType{Name: new("Bug")},
 	}
 
 	mockUpdatedIssue := &github.Issue{
-		Number:      github.Ptr(123),
-		Title:       github.Ptr("Updated Title"),
-		Body:        github.Ptr("Updated Description"),
-		State:       github.Ptr("closed"),
-		StateReason: github.Ptr("duplicate"),
-		HTMLURL:     github.Ptr("https://github.com/owner/repo/issues/123"),
-		Assignees:   []*github.User{{Login: github.Ptr("assignee1")}, {Login: github.Ptr("assignee2")}},
-		Labels:      []*github.Label{{Name: github.Ptr("bug")}, {Name: github.Ptr("priority")}},
-		Milestone:   &github.Milestone{Number: github.Ptr(5)},
-		Type:        &github.IssueType{Name: github.Ptr("Bug")},
+		Number:      new(123),
+		Title:       new("Updated Title"),
+		Body:        new("Updated Description"),
+		State:       new("closed"),
+		StateReason: new("duplicate"),
+		HTMLURL:     new("https://github.com/owner/repo/issues/123"),
+		Assignees:   []*github.User{{Login: new("assignee1")}, {Login: new("assignee2")}},
+		Labels:      []*github.Label{{Name: new("bug")}, {Name: new("priority")}},
+		Milestone:   &github.Milestone{Number: new(5)},
+		Type:        &github.IssueType{Name: new("Bug")},
 	}
 
 	mockReopenedIssue := &github.Issue{
-		Number:      github.Ptr(123),
-		Title:       github.Ptr("Title"),
-		State:       github.Ptr("open"),
-		StateReason: github.Ptr("reopened"),
-		HTMLURL:     github.Ptr("https://github.com/owner/repo/issues/123"),
+		Number:      new(123),
+		Title:       new("Title"),
+		State:       new("open"),
+		StateReason: new("reopened"),
+		HTMLURL:     new("https://github.com/owner/repo/issues/123"),
 	}
 
 	// Mock GraphQL responses for reuse across test cases
@@ -1971,15 +1971,15 @@ func Test_UpdateIssue(t *testing.T) {
 					"type":      "Bug",
 				}).andThen(
 					mockResponse(t, http.StatusOK, &github.Issue{
-						Number:    github.Ptr(123),
-						Title:     github.Ptr("Updated Title"),
-						Body:      github.Ptr("Updated Description"),
-						Labels:    []*github.Label{{Name: github.Ptr("bug")}, {Name: github.Ptr("priority")}},
-						Assignees: []*github.User{{Login: github.Ptr("assignee1")}, {Login: github.Ptr("assignee2")}},
-						Milestone: &github.Milestone{Number: github.Ptr(5)},
-						Type:      &github.IssueType{Name: github.Ptr("Bug")},
-						State:     github.Ptr("open"), // Still open after REST update
-						HTMLURL:   github.Ptr("https://github.com/owner/repo/issues/123"),
+						Number:    new(123),
+						Title:     new("Updated Title"),
+						Body:      new("Updated Description"),
+						Labels:    []*github.Label{{Name: new("bug")}, {Name: new("priority")}},
+						Assignees: []*github.User{{Login: new("assignee1")}, {Login: new("assignee2")}},
+						Milestone: &github.Milestone{Number: new(5)},
+						Type:      &github.IssueType{Name: new("Bug")},
+						State:     new("open"), // Still open after REST update
+						HTMLURL:   new("https://github.com/owner/repo/issues/123"),
 					}),
 				),
 			}),
@@ -2176,18 +2176,18 @@ func Test_GetIssueComments(t *testing.T) {
 	// Setup mock comments for success case
 	mockComments := []*github.IssueComment{
 		{
-			ID:   github.Ptr(int64(123)),
-			Body: github.Ptr("This is the first comment"),
+			ID:   new(int64(123)),
+			Body: new("This is the first comment"),
 			User: &github.User{
-				Login: github.Ptr("user1"),
+				Login: new("user1"),
 			},
 			CreatedAt: &github.Timestamp{Time: time.Now().Add(-time.Hour * 24)},
 		},
 		{
-			ID:   github.Ptr(int64(456)),
-			Body: github.Ptr("This is the second comment"),
+			ID:   new(int64(456)),
+			Body: new("This is the second comment"),
 			User: &github.User{
-				Login: github.Ptr("user2"),
+				Login: new("user2"),
 			},
 			CreatedAt: &github.Timestamp{Time: time.Now().Add(-time.Hour)},
 		},
@@ -2257,14 +2257,14 @@ func Test_GetIssueComments(t *testing.T) {
 			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
 				GetReposIssuesCommentsByOwnerByRepoByIssueNumber: mockResponse(t, http.StatusOK, []*github.IssueComment{
 					{
-						ID:   github.Ptr(int64(789)),
-						Body: github.Ptr("Maintainer comment"),
-						User: &github.User{Login: github.Ptr("maintainer")},
+						ID:   new(int64(789)),
+						Body: new("Maintainer comment"),
+						User: &github.User{Login: new("maintainer")},
 					},
 					{
-						ID:   github.Ptr(int64(790)),
-						Body: github.Ptr("External user comment"),
-						User: &github.User{Login: github.Ptr("testuser")},
+						ID:   new(int64(790)),
+						Body: new("External user comment"),
+						User: &github.User{Login: new("testuser")},
 					},
 				}),
 			}),
@@ -2278,9 +2278,9 @@ func Test_GetIssueComments(t *testing.T) {
 			expectError: false,
 			expectedComments: []*github.IssueComment{
 				{
-					ID:   github.Ptr(int64(789)),
-					Body: github.Ptr("Maintainer comment"),
-					User: &github.User{Login: github.Ptr("maintainer")},
+					ID:   new(int64(789)),
+					Body: new("Maintainer comment"),
+					User: &github.User{Login: new("maintainer")},
 				},
 			},
 			lockdownEnabled: true,
@@ -3188,19 +3188,19 @@ func Test_AddSubIssue(t *testing.T) {
 
 	// Setup mock issue for success case (matches GitHub API response format)
 	mockIssue := &github.Issue{
-		Number:  github.Ptr(42),
-		Title:   github.Ptr("Parent Issue"),
-		Body:    github.Ptr("This is the parent issue with a sub-issue"),
-		State:   github.Ptr("open"),
-		HTMLURL: github.Ptr("https://github.com/owner/repo/issues/42"),
+		Number:  new(42),
+		Title:   new("Parent Issue"),
+		Body:    new("This is the parent issue with a sub-issue"),
+		State:   new("open"),
+		HTMLURL: new("https://github.com/owner/repo/issues/42"),
 		User: &github.User{
-			Login: github.Ptr("testuser"),
+			Login: new("testuser"),
 		},
 		Labels: []*github.Label{
 			{
-				Name:        github.Ptr("enhancement"),
-				Color:       github.Ptr("84b6eb"),
-				Description: github.Ptr("New feature or request"),
+				Name:        new("enhancement"),
+				Color:       new("84b6eb"),
+				Description: new("New feature or request"),
 			},
 		},
 	}
@@ -3413,33 +3413,33 @@ func Test_GetSubIssues(t *testing.T) {
 	// Setup mock sub-issues for success case
 	mockSubIssues := []*github.Issue{
 		{
-			Number:  github.Ptr(123),
-			Title:   github.Ptr("Sub-issue 1"),
-			Body:    github.Ptr("This is the first sub-issue"),
-			State:   github.Ptr("open"),
-			HTMLURL: github.Ptr("https://github.com/owner/repo/issues/123"),
+			Number:  new(123),
+			Title:   new("Sub-issue 1"),
+			Body:    new("This is the first sub-issue"),
+			State:   new("open"),
+			HTMLURL: new("https://github.com/owner/repo/issues/123"),
 			User: &github.User{
-				Login: github.Ptr("user1"),
+				Login: new("user1"),
 			},
 			Labels: []*github.Label{
 				{
-					Name:        github.Ptr("bug"),
-					Color:       github.Ptr("d73a4a"),
-					Description: github.Ptr("Something isn't working"),
+					Name:        new("bug"),
+					Color:       new("d73a4a"),
+					Description: new("Something isn't working"),
 				},
 			},
 		},
 		{
-			Number:  github.Ptr(124),
-			Title:   github.Ptr("Sub-issue 2"),
-			Body:    github.Ptr("This is the second sub-issue"),
-			State:   github.Ptr("closed"),
-			HTMLURL: github.Ptr("https://github.com/owner/repo/issues/124"),
+			Number:  new(124),
+			Title:   new("Sub-issue 2"),
+			Body:    new("This is the second sub-issue"),
+			State:   new("closed"),
+			HTMLURL: new("https://github.com/owner/repo/issues/124"),
 			User: &github.User{
-				Login: github.Ptr("user2"),
+				Login: new("user2"),
 			},
 			Assignees: []*github.User{
-				{Login: github.Ptr("assignee1")},
+				{Login: new("assignee1")},
 			},
 		},
 	}
@@ -3645,19 +3645,19 @@ func Test_RemoveSubIssue(t *testing.T) {
 
 	// Setup mock issue for success case (matches GitHub API response format - the updated parent issue)
 	mockIssue := &github.Issue{
-		Number:  github.Ptr(42),
-		Title:   github.Ptr("Parent Issue"),
-		Body:    github.Ptr("This is the parent issue after sub-issue removal"),
-		State:   github.Ptr("open"),
-		HTMLURL: github.Ptr("https://github.com/owner/repo/issues/42"),
+		Number:  new(42),
+		Title:   new("Parent Issue"),
+		Body:    new("This is the parent issue after sub-issue removal"),
+		State:   new("open"),
+		HTMLURL: new("https://github.com/owner/repo/issues/42"),
 		User: &github.User{
-			Login: github.Ptr("testuser"),
+			Login: new("testuser"),
 		},
 		Labels: []*github.Label{
 			{
-				Name:        github.Ptr("enhancement"),
-				Color:       github.Ptr("84b6eb"),
-				Description: github.Ptr("New feature or request"),
+				Name:        new("enhancement"),
+				Color:       new("84b6eb"),
+				Description: new("New feature or request"),
 			},
 		},
 	}
@@ -3853,19 +3853,19 @@ func Test_ReprioritizeSubIssue(t *testing.T) {
 
 	// Setup mock issue for success case (matches GitHub API response format - the updated parent issue)
 	mockIssue := &github.Issue{
-		Number:  github.Ptr(42),
-		Title:   github.Ptr("Parent Issue"),
-		Body:    github.Ptr("This is the parent issue with reprioritized sub-issues"),
-		State:   github.Ptr("open"),
-		HTMLURL: github.Ptr("https://github.com/owner/repo/issues/42"),
+		Number:  new(42),
+		Title:   new("Parent Issue"),
+		Body:    new("This is the parent issue with reprioritized sub-issues"),
+		State:   new("open"),
+		HTMLURL: new("https://github.com/owner/repo/issues/42"),
 		User: &github.User{
-			Login: github.Ptr("testuser"),
+			Login: new("testuser"),
 		},
 		Labels: []*github.Label{
 			{
-				Name:        github.Ptr("enhancement"),
-				Color:       github.Ptr("84b6eb"),
-				Description: github.Ptr("New feature or request"),
+				Name:        new("enhancement"),
+				Color:       new("84b6eb"),
+				Description: new("New feature or request"),
 			},
 		},
 	}
@@ -4108,16 +4108,16 @@ func Test_ListIssueTypes(t *testing.T) {
 	// Setup mock issue types for success case
 	mockIssueTypes := []*github.IssueType{
 		{
-			ID:          github.Ptr(int64(1)),
-			Name:        github.Ptr("bug"),
-			Description: github.Ptr("Something isn't working"),
-			Color:       github.Ptr("d73a4a"),
+			ID:          new(int64(1)),
+			Name:        new("bug"),
+			Description: new("Something isn't working"),
+			Color:       new("d73a4a"),
 		},
 		{
-			ID:          github.Ptr(int64(2)),
-			Name:        github.Ptr("feature"),
-			Description: github.Ptr("New feature or enhancement"),
-			Color:       github.Ptr("a2eeef"),
+			ID:          new(int64(2)),
+			Name:        new("feature"),
+			Description: new("New feature or enhancement"),
+			Color:       new("a2eeef"),
 		},
 	}
 

@@ -456,10 +456,10 @@ func ManageNotificationSubscription(t translations.TranslationHelperFunc) invent
 
 			switch action {
 			case NotificationActionIgnore:
-				sub := &github.Subscription{Ignored: ToBoolPtr(true)}
+				sub := &github.Subscription{Ignored: new(true)}
 				result, resp, apiErr = client.Activity.SetThreadSubscription(ctx, notificationID, sub)
 			case NotificationActionWatch:
-				sub := &github.Subscription{Ignored: ToBoolPtr(false), Subscribed: ToBoolPtr(true)}
+				sub := &github.Subscription{Ignored: new(false), Subscribed: new(true)}
 				result, resp, apiErr = client.Activity.SetThreadSubscription(ctx, notificationID, sub)
 			case NotificationActionDelete:
 				resp, apiErr = client.Activity.DeleteThreadSubscription(ctx, notificationID)
@@ -560,10 +560,10 @@ func ManageRepositoryNotificationSubscription(t translations.TranslationHelperFu
 
 			switch action {
 			case RepositorySubscriptionActionIgnore:
-				sub := &github.Subscription{Ignored: ToBoolPtr(true)}
+				sub := &github.Subscription{Ignored: new(true)}
 				result, resp, apiErr = client.Activity.SetRepositorySubscription(ctx, owner, repo, sub)
 			case RepositorySubscriptionActionWatch:
-				sub := &github.Subscription{Ignored: ToBoolPtr(false), Subscribed: ToBoolPtr(true)}
+				sub := &github.Subscription{Ignored: new(false), Subscribed: new(true)}
 				result, resp, apiErr = client.Activity.SetRepositorySubscription(ctx, owner, repo, sub)
 			case RepositorySubscriptionActionDelete:
 				resp, apiErr = client.Activity.DeleteRepositorySubscription(ctx, owner, repo)

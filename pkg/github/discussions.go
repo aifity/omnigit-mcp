@@ -96,16 +96,16 @@ type WithCategoryNoOrder struct {
 
 func fragmentToDiscussion(fragment NodeFragment) *github.Discussion {
 	return &github.Discussion{
-		Number:    github.Ptr(int(fragment.Number)),
-		Title:     github.Ptr(string(fragment.Title)),
-		HTMLURL:   github.Ptr(string(fragment.URL)),
+		Number:    new(int(fragment.Number)),
+		Title:     new(string(fragment.Title)),
+		HTMLURL:   new(string(fragment.URL)),
 		CreatedAt: &github.Timestamp{Time: fragment.CreatedAt.Time},
 		UpdatedAt: &github.Timestamp{Time: fragment.UpdatedAt.Time},
 		User: &github.User{
-			Login: github.Ptr(string(fragment.Author.Login)),
+			Login: new(string(fragment.Author.Login)),
 		},
 		DiscussionCategory: &github.DiscussionCategory{
-			Name: github.Ptr(string(fragment.Category.Name)),
+			Name: new(string(fragment.Category.Name)),
 		},
 	}
 }
@@ -482,7 +482,7 @@ func GetDiscussionComments(t translations.TranslationHelperFunc) inventory.Serve
 
 			var comments []*github.IssueComment
 			for _, c := range q.Repository.Discussion.Comments.Nodes {
-				comments = append(comments, &github.IssueComment{Body: github.Ptr(string(c.Body))})
+				comments = append(comments, &github.IssueComment{Body: new(string(c.Body))})
 			}
 
 			// Create response with pagination info

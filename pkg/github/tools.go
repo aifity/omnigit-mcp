@@ -282,8 +282,10 @@ func AllTools(t translations.TranslationHelperFunc) []inventory.ServerTool {
 }
 
 // ToBoolPtr converts a bool to a *bool pointer.
+//
+//go:fix inline
 func ToBoolPtr(b bool) *bool {
-	return &b
+	return new(b)
 }
 
 // ToStringPtr converts a string to a *string pointer.

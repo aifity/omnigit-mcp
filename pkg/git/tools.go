@@ -938,12 +938,12 @@ func ListRepositories(t translations.TranslationHelperFunc) inventory.ServerTool
 			}
 
 			var result strings.Builder
-			result.WriteString(fmt.Sprintf("Available repositories (%d):\n\n", len(repoPaths)))
+			fmt.Fprintf(&result, "Available repositories (%d):\n\n", len(repoPaths))
 
 			for i, repoPath := range repoPaths {
 				// Get the repository name (last part of the path)
 				repoName := filepath.Base(repoPath)
-				result.WriteString(fmt.Sprintf("%d. %s (%s)\n", i+1, repoName, repoPath))
+				fmt.Fprintf(&result, "%d. %s (%s)\n", i+1, repoName, repoPath)
 			}
 
 			return utils.NewToolResultText(result.String()), nil

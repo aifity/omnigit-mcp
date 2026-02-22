@@ -35,8 +35,8 @@ func Test_ListNotifications(t *testing.T) {
 	// All fields are optional, so Required should be empty
 	assert.Empty(t, schema.Required)
 	mockNotification := &github.Notification{
-		ID:     github.Ptr("123"),
-		Reason: github.Ptr("mention"),
+		ID:     new("123"),
+		Reason: new("mention"),
 	}
 
 	tests := []struct {
@@ -153,8 +153,8 @@ func Test_ManageNotificationSubscription(t *testing.T) {
 	assert.Contains(t, schema.Properties, "action")
 	assert.Equal(t, []string{"notificationID", "action"}, schema.Required)
 
-	mockSub := &github.Subscription{Ignored: github.Ptr(true)}
-	mockSubWatch := &github.Subscription{Ignored: github.Ptr(false), Subscribed: github.Ptr(true)}
+	mockSub := &github.Subscription{Ignored: new(true)}
+	mockSubWatch := &github.Subscription{Ignored: new(false), Subscribed: new(true)}
 
 	tests := []struct {
 		name           string
@@ -176,7 +176,7 @@ func Test_ManageNotificationSubscription(t *testing.T) {
 				"action":         "ignore",
 			},
 			expectError:   false,
-			expectIgnored: github.Ptr(true),
+			expectIgnored: new(true),
 		},
 		{
 			name: "watch subscription",
@@ -188,7 +188,7 @@ func Test_ManageNotificationSubscription(t *testing.T) {
 				"action":         "watch",
 			},
 			expectError:   false,
-			expectIgnored: github.Ptr(false),
+			expectIgnored: new(false),
 		},
 		{
 			name: "delete subscription",
@@ -290,8 +290,8 @@ func Test_ManageRepositoryNotificationSubscription(t *testing.T) {
 	assert.Contains(t, schema.Properties, "action")
 	assert.Equal(t, []string{"owner", "repo", "action"}, schema.Required)
 
-	mockSub := &github.Subscription{Ignored: github.Ptr(true)}
-	mockWatchSub := &github.Subscription{Ignored: github.Ptr(false), Subscribed: github.Ptr(true)}
+	mockSub := &github.Subscription{Ignored: new(true)}
+	mockWatchSub := &github.Subscription{Ignored: new(false), Subscribed: new(true)}
 
 	tests := []struct {
 		name             string
@@ -315,7 +315,7 @@ func Test_ManageRepositoryNotificationSubscription(t *testing.T) {
 				"action": "ignore",
 			},
 			expectError:   false,
-			expectIgnored: github.Ptr(true),
+			expectIgnored: new(true),
 		},
 		{
 			name: "watch subscription",
@@ -328,8 +328,8 @@ func Test_ManageRepositoryNotificationSubscription(t *testing.T) {
 				"action": "watch",
 			},
 			expectError:      false,
-			expectIgnored:    github.Ptr(false),
-			expectSubscribed: github.Ptr(true),
+			expectIgnored:    new(false),
+			expectSubscribed: new(true),
 		},
 		{
 			name: "delete subscription",
@@ -689,7 +689,7 @@ func Test_GetNotificationDetails(t *testing.T) {
 	assert.Contains(t, schema.Properties, "notificationID")
 	assert.Equal(t, []string{"notificationID"}, schema.Required)
 
-	mockThread := &github.Notification{ID: github.Ptr("123"), Reason: github.Ptr("mention")}
+	mockThread := &github.Notification{ID: new("123"), Reason: new("mention")}
 
 	tests := []struct {
 		name           string
