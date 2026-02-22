@@ -1211,7 +1211,7 @@ The following sets of tools are available:
 - **add_reply_to_pull_request_comment** - Add reply to pull request comment
   - **Required OAuth Scopes**: `repo`
   - `body`: The text of the reply (string, required)
-  - `commentId`: The ID of the comment to reply to (number, required)
+  - `commentId`: The ID of the comment to reply to. Use the databaseId field from get_review_comments. (number, required)
   - `owner`: Repository owner (string, required)
   - `pullNumber`: Pull request number (number, required)
   - `repo`: Repository name (string, required)
@@ -1251,7 +1251,7 @@ The following sets of tools are available:
 - **pull_request_comment_write** - Update or delete pull request review comment
   - **Required OAuth Scopes**: `repo`
   - `body`: New comment content (required for update method) (string, optional)
-  - `comment_id`: Review comment ID to update or delete (number, required)
+  - `comment_id`: Review comment ID to update or delete. Use the databaseId field from get_review_comments. (number, required)
   - `method`: The write operation to perform on a review comment.
     Options are:
     - 'update' - updates an existing review comment.
