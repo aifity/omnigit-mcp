@@ -1520,52 +1520,6 @@ func Test_UpdatePullRequestBranch(t *testing.T) {
 	}
 }
 
-func Test_extractCommentIDFromURL(t *testing.T) {
-	tests := []struct {
-		name     string
-		url      string
-		expected int64
-	}{
-		{
-			name:     "valid discussion URL",
-			url:      "https://github.com/owner/repo/pull/42#discussion_r2837328047",
-			expected: 2837328047,
-		},
-		{
-			name:     "valid discussion URL with different ID",
-			url:      "https://github.com/owner/repo/pull/42#discussion_r101",
-			expected: 101,
-		},
-		{
-			name:     "URL without fragment",
-			url:      "https://github.com/owner/repo/pull/42",
-			expected: 0,
-		},
-		{
-			name:     "URL with wrong fragment",
-			url:      "https://github.com/owner/repo/pull/42#issuecomment-123",
-			expected: 0,
-		},
-		{
-			name:     "URL with invalid numeric ID",
-			url:      "https://github.com/owner/repo/pull/42#discussion_rabc",
-			expected: 0,
-		},
-		{
-			name:     "empty URL",
-			url:      "",
-			expected: 0,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := extractCommentIDFromURL(tt.url)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
 func Test_GetPullRequestComments(t *testing.T) {
 	// Verify tool definition once
 	serverTool := PullRequestRead(translations.NullTranslationHelper)
@@ -1617,10 +1571,11 @@ func Test_GetPullRequestComments(t *testing.T) {
 												"totalCount": 2,
 												"nodes": []map[string]any{
 													{
-														"id":   "PRRC_kwDOA0xdyM4AX1Y0",
-														"body": "This looks good",
-														"path": "file1.go",
-														"line": 5,
+														"id":         "PRRC_kwDOA0xdyM4AX1Y0",
+														"databaseId": 101,
+														"body":       "This looks good",
+														"path":       "file1.go",
+														"line":       5,
 														"author": map[string]any{
 															"login": "reviewer1",
 														},
@@ -1629,10 +1584,11 @@ func Test_GetPullRequestComments(t *testing.T) {
 														"url":       "https://github.com/owner/repo/pull/42#discussion_r101",
 													},
 													{
-														"id":   "PRRC_kwDOA0xdyM4AX1Y1",
-														"body": "Please fix this",
-														"path": "file1.go",
-														"line": 10,
+														"id":         "PRRC_kwDOA0xdyM4AX1Y1",
+														"databaseId": 102,
+														"body":       "Please fix this",
+														"path":       "file1.go",
+														"line":       10,
 														"author": map[string]any{
 															"login": "reviewer2",
 														},
@@ -1692,7 +1648,8 @@ func Test_GetPullRequestComments(t *testing.T) {
 				// Validate first comment
 				comment1 := commentNodes[0].(map[string]any)
 				assert.Equal(t, "PRRC_kwDOA0xdyM4AX1Y0", comment1["NodeID"])
-				assert.Equal(t, float64(101), comment1["CommentID"]) // Extracted from URL #discussion_r101
+				assert.Equal(t, float64(101), comment1["DatabaseID"])
+				assert.Equal(t, float64(101), comment1["CommentID"])
 				assert.Equal(t, "This looks good", comment1["Body"])
 				assert.Equal(t, "file1.go", comment1["Path"])
 
@@ -1759,10 +1716,11 @@ func Test_GetPullRequestComments(t *testing.T) {
 												"totalCount": 2,
 												"nodes": []map[string]any{
 													{
-														"id":   "PRRC_kwDOA0xdyM4AX1Y0",
-														"body": "Maintainer review comment",
-														"path": "file1.go",
-														"line": 5,
+														"id":         "PRRC_kwDOA0xdyM4AX1Y0",
+														"databaseId": 2010,
+														"body":       "Maintainer review comment",
+														"path":       "file1.go",
+														"line":       5,
 														"author": map[string]any{
 															"login": "maintainer",
 														},
@@ -1771,10 +1729,11 @@ func Test_GetPullRequestComments(t *testing.T) {
 														"url":       "https://github.com/owner/repo/pull/42#discussion_r2010",
 													},
 													{
-														"id":   "PRRC_kwDOA0xdyM4AX1Y1",
-														"body": "External review comment",
-														"path": "file1.go",
-														"line": 10,
+														"id":         "PRRC_kwDOA0xdyM4AX1Y1",
+														"databaseId": 2011,
+														"body":       "External review comment",
+														"path":       "file1.go",
+														"line":       10,
 														"author": map[string]any{
 															"login": "testuser",
 														},

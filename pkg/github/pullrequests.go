@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
-	"strings"
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/google/go-github/v82/github"
@@ -326,10 +324,11 @@ type reviewThreadNode struct {
 }
 
 type reviewCommentNode struct {
-	NodeID githubv4.ID `graphql:"id"`
-	Body   githubv4.String
-	Path   githubv4.String
-	Line   *githubv4.Int
+	NodeID     githubv4.ID `graphql:"id"`
+	DatabaseID int64       `graphql:"databaseId"`
+	Body       githubv4.String
+	Path       githubv4.String
+	Line       *githubv4.Int
 	Author struct {
 		Login githubv4.String
 	}
@@ -343,28 +342,6 @@ type pageInfoFragment struct {
 	HasPreviousPage githubv4.Boolean
 	StartCursor     githubv4.String
 	EndCursor       githubv4.String
-}
-
-// extractCommentIDFromURL extracts the numeric comment ID from a GitHub discussion URL.
-// For example, from "https://github.com/owner/repo/pull/42#discussion_r2837328047"
-// it extracts 2837328047.
-func extractCommentIDFromURL(url string) int64 {
-	// Find the fragment identifier (after #)
-	fragmentIndex := strings.LastIndex(url, "#discussion_r")
-	if fragmentIndex == -1 {
-		return 0
-	}
-
-	// Extract the numeric part after "discussion_r"
-	idStr := url[fragmentIndex+len("#discussion_r"):]
-
-	// Parse the numeric ID
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		return 0
-	}
-
-	return id
 }
 
 func GetPullRequestReviewComments(ctx context.Context, gqlClient *githubv4.Client, deps ToolDependencies, owner, repo string, pullNumber int, pagination CursorPaginationParams) (*mcp.CallToolResult, error) {
@@ -435,20 +412,19 @@ func GetPullRequestReviewComments(ctx context.Context, gqlClient *githubv4.Clien
 	}
 
 	// Build response with review threads and pagination info
-	// We need to transform the threads to add commentId extracted from URLs
+	// We need to transform the threads to add CommentID field (using DatabaseID)
 	transformedThreads := make([]map[string]any, 0, len(query.Repository.PullRequest.ReviewThreads.Nodes))
 	for _, thread := range query.Repository.PullRequest.ReviewThreads.Nodes {
 		transformedComments := make([]map[string]any, 0, len(thread.Comments.Nodes))
 		for _, comment := range thread.Comments.Nodes {
-			// Extract numeric comment ID from URL fragment (e.g., #discussion_r2837328047)
 			urlStr := fmt.Sprintf("%v", comment.URL)
-			commentID := extractCommentIDFromURL(urlStr)
 
 			transformedComment := map[string]any{
-				"NodeID":    fmt.Sprintf("%v", comment.NodeID),
-				"CommentID": commentID, // The numeric ID from the URL fragment
-				"Body":      string(comment.Body),
-				"Path":      string(comment.Path),
+				"NodeID":     fmt.Sprintf("%v", comment.NodeID),
+				"DatabaseID": comment.DatabaseID,
+				"CommentID":  comment.DatabaseID, // Use DatabaseID as CommentID for API calls
+				"Body":       string(comment.Body),
+				"Path":       string(comment.Path),
 				"Author": map[string]any{
 					"Login": string(comment.Author.Login),
 				},
@@ -1034,7 +1010,7 @@ func AddReplyToPullRequestComment(t translations.TranslationHelperFunc) inventor
 			},
 			"commentId": {
 				Type:        "number",
-				Description: "The ID of the comment to reply to. Use the CommentID field from get_review_comments (extracted from the URL fragment).",
+				Description: "The ID of the comment to reply to. Use the CommentID field from get_review_comments.",
 			},
 			"body": {
 				Type:        "string",
@@ -1139,7 +1115,7 @@ Options are:
 					},
 					"comment_id": {
 						Type:        "number",
-						Description: "Review comment ID to update or delete. Use the CommentID field from get_review_comments (extracted from the URL fragment).",
+						Description: "Review comment ID to update or delete. Use the CommentID field from get_review_comments.",
 					},
 					"body": {
 						Type:        "string",
