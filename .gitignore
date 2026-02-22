@@ -18,6 +18,7 @@ bin/
 
 # binary
 omnigit-mcp
+github-mcp-server
 mcpcurl
 e2e.test
 
