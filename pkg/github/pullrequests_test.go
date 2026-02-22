@@ -2987,7 +2987,7 @@ func TestAddPullRequestReviewCommentToPendingReview(t *testing.T) {
 						} `graphql:"addPullRequestReviewThread(input: $input)"`
 					}{},
 					githubv4.AddPullRequestReviewThreadInput{
-						Path:                githubv4.String("file.go"),
+						Path:                githubv4.NewString("file.go"),
 						Body:                githubv4.String("This is a test comment"),
 						SubjectType:         githubv4mock.Ptr(githubv4.PullRequestReviewThreadSubjectTypeLine),
 						Line:                githubv4.NewInt(10),
@@ -3044,7 +3044,7 @@ func TestAddPullRequestReviewCommentToPendingReview(t *testing.T) {
 						} `graphql:"addPullRequestReviewThread(input: $input)"`
 					}{},
 					githubv4.AddPullRequestReviewThreadInput{
-						Path:                githubv4.String("file.go"),
+						Path:                githubv4.NewString("file.go"),
 						Body:                githubv4.String("Comment on non-existent line"),
 						SubjectType:         githubv4mock.Ptr(githubv4.PullRequestReviewThreadSubjectTypeLine),
 						Line:                githubv4.NewInt(999),

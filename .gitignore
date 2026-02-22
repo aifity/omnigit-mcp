@@ -17,7 +17,7 @@ bin/
 .DS_Store
 
 # binary
-omnigit-mcp
+/omnigit-mcp
 github-mcp-server
 mcpcurl
 e2e.test
