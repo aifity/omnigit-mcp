@@ -20,4 +20,3 @@ func RunGitCommand(repoPath string, args ...string) (string, error) {
 	}
 	return string(output), nil
 }
-

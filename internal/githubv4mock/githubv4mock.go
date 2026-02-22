@@ -215,4 +215,5 @@ func parseBody(r io.Reader) (gqlRequest, error) {
 	return req, err
 }
 
-func Ptr[T any](v T) *T { return &v }
+//go:fix inline
+func Ptr[T any](v T) *T { return new(v) }

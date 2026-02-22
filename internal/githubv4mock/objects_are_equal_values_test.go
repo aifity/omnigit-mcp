@@ -38,8 +38,8 @@ func TestObjectsAreEqualValues(t *testing.T) {
 	now := time.Now()
 
 	cases := []struct {
-		expected interface{}
-		actual   interface{}
+		expected any
+		actual   any
 		result   bool
 	}{
 		{uint32(10), int32(10), true},

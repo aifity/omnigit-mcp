@@ -66,4 +66,3 @@ func FilterBody(body string) string {
 
 	return filtered
 }
-
