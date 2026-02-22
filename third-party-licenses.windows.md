@@ -1,6 +1,6 @@
 # GitHub MCP Server dependencies
 
-The following open source dependencies are used to build the [github/github-mcp-server][] GitHub Model Context Protocol Server.
+The following open source dependencies are used to build the [github/omnigit-mcp][] GitHub Model Context Protocol Server.
 
 ## Table of Contents
 
@@ -14,7 +14,7 @@ The following packages are included for the 386, amd64, arm64 architectures.
 
  - [github.com/aymerick/douceur](https://pkg.go.dev/github.com/aymerick/douceur) ([MIT](https://github.com/aymerick/douceur/blob/v0.2.0/LICENSE))
  - [github.com/fsnotify/fsnotify](https://pkg.go.dev/github.com/fsnotify/fsnotify) ([BSD-3-Clause](https://github.com/fsnotify/fsnotify/blob/v1.9.0/LICENSE))
- - [github.com/github/github-mcp-server](https://pkg.go.dev/github.com/github/github-mcp-server) ([MIT](https://github.com/github/github-mcp-server/blob/HEAD/LICENSE))
+ - [github.com/github/omnigit-mcp](https://pkg.go.dev/github.com/github/omnigit-mcp) ([MIT](https://github.com/github/omnigit-mcp/blob/HEAD/LICENSE))
  - [github.com/go-chi/chi/v5](https://pkg.go.dev/github.com/go-chi/chi/v5) ([MIT](https://github.com/go-chi/chi/blob/v5.2.5/LICENSE))
  - [github.com/go-openapi/jsonpointer](https://pkg.go.dev/github.com/go-openapi/jsonpointer) ([Apache-2.0](https://github.com/go-openapi/jsonpointer/blob/v0.21.0/LICENSE))
  - [github.com/go-openapi/swag](https://pkg.go.dev/github.com/go-openapi/swag) ([Apache-2.0](https://github.com/go-openapi/swag/blob/v0.23.0/LICENSE))
@@ -52,4 +52,4 @@ The following packages are included for the 386, amd64, arm64 architectures.
  - [golang.org/x/text](https://pkg.go.dev/golang.org/x/text) ([BSD-3-Clause](https://cs.opensource.google/go/x/text/+/v0.28.0:LICENSE))
  - [gopkg.in/yaml.v3](https://pkg.go.dev/gopkg.in/yaml.v3) ([MIT](https://github.com/go-yaml/yaml/blob/v3.0.1/LICENSE))
 
-[github/github-mcp-server]: https://github.com/github/github-mcp-server
+[github/omnigit-mcp]: https://github.com/github/omnigit-mcp
