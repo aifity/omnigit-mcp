@@ -13,14 +13,14 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/shurcooL/githubv4"
 
-	"github.com/github/omnigit-mcp/pkg/bodyfilter"
-	ghErrors "github.com/github/omnigit-mcp/pkg/errors"
-	"github.com/github/omnigit-mcp/pkg/inventory"
-	"github.com/github/omnigit-mcp/pkg/octicons"
-	"github.com/github/omnigit-mcp/pkg/sanitize"
-	"github.com/github/omnigit-mcp/pkg/scopes"
-	"github.com/github/omnigit-mcp/pkg/translations"
-	"github.com/github/omnigit-mcp/pkg/utils"
+	"github.com/aifity/omnigit-mcp/pkg/bodyfilter"
+	ghErrors "github.com/aifity/omnigit-mcp/pkg/errors"
+	"github.com/aifity/omnigit-mcp/pkg/inventory"
+	"github.com/aifity/omnigit-mcp/pkg/octicons"
+	"github.com/aifity/omnigit-mcp/pkg/sanitize"
+	"github.com/aifity/omnigit-mcp/pkg/scopes"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
+	"github.com/aifity/omnigit-mcp/pkg/utils"
 )
 
 // PullRequestRead creates a tool to get details of a specific pull request.
@@ -966,7 +966,7 @@ func AddReplyToPullRequestComment(t translations.TranslationHelperFunc) inventor
 				Type:        "number",
 				Description: "Pull request number",
 			},
-		"commentId": {
+			"commentId": {
 				Type:        "number",
 				Description: "The ID of the comment to reply to. Use the databaseId field from get_review_comments.",
 			},
@@ -1071,10 +1071,10 @@ Options are:
 						Type:        "string",
 						Description: "Repository name",
 					},
-				"comment_id": {
-					Type:        "number",
-					Description: "Review comment ID to update or delete. Use the databaseId field from get_review_comments.",
-				},
+					"comment_id": {
+						Type:        "number",
+						Description: "Review comment ID to update or delete. Use the databaseId field from get_review_comments.",
+					},
 					"body": {
 						Type:        "string",
 						Description: "New comment content (required for update method)",
@@ -2056,11 +2056,12 @@ func AddCommentToPendingReview(t translations.TranslationHelperFunc) inventory.S
 				} `graphql:"addPullRequestReviewThread(input: $input)"`
 			}
 
-			if err := client.Mutate(
+				pathStr := githubv4.String(params.Path)
+				if err := client.Mutate(
 				ctx,
 				&addPullRequestReviewThreadMutation,
 				githubv4.AddPullRequestReviewThreadInput{
-					Path:                githubv4.String(params.Path),
+					Path:                &pathStr,
 					Body:                githubv4.String(params.Body),
 					SubjectType:         newGQLStringlikePtr[githubv4.PullRequestReviewThreadSubjectType](&params.SubjectType),
 					Line:                newGQLIntPtr(params.Line),
