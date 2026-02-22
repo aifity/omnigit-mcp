@@ -1,6 +1,6 @@
 # GitHub MCP Server dependencies
 
-The following open source dependencies are used to build the [github/omnigit-mcp][] GitHub Model Context Protocol Server.
+The following open source dependencies are used to build the [aifity/omnigit-mcp][] GitHub Model Context Protocol Server.
 
 ## Table of Contents
 
@@ -57,4 +57,4 @@ The following packages are included for the 386, amd64, arm64 architectures.
  - [golang.org/x/text](https://pkg.go.dev/golang.org/x/text) ([BSD-3-Clause](https://cs.opensource.google/go/x/text/+/v0.34.0:LICENSE))
  - [gopkg.in/yaml.v3](https://pkg.go.dev/gopkg.in/yaml.v3) ([MIT](https://github.com/go-yaml/yaml/blob/v3.0.1/LICENSE))
 
-[github/omnigit-mcp]: https://github.com/aifity/omnigit-mcp
+[aifity/omnigit-mcp]: https://github.com/aifity/omnigit-mcp

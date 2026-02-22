@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.github/omnigit-mcp",
+  "name": "io.github.aifity/omnigit-mcp",
   "description": "Connect AI assistants to GitHub - manage repos, issues, PRs, workflows, and git operations.",
   "title": "GitHub",
   "repository": {

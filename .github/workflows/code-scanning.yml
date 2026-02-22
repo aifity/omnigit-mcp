@@ -15,7 +15,7 @@ jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     # Only run on the main repository, not on forks
-    if: github.repository == 'github/omnigit-mcp'
+    if: github.repository == 'aifity/omnigit-mcp'
     runs-on: ${{ fromJSON(matrix.runner) }}
     permissions:
       actions: read

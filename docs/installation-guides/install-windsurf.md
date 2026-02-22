@@ -100,7 +100,7 @@ After installation:
 
 ## Important Notes
 
-- **Official repository**: [github/omnigit-mcp](https://github.com/aifity/omnigit-mcp)
+- **Official repository**: [aifity/omnigit-mcp](https://github.com/aifity/omnigit-mcp)
 - **Remote server URL**: `https://api.githubcopilot.com/mcp/`
 - **Docker image**: `ghcr.io/aifity/omnigit-mcp` (official and supported)
 - **npm package**: `@modelcontextprotocol/server-github` (deprecated as of April 2025 - no longer functional)
