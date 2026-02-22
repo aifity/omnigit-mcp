@@ -81,7 +81,7 @@ func queryArguments(variables map[string]any) string {
 // value indicates whether t is a value (required) type or pointer (optional) type.
 // If value is true, then "!" is written at the end of t.
 func writeArgumentType(w io.Writer, t reflect.Type, value bool) {
-	if t.Kind() == reflect.Ptr {
+	if t.Kind() == reflect.Pointer {
 		// Pointer is an optional type, so no "!" at the end of the pointer's underlying type.
 		writeArgumentType(w, t.Elem(), false)
 		return
@@ -122,7 +122,7 @@ func query(v any) string {
 // If inline is true, the struct fields of t are inlined into parent struct.
 func writeQuery(w io.Writer, t reflect.Type, inline bool) {
 	switch t.Kind() {
-	case reflect.Ptr, reflect.Slice:
+	case reflect.Pointer, reflect.Slice:
 		writeQuery(w, t.Elem(), false)
 	case reflect.Struct:
 		// If the type implements json.Unmarshaler, it's a scalar. Don't expand it.
@@ -154,4 +154,4 @@ func writeQuery(w io.Writer, t reflect.Type, inline bool) {
 	}
 }
 
-var jsonUnmarshaler = reflect.TypeOf((*json.Unmarshaler)(nil)).Elem()
+var jsonUnmarshaler = reflect.TypeFor[json.Unmarshaler]()

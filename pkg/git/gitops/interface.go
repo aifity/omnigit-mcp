@@ -24,4 +24,3 @@ type GitOperations interface {
 	ApplyPatchFromString(repoPath string, patchString string) (string, error)
 	ApplyPatchFromFile(repoPath string, patchFilePath string) (string, error)
 }
-
