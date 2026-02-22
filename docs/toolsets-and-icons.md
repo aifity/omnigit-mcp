@@ -86,7 +86,7 @@ ToolsetMetadataRepos = inventory.ToolsetMetadata{
 Run the documentation generator to update all markdown files:
 
 ```bash
-go run ./cmd/github-mcp-server generate-docs
+go run ./cmd/omnigit-mcp generate-docs
 ```
 
 This updates icons in:
@@ -170,7 +170,7 @@ icons := octicons.Icons("repo")
 ### Icons not appearing in documentation
 
 1. Ensure PNG files exist in `pkg/octicons/icons/` with `-light.png` and `-dark.png` suffixes
-2. Run `go run ./cmd/github-mcp-server generate-docs` to regenerate
+2. Run `go run ./cmd/omnigit-mcp generate-docs` to regenerate
 3. Check that the `Icon` field is set on the toolset metadata
 
 ### Icons not appearing in MCP clients

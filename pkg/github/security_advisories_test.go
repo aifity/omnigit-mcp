@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/github/github-mcp-server/internal/toolsnaps"
-	"github.com/github/github-mcp-server/pkg/translations"
+	"github.com/aifity/omnigit-mcp/internal/toolsnaps"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
 	"github.com/google/go-github/v82/github"
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/stretchr/testify/assert"
@@ -32,10 +32,10 @@ func Test_ListGlobalSecurityAdvisories(t *testing.T) {
 	// Setup mock advisory for success case
 	mockAdvisory := &github.GlobalSecurityAdvisory{
 		SecurityAdvisory: github.SecurityAdvisory{
-			GHSAID:      github.Ptr("GHSA-xxxx-xxxx-xxxx"),
-			Summary:     github.Ptr("Test advisory"),
-			Description: github.Ptr("This is a test advisory."),
-			Severity:    github.Ptr("high"),
+			GHSAID:      new("GHSA-xxxx-xxxx-xxxx"),
+			Summary:     new("Test advisory"),
+			Description: new("This is a test advisory."),
+			Severity:    new("high"),
 		},
 	}
 
@@ -145,10 +145,10 @@ func Test_GetGlobalSecurityAdvisory(t *testing.T) {
 	// Setup mock advisory for success case
 	mockAdvisory := &github.GlobalSecurityAdvisory{
 		SecurityAdvisory: github.SecurityAdvisory{
-			GHSAID:      github.Ptr("GHSA-xxxx-xxxx-xxxx"),
-			Summary:     github.Ptr("Test advisory"),
-			Description: github.Ptr("This is a test advisory."),
-			Severity:    github.Ptr("high"),
+			GHSAID:      new("GHSA-xxxx-xxxx-xxxx"),
+			Summary:     new("Test advisory"),
+			Description: new("This is a test advisory."),
+			Severity:    new("high"),
 		},
 	}
 
@@ -255,16 +255,16 @@ func Test_ListRepositorySecurityAdvisories(t *testing.T) {
 
 	// Setup mock advisories for success cases
 	adv1 := &github.SecurityAdvisory{
-		GHSAID:      github.Ptr("GHSA-1111-1111-1111"),
-		Summary:     github.Ptr("Repo advisory one"),
-		Description: github.Ptr("First repo advisory."),
-		Severity:    github.Ptr("high"),
+		GHSAID:      new("GHSA-1111-1111-1111"),
+		Summary:     new("Repo advisory one"),
+		Description: new("First repo advisory."),
+		Severity:    new("high"),
 	}
 	adv2 := &github.SecurityAdvisory{
-		GHSAID:      github.Ptr("GHSA-2222-2222-2222"),
-		Summary:     github.Ptr("Repo advisory two"),
-		Description: github.Ptr("Second repo advisory."),
-		Severity:    github.Ptr("medium"),
+		GHSAID:      new("GHSA-2222-2222-2222"),
+		Summary:     new("Repo advisory two"),
+		Description: new("Second repo advisory."),
+		Severity:    new("medium"),
 	}
 
 	tests := []struct {
@@ -388,16 +388,16 @@ func Test_ListOrgRepositorySecurityAdvisories(t *testing.T) {
 	assert.ElementsMatch(t, schema.Required, []string{"org"})
 
 	adv1 := &github.SecurityAdvisory{
-		GHSAID:      github.Ptr("GHSA-aaaa-bbbb-cccc"),
-		Summary:     github.Ptr("Org repo advisory 1"),
-		Description: github.Ptr("First advisory"),
-		Severity:    github.Ptr("low"),
+		GHSAID:      new("GHSA-aaaa-bbbb-cccc"),
+		Summary:     new("Org repo advisory 1"),
+		Description: new("First advisory"),
+		Severity:    new("low"),
 	}
 	adv2 := &github.SecurityAdvisory{
-		GHSAID:      github.Ptr("GHSA-dddd-eeee-ffff"),
-		Summary:     github.Ptr("Org repo advisory 2"),
-		Description: github.Ptr("Second advisory"),
-		Severity:    github.Ptr("critical"),
+		GHSAID:      new("GHSA-dddd-eeee-ffff"),
+		Summary:     new("Org repo advisory 2"),
+		Description: new("Second advisory"),
+		Severity:    new("critical"),
 	}
 
 	tests := []struct {

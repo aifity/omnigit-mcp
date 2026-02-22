@@ -14,10 +14,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/github/github-mcp-server/pkg/git/gitops"
-	"github.com/github/github-mcp-server/pkg/inventory"
-	"github.com/github/github-mcp-server/pkg/translations"
-	"github.com/github/github-mcp-server/pkg/utils"
+	"github.com/aifity/omnigit-mcp/pkg/git/gitops"
+	"github.com/aifity/omnigit-mcp/pkg/inventory"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
+	"github.com/aifity/omnigit-mcp/pkg/utils"
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -310,7 +310,6 @@ func Diff(t translations.TranslationHelperFunc) inventory.ServerTool {
 		},
 	)
 }
-
 
 // Commit creates a tool to commit changes
 func Commit(t translations.TranslationHelperFunc) inventory.ServerTool {
@@ -939,12 +938,12 @@ func ListRepositories(t translations.TranslationHelperFunc) inventory.ServerTool
 			}
 
 			var result strings.Builder
-			result.WriteString(fmt.Sprintf("Available repositories (%d):\n\n", len(repoPaths)))
+			fmt.Fprintf(&result, "Available repositories (%d):\n\n", len(repoPaths))
 
 			for i, repoPath := range repoPaths {
 				// Get the repository name (last part of the path)
 				repoName := filepath.Base(repoPath)
-				result.WriteString(fmt.Sprintf("%d. %s (%s)\n", i+1, repoName, repoPath))
+				fmt.Fprintf(&result, "%d. %s (%s)\n", i+1, repoName, repoPath)
 			}
 
 			return utils.NewToolResultText(result.String()), nil
@@ -1106,5 +1105,3 @@ func AllGitTools(t translations.TranslationHelperFunc) []inventory.ServerTool {
 		ApplyPatchFile(t),
 	}
 }
-
-

@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/github/github-mcp-server/internal/toolsnaps"
-	"github.com/github/github-mcp-server/pkg/translations"
+	"github.com/aifity/omnigit-mcp/internal/toolsnaps"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
 	"github.com/google/go-github/v82/github"
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/stretchr/testify/assert"
@@ -34,24 +34,24 @@ func Test_SearchRepositories(t *testing.T) {
 
 	// Setup mock search results
 	mockSearchResult := &github.RepositoriesSearchResult{
-		Total:             github.Ptr(2),
-		IncompleteResults: github.Ptr(false),
+		Total:             new(2),
+		IncompleteResults: new(false),
 		Repositories: []*github.Repository{
 			{
-				ID:              github.Ptr(int64(12345)),
-				Name:            github.Ptr("repo-1"),
-				FullName:        github.Ptr("owner/repo-1"),
-				HTMLURL:         github.Ptr("https://github.com/owner/repo-1"),
-				Description:     github.Ptr("Test repository 1"),
-				StargazersCount: github.Ptr(100),
+				ID:              new(int64(12345)),
+				Name:            new("repo-1"),
+				FullName:        new("owner/repo-1"),
+				HTMLURL:         new("https://github.com/owner/repo-1"),
+				Description:     new("Test repository 1"),
+				StargazersCount: new(100),
 			},
 			{
-				ID:              github.Ptr(int64(67890)),
-				Name:            github.Ptr("repo-2"),
-				FullName:        github.Ptr("owner/repo-2"),
-				HTMLURL:         github.Ptr("https://github.com/owner/repo-2"),
-				Description:     github.Ptr("Test repository 2"),
-				StargazersCount: github.Ptr(50),
+				ID:              new(int64(67890)),
+				Name:            new("repo-2"),
+				FullName:        new("owner/repo-2"),
+				HTMLURL:         new("https://github.com/owner/repo-2"),
+				Description:     new("Test repository 2"),
+				StargazersCount: new(50),
 			},
 		},
 	}
@@ -170,16 +170,16 @@ func Test_SearchRepositories(t *testing.T) {
 
 func Test_SearchRepositories_FullOutput(t *testing.T) {
 	mockSearchResult := &github.RepositoriesSearchResult{
-		Total:             github.Ptr(1),
-		IncompleteResults: github.Ptr(false),
+		Total:             new(1),
+		IncompleteResults: new(false),
 		Repositories: []*github.Repository{
 			{
-				ID:              github.Ptr(int64(12345)),
-				Name:            github.Ptr("test-repo"),
-				FullName:        github.Ptr("owner/test-repo"),
-				HTMLURL:         github.Ptr("https://github.com/owner/test-repo"),
-				Description:     github.Ptr("Test repository"),
-				StargazersCount: github.Ptr(100),
+				ID:              new(int64(12345)),
+				Name:            new("test-repo"),
+				FullName:        new("owner/test-repo"),
+				HTMLURL:         new("https://github.com/owner/test-repo"),
+				Description:     new("Test repository"),
+				StargazersCount: new(100),
 			},
 		},
 	}
@@ -248,22 +248,22 @@ func Test_SearchCode(t *testing.T) {
 
 	// Setup mock search results
 	mockSearchResult := &github.CodeSearchResult{
-		Total:             github.Ptr(2),
-		IncompleteResults: github.Ptr(false),
+		Total:             new(2),
+		IncompleteResults: new(false),
 		CodeResults: []*github.CodeResult{
 			{
-				Name:       github.Ptr("file1.go"),
-				Path:       github.Ptr("path/to/file1.go"),
-				SHA:        github.Ptr("abc123def456"),
-				HTMLURL:    github.Ptr("https://github.com/owner/repo/blob/main/path/to/file1.go"),
-				Repository: &github.Repository{Name: github.Ptr("repo"), FullName: github.Ptr("owner/repo")},
+				Name:       new("file1.go"),
+				Path:       new("path/to/file1.go"),
+				SHA:        new("abc123def456"),
+				HTMLURL:    new("https://github.com/owner/repo/blob/main/path/to/file1.go"),
+				Repository: &github.Repository{Name: new("repo"), FullName: new("owner/repo")},
 			},
 			{
-				Name:       github.Ptr("file2.go"),
-				Path:       github.Ptr("path/to/file2.go"),
-				SHA:        github.Ptr("def456abc123"),
-				HTMLURL:    github.Ptr("https://github.com/owner/repo/blob/main/path/to/file2.go"),
-				Repository: &github.Repository{Name: github.Ptr("repo"), FullName: github.Ptr("owner/repo")},
+				Name:       new("file2.go"),
+				Path:       new("path/to/file2.go"),
+				SHA:        new("def456abc123"),
+				HTMLURL:    new("https://github.com/owner/repo/blob/main/path/to/file2.go"),
+				Repository: &github.Repository{Name: new("repo"), FullName: new("owner/repo")},
 			},
 		},
 	}
@@ -400,21 +400,21 @@ func Test_SearchUsers(t *testing.T) {
 
 	// Setup mock search results
 	mockSearchResult := &github.UsersSearchResult{
-		Total:             github.Ptr(2),
-		IncompleteResults: github.Ptr(false),
+		Total:             new(2),
+		IncompleteResults: new(false),
 		Users: []*github.User{
 			{
-				Login:     github.Ptr("user1"),
-				ID:        github.Ptr(int64(1001)),
-				HTMLURL:   github.Ptr("https://github.com/user1"),
-				AvatarURL: github.Ptr("https://avatars.githubusercontent.com/u/1001"),
+				Login:     new("user1"),
+				ID:        new(int64(1001)),
+				HTMLURL:   new("https://github.com/user1"),
+				AvatarURL: new("https://avatars.githubusercontent.com/u/1001"),
 			},
 			{
-				Login:     github.Ptr("user2"),
-				ID:        github.Ptr(int64(1002)),
-				HTMLURL:   github.Ptr("https://github.com/user2"),
-				AvatarURL: github.Ptr("https://avatars.githubusercontent.com/u/1002"),
-				Type:      github.Ptr("User"),
+				Login:     new("user2"),
+				ID:        new(int64(1002)),
+				HTMLURL:   new("https://github.com/user2"),
+				AvatarURL: new("https://avatars.githubusercontent.com/u/1002"),
+				Type:      new("User"),
 			},
 		},
 	}
@@ -587,20 +587,20 @@ func Test_SearchOrgs(t *testing.T) {
 
 	// Setup mock search results
 	mockSearchResult := &github.UsersSearchResult{
-		Total:             github.Ptr(int(2)),
-		IncompleteResults: github.Ptr(false),
+		Total:             new(int(2)),
+		IncompleteResults: new(false),
 		Users: []*github.User{
 			{
-				Login:     github.Ptr("org-1"),
-				ID:        github.Ptr(int64(111)),
-				HTMLURL:   github.Ptr("https://github.com/org-1"),
-				AvatarURL: github.Ptr("https://avatars.githubusercontent.com/u/111?v=4"),
+				Login:     new("org-1"),
+				ID:        new(int64(111)),
+				HTMLURL:   new("https://github.com/org-1"),
+				AvatarURL: new("https://avatars.githubusercontent.com/u/111?v=4"),
 			},
 			{
-				Login:     github.Ptr("org-2"),
-				ID:        github.Ptr(int64(222)),
-				HTMLURL:   github.Ptr("https://github.com/org-2"),
-				AvatarURL: github.Ptr("https://avatars.githubusercontent.com/u/222?v=4"),
+				Login:     new("org-2"),
+				ID:        new(int64(222)),
+				HTMLURL:   new("https://github.com/org-2"),
+				AvatarURL: new("https://avatars.githubusercontent.com/u/222?v=4"),
 			},
 		},
 	}

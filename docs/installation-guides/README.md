@@ -55,12 +55,12 @@ The GitHub MCP Server can be installed using several methods. **Docker is the mo
 - **Pros**: Latest features, full customization, no external dependencies
 - **Cons**: Requires Go development environment, more complex setup
 - **Prerequisites**: [Go 1.24+](https://go.dev/doc/install)
-- **Build command**: `go build -o github-mcp-server cmd/github-mcp-server/main.go`
+- **Build command**: `go build -o omnigit-mcp cmd/omnigit-mcp/main.go`
 - **Best for**: Developers who want the latest features or need custom modifications
 
 ### Important Notes on the GitHub MCP Server
 
-- **Docker Image**: The official Docker image is now `ghcr.io/github/github-mcp-server`
+- **Docker Image**: The official Docker image is now `ghcr.io/aifity/omnigit-mcp`
 - **npm Package**: The npm package @modelcontextprotocol/server-github is no longer supported as of April 2025
 - **Remote Server**: The remote server URL is `https://api.githubcopilot.com/mcp/`
 

@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"strings"
 
-	ghErrors "github.com/github/github-mcp-server/pkg/errors"
-	"github.com/github/github-mcp-server/pkg/raw"
-	"github.com/github/github-mcp-server/pkg/utils"
+	ghErrors "github.com/aifity/omnigit-mcp/pkg/errors"
+	"github.com/aifity/omnigit-mcp/pkg/raw"
+	"github.com/aifity/omnigit-mcp/pkg/utils"
 	"github.com/google/go-github/v82/github"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -29,9 +29,9 @@ func initializeRepository(ctx context.Context, client *github.Client, owner, rep
 	defaultBranch := repository.GetDefaultBranch()
 
 	fileOpts := &github.RepositoryContentFileOptions{
-		Message: github.Ptr("Initial commit"),
+		Message: new("Initial commit"),
 		Content: []byte(""),
-		Branch:  github.Ptr(defaultBranch),
+		Branch:  new(defaultBranch),
 	}
 
 	// Create an initial empty commit to create the default branch

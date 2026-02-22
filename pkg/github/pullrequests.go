@@ -13,14 +13,14 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/shurcooL/githubv4"
 
-	"github.com/github/github-mcp-server/pkg/bodyfilter"
-	ghErrors "github.com/github/github-mcp-server/pkg/errors"
-	"github.com/github/github-mcp-server/pkg/inventory"
-	"github.com/github/github-mcp-server/pkg/octicons"
-	"github.com/github/github-mcp-server/pkg/sanitize"
-	"github.com/github/github-mcp-server/pkg/scopes"
-	"github.com/github/github-mcp-server/pkg/translations"
-	"github.com/github/github-mcp-server/pkg/utils"
+	"github.com/aifity/omnigit-mcp/pkg/bodyfilter"
+	ghErrors "github.com/aifity/omnigit-mcp/pkg/errors"
+	"github.com/aifity/omnigit-mcp/pkg/inventory"
+	"github.com/aifity/omnigit-mcp/pkg/octicons"
+	"github.com/aifity/omnigit-mcp/pkg/sanitize"
+	"github.com/aifity/omnigit-mcp/pkg/scopes"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
+	"github.com/aifity/omnigit-mcp/pkg/utils"
 )
 
 // PullRequestRead creates a tool to get details of a specific pull request.
@@ -163,10 +163,10 @@ func GetPullRequest(ctx context.Context, client *github.Client, deps ToolDepende
 	// sanitize title/body on response
 	if pr != nil {
 		if pr.Title != nil {
-			pr.Title = github.Ptr(sanitize.Sanitize(*pr.Title))
+			pr.Title = new(sanitize.Sanitize(*pr.Title))
 		}
 		if pr.Body != nil {
-			pr.Body = github.Ptr(sanitize.Sanitize(*pr.Body))
+			pr.Body = new(sanitize.Sanitize(*pr.Body))
 		}
 	}
 
@@ -485,7 +485,7 @@ func GetPullRequestReviews(ctx context.Context, client *github.Client, deps Tool
 }
 
 // PullRequestWriteUIResourceURI is the URI for the create_pull_request tool's MCP App UI resource.
-const PullRequestWriteUIResourceURI = "ui://github-mcp-server/pr-write"
+const PullRequestWriteUIResourceURI = "ui://omnigit-mcp/pr-write"
 
 // CreatePullRequest creates a tool to create a new pull request.
 func CreatePullRequest(t translations.TranslationHelperFunc) inventory.ServerTool {
@@ -602,19 +602,19 @@ func CreatePullRequest(t translations.TranslationHelperFunc) inventory.ServerToo
 			}
 
 			newPR := &github.NewPullRequest{
-				Title: github.Ptr(title),
-				Head:  github.Ptr(head),
-				Base:  github.Ptr(base),
+				Title: new(title),
+				Head:  new(head),
+				Base:  new(base),
 			}
 
 			if body != "" {
 				// Filter out unwanted patterns from the body before creating the PR
 				filteredBody := bodyfilter.FilterBody(body)
-				newPR.Body = github.Ptr(filteredBody)
+				newPR.Body = new(filteredBody)
 			}
 
-			newPR.Draft = github.Ptr(draft)
-			newPR.MaintainerCanModify = github.Ptr(maintainerCanModify)
+			newPR.Draft = new(draft)
+			newPR.MaintainerCanModify = new(maintainerCanModify)
 
 			client, err := deps.GetClient(ctx)
 			if err != nil {
@@ -747,7 +747,7 @@ func UpdatePullRequest(t translations.TranslationHelperFunc) inventory.ServerToo
 			if title, ok, err := OptionalParamOK[string](args, "title"); err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			} else if ok {
-				update.Title = github.Ptr(title)
+				update.Title = new(title)
 				restUpdateNeeded = true
 			}
 
@@ -756,28 +756,28 @@ func UpdatePullRequest(t translations.TranslationHelperFunc) inventory.ServerToo
 			} else if ok {
 				// Filter out unwanted patterns from the body before updating the PR
 				filteredBody := bodyfilter.FilterBody(body)
-				update.Body = github.Ptr(filteredBody)
+				update.Body = new(filteredBody)
 				restUpdateNeeded = true
 			}
 
 			if state, ok, err := OptionalParamOK[string](args, "state"); err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			} else if ok {
-				update.State = github.Ptr(state)
+				update.State = new(state)
 				restUpdateNeeded = true
 			}
 
 			if base, ok, err := OptionalParamOK[string](args, "base"); err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			} else if ok {
-				update.Base = &github.PullRequestBranch{Ref: github.Ptr(base)}
+				update.Base = &github.PullRequestBranch{Ref: new(base)}
 				restUpdateNeeded = true
 			}
 
 			if maintainerCanModify, ok, err := OptionalParamOK[bool](args, "maintainer_can_modify"); err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			} else if ok {
-				update.MaintainerCanModify = github.Ptr(maintainerCanModify)
+				update.MaintainerCanModify = new(maintainerCanModify)
 				restUpdateNeeded = true
 			}
 
@@ -966,7 +966,7 @@ func AddReplyToPullRequestComment(t translations.TranslationHelperFunc) inventor
 				Type:        "number",
 				Description: "Pull request number",
 			},
-		"commentId": {
+			"commentId": {
 				Type:        "number",
 				Description: "The ID of the comment to reply to. Use the databaseId field from get_review_comments.",
 			},
@@ -1071,10 +1071,10 @@ Options are:
 						Type:        "string",
 						Description: "Repository name",
 					},
-				"comment_id": {
-					Type:        "number",
-					Description: "Review comment ID to update or delete. Use the databaseId field from get_review_comments.",
-				},
+					"comment_id": {
+						Type:        "number",
+						Description: "Review comment ID to update or delete. Use the databaseId field from get_review_comments.",
+					},
 					"body": {
 						Type:        "string",
 						Description: "New comment content (required for update method)",
@@ -1115,7 +1115,7 @@ Options are:
 				}
 
 				comment := &github.PullRequestComment{
-					Body: github.Ptr(body),
+					Body: new(body),
 				}
 
 				updatedComment, resp, err := client.PullRequests.EditComment(ctx, owner, repo, commentID, comment)
@@ -1297,10 +1297,10 @@ func ListPullRequests(t translations.TranslationHelperFunc) inventory.ServerTool
 					continue
 				}
 				if pr.Title != nil {
-					pr.Title = github.Ptr(sanitize.Sanitize(*pr.Title))
+					pr.Title = new(sanitize.Sanitize(*pr.Title))
 				}
 				if pr.Body != nil {
-					pr.Body = github.Ptr(sanitize.Sanitize(*pr.Body))
+					pr.Body = new(sanitize.Sanitize(*pr.Body))
 				}
 			}
 
@@ -1540,7 +1540,7 @@ func UpdatePullRequestBranch(t translations.TranslationHelperFunc) inventory.Ser
 			}
 			opts := &github.PullRequestBranchUpdateOptions{}
 			if expectedHeadSHA != "" {
-				opts.ExpectedHeadSHA = github.Ptr(expectedHeadSHA)
+				opts.ExpectedHeadSHA = new(expectedHeadSHA)
 			}
 
 			client, err := deps.GetClient(ctx)
@@ -1713,7 +1713,7 @@ func CreatePullRequestReview(ctx context.Context, client *githubv4.Client, param
 	// Event and Body are provided if we submit a review
 	if params.Event != "" {
 		addPullRequestReviewInput.Event = newGQLStringlike[githubv4.PullRequestReviewEvent](params.Event)
-		addPullRequestReviewInput.Body = githubv4.NewString(githubv4.String(params.Body))
+		addPullRequestReviewInput.Body = new(githubv4.String(params.Body))
 	}
 
 	if err := client.Mutate(
@@ -2056,11 +2056,12 @@ func AddCommentToPendingReview(t translations.TranslationHelperFunc) inventory.S
 				} `graphql:"addPullRequestReviewThread(input: $input)"`
 			}
 
+			pathStr := githubv4.String(params.Path)
 			if err := client.Mutate(
 				ctx,
 				&addPullRequestReviewThreadMutation,
 				githubv4.AddPullRequestReviewThreadInput{
-					Path:                githubv4.String(params.Path),
+					Path:                &pathStr,
 					Body:                githubv4.String(params.Body),
 					SubjectType:         newGQLStringlikePtr[githubv4.PullRequestReviewThreadSubjectType](&params.SubjectType),
 					Line:                newGQLIntPtr(params.Line),

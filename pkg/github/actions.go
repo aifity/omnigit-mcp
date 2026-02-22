@@ -9,13 +9,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/github/github-mcp-server/internal/profiler"
-	buffer "github.com/github/github-mcp-server/pkg/buffer"
-	ghErrors "github.com/github/github-mcp-server/pkg/errors"
-	"github.com/github/github-mcp-server/pkg/inventory"
-	"github.com/github/github-mcp-server/pkg/scopes"
-	"github.com/github/github-mcp-server/pkg/translations"
-	"github.com/github/github-mcp-server/pkg/utils"
+	"github.com/aifity/omnigit-mcp/internal/profiler"
+	buffer "github.com/aifity/omnigit-mcp/pkg/buffer"
+	ghErrors "github.com/aifity/omnigit-mcp/pkg/errors"
+	"github.com/aifity/omnigit-mcp/pkg/inventory"
+	"github.com/aifity/omnigit-mcp/pkg/scopes"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
+	"github.com/aifity/omnigit-mcp/pkg/utils"
 	"github.com/google/go-github/v82/github"
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -310,13 +310,13 @@ Use this tool to list workflows in a repository, or list workflow runs, jobs, an
 					"page": {
 						Type:        "number",
 						Description: "Page number for pagination (default: 1)",
-						Minimum:     jsonschema.Ptr(1.0),
+						Minimum:     new(1.0),
 					},
 					"per_page": {
 						Type:        "number",
 						Description: "Results per page for pagination (default: 30, max: 100)",
-						Minimum:     jsonschema.Ptr(1.0),
-						Maximum:     jsonschema.Ptr(100.0),
+						Minimum:     new(1.0),
+						Maximum:     new(100.0),
 					},
 				},
 				Required: []string{"method", "owner", "repo"},
@@ -509,7 +509,7 @@ func ActionsRunTrigger(t translations.TranslationHelperFunc) inventory.ServerToo
 			Annotations: &mcp.ToolAnnotations{
 				Title:           t("TOOL_ACTIONS_RUN_TRIGGER_USER_TITLE", "Trigger GitHub Actions workflow actions"),
 				ReadOnlyHint:    false,
-				DestructiveHint: jsonschema.Ptr(true),
+				DestructiveHint: new(true),
 			},
 			InputSchema: &jsonschema.Schema{
 				Type: "object",

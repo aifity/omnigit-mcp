@@ -8,9 +8,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/github/github-mcp-server/pkg/github"
-	"github.com/github/github-mcp-server/pkg/inventory"
-	"github.com/github/github-mcp-server/pkg/translations"
+	"github.com/aifity/omnigit-mcp/pkg/github"
+	"github.com/aifity/omnigit-mcp/pkg/inventory"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -50,19 +50,19 @@ The output format can be controlled with the --output flag:
 
 Examples:
   # List scopes for default toolsets
-  github-mcp-server list-scopes
+  omnigit-mcp list-scopes
 
   # List scopes for specific toolsets
-  github-mcp-server list-scopes --toolsets=repos,issues,pull_requests
+  omnigit-mcp list-scopes --toolsets=repos,issues,pull_requests
 
   # List scopes for all toolsets
-  github-mcp-server list-scopes --toolsets=all
+  omnigit-mcp list-scopes --toolsets=all
 
   # Output as JSON
-  github-mcp-server list-scopes --output=json
+  omnigit-mcp list-scopes --output=json
 
   # Just show unique scopes needed
-  github-mcp-server list-scopes --output=summary`,
+  omnigit-mcp list-scopes --output=summary`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		return runListScopes()
 	},

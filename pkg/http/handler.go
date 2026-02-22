@@ -6,14 +6,14 @@ import (
 	"log/slog"
 	"net/http"
 
-	ghcontext "github.com/github/github-mcp-server/pkg/context"
-	"github.com/github/github-mcp-server/pkg/github"
-	"github.com/github/github-mcp-server/pkg/http/middleware"
-	"github.com/github/github-mcp-server/pkg/http/oauth"
-	"github.com/github/github-mcp-server/pkg/inventory"
-	"github.com/github/github-mcp-server/pkg/scopes"
-	"github.com/github/github-mcp-server/pkg/translations"
-	"github.com/github/github-mcp-server/pkg/utils"
+	ghcontext "github.com/aifity/omnigit-mcp/pkg/context"
+	"github.com/aifity/omnigit-mcp/pkg/github"
+	"github.com/aifity/omnigit-mcp/pkg/http/middleware"
+	"github.com/aifity/omnigit-mcp/pkg/http/oauth"
+	"github.com/aifity/omnigit-mcp/pkg/inventory"
+	"github.com/aifity/omnigit-mcp/pkg/scopes"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
+	"github.com/aifity/omnigit-mcp/pkg/utils"
 	"github.com/go-chi/chi/v5"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -184,7 +184,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, inventory.ErrUnknownTools) {
 			w.WriteHeader(http.StatusBadRequest)
-			if _, writeErr := w.Write([]byte(err.Error())); writeErr != nil {
+			if _, writeErr := w.Write([]byte(err.Error())); writeErr != nil { //nolint:gosec // G705: err.Error() is a controlled internal error string, not user-supplied input
 				h.logger.Error("failed to write response", "error", writeErr)
 			}
 			return

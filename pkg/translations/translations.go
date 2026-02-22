@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/github/github-mcp-server/pkg/bodyfilter"
+	"github.com/aifity/omnigit-mcp/pkg/bodyfilter"
 	"github.com/spf13/viper"
 )
 
@@ -22,7 +22,7 @@ func TranslationHelper() (TranslationHelperFunc, func()) {
 	v := viper.New()
 
 	// Load from JSON file
-	v.SetConfigName("github-mcp-server-config")
+	v.SetConfigName("omnigit-mcp-config")
 	v.SetConfigType("json")
 	v.AddConfigPath(".")
 
@@ -66,12 +66,12 @@ func TranslationHelper() (TranslationHelperFunc, func()) {
 		}
 }
 
-// DumpTranslationKeyMap writes the translation map to a json file called github-mcp-server-config.json
+// DumpTranslationKeyMap writes the translation map to a json file called omnigit-mcp-config.json
 // It preserves any existing filter_patterns configuration.
 func DumpTranslationKeyMap(translationKeyMap map[string]string) error {
 	// Read existing config to preserve filter_patterns
 	v := viper.New()
-	v.SetConfigName("github-mcp-server-config")
+	v.SetConfigName("omnigit-mcp-config")
 	v.SetConfigType("json")
 	v.AddConfigPath(".")
 
@@ -94,7 +94,7 @@ func DumpTranslationKeyMap(translationKeyMap map[string]string) error {
 		output["filter_patterns"] = existingFilterPatterns
 	}
 
-	file, err := os.Create("github-mcp-server-config.json")
+	file, err := os.Create("omnigit-mcp-config.json")
 	if err != nil {
 		return fmt.Errorf("error creating file: %v", err)
 	}

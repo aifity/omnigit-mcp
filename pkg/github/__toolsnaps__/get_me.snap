@@ -1,7 +1,7 @@
 {
   "_meta": {
     "ui": {
-      "resourceUri": "ui://github-mcp-server/get-me"
+      "resourceUri": "ui://omnigit-mcp/get-me"
     }
   },
   "annotations": {

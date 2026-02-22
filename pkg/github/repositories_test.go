@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/github/github-mcp-server/internal/toolsnaps"
-	"github.com/github/github-mcp-server/pkg/raw"
-	"github.com/github/github-mcp-server/pkg/translations"
-	"github.com/github/github-mcp-server/pkg/utils"
+	"github.com/aifity/omnigit-mcp/internal/toolsnaps"
+	"github.com/aifity/omnigit-mcp/pkg/raw"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
+	"github.com/aifity/omnigit-mcp/pkg/utils"
 	"github.com/google/go-github/v82/github"
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -45,19 +45,19 @@ func Test_GetFileContents(t *testing.T) {
 	// Setup mock directory content for success case
 	mockDirContent := []*github.RepositoryContent{
 		{
-			Type:    github.Ptr("file"),
-			Name:    github.Ptr("README.md"),
-			Path:    github.Ptr("README.md"),
-			SHA:     github.Ptr("abc123"),
-			Size:    github.Ptr(42),
-			HTMLURL: github.Ptr("https://github.com/owner/repo/blob/main/README.md"),
+			Type:    new("file"),
+			Name:    new("README.md"),
+			Path:    new("README.md"),
+			SHA:     new("abc123"),
+			Size:    new(42),
+			HTMLURL: new("https://github.com/owner/repo/blob/main/README.md"),
 		},
 		{
-			Type:    github.Ptr("dir"),
-			Name:    github.Ptr("src"),
-			Path:    github.Ptr("src"),
-			SHA:     github.Ptr("def456"),
-			HTMLURL: github.Ptr("https://github.com/owner/repo/tree/main/src"),
+			Type:    new("dir"),
+			Name:    new("src"),
+			Path:    new("src"),
+			SHA:     new("def456"),
+			HTMLURL: new("https://github.com/owner/repo/tree/main/src"),
 		},
 	}
 
@@ -81,13 +81,13 @@ func Test_GetFileContents(t *testing.T) {
 					// Base64 encode the content as GitHub API does
 					encodedContent := base64.StdEncoding.EncodeToString(mockRawContent)
 					fileContent := &github.RepositoryContent{
-						Name:     github.Ptr("README.md"),
-						Path:     github.Ptr("README.md"),
-						SHA:      github.Ptr("abc123"),
-						Type:     github.Ptr("file"),
-						Content:  github.Ptr(encodedContent),
-						Size:     github.Ptr(len(mockRawContent)),
-						Encoding: github.Ptr("base64"),
+						Name:     new("README.md"),
+						Path:     new("README.md"),
+						SHA:      new("abc123"),
+						Type:     new("file"),
+						Content:  new(encodedContent),
+						Size:     new(len(mockRawContent)),
+						Encoding: new("base64"),
 					}
 					contentBytes, _ := json.Marshal(fileContent)
 					_, _ = w.Write(contentBytes)
@@ -117,13 +117,13 @@ func Test_GetFileContents(t *testing.T) {
 					pngContent := []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01")
 					encodedContent := base64.StdEncoding.EncodeToString(pngContent)
 					fileContent := &github.RepositoryContent{
-						Name:     github.Ptr("test.png"),
-						Path:     github.Ptr("test.png"),
-						SHA:      github.Ptr("def456"),
-						Type:     github.Ptr("file"),
-						Content:  github.Ptr(encodedContent),
-						Size:     github.Ptr(len(pngContent)),
-						Encoding: github.Ptr("base64"),
+						Name:     new("test.png"),
+						Path:     new("test.png"),
+						SHA:      new("def456"),
+						Type:     new("file"),
+						Content:  new(encodedContent),
+						Size:     new(len(pngContent)),
+						Encoding: new("base64"),
 					}
 					contentBytes, _ := json.Marshal(fileContent)
 					_, _ = w.Write(contentBytes)
@@ -153,13 +153,13 @@ func Test_GetFileContents(t *testing.T) {
 					pdfContent := []byte("%PDF-1.4 fake pdf content")
 					encodedContent := base64.StdEncoding.EncodeToString(pdfContent)
 					fileContent := &github.RepositoryContent{
-						Name:     github.Ptr("document.pdf"),
-						Path:     github.Ptr("document.pdf"),
-						SHA:      github.Ptr("pdf123"),
-						Type:     github.Ptr("file"),
-						Content:  github.Ptr(encodedContent),
-						Size:     github.Ptr(len(pdfContent)),
-						Encoding: github.Ptr("base64"),
+						Name:     new("document.pdf"),
+						Path:     new("document.pdf"),
+						SHA:      new("pdf123"),
+						Type:     new("file"),
+						Content:  new(encodedContent),
+						Size:     new(len(pdfContent)),
+						Encoding: new("base64"),
 					}
 					contentBytes, _ := json.Marshal(fileContent)
 					_, _ = w.Write(contentBytes)
@@ -208,13 +208,13 @@ func Test_GetFileContents(t *testing.T) {
 					// Base64 encode the content as GitHub API does
 					encodedContent := base64.StdEncoding.EncodeToString(mockRawContent)
 					fileContent := &github.RepositoryContent{
-						Name:     github.Ptr("README.md"),
-						Path:     github.Ptr("README.md"),
-						SHA:      github.Ptr("abc123"),
-						Type:     github.Ptr("file"),
-						Content:  github.Ptr(encodedContent),
-						Size:     github.Ptr(len(mockRawContent)),
-						Encoding: github.Ptr("base64"),
+						Name:     new("README.md"),
+						Path:     new("README.md"),
+						SHA:      new("abc123"),
+						Type:     new("file"),
+						Content:  new(encodedContent),
+						Size:     new(len(mockRawContent)),
+						Encoding: new("base64"),
 					}
 					contentBytes, _ := json.Marshal(fileContent)
 					_, _ = w.Write(contentBytes)
@@ -292,13 +292,13 @@ func Test_GetFileContents(t *testing.T) {
 					// Base64 encode the content as GitHub API does
 					encodedContent := base64.StdEncoding.EncodeToString(mockRawContent)
 					fileContent := &github.RepositoryContent{
-						Name:     github.Ptr("README.md"),
-						Path:     github.Ptr("README.md"),
-						SHA:      github.Ptr("abc123"),
-						Type:     github.Ptr("file"),
-						Content:  github.Ptr(encodedContent),
-						Size:     github.Ptr(len(mockRawContent)),
-						Encoding: github.Ptr("base64"),
+						Name:     new("README.md"),
+						Path:     new("README.md"),
+						SHA:      new("abc123"),
+						Type:     new("file"),
+						Content:  new(encodedContent),
+						Size:     new(len(mockRawContent)),
+						Encoding: new("base64"),
 					}
 					contentBytes, _ := json.Marshal(fileContent)
 					_, _ = w.Write(contentBytes)
@@ -327,12 +327,12 @@ func Test_GetFileContents(t *testing.T) {
 					w.WriteHeader(http.StatusOK)
 					// File larger than 1MB - Contents API returns metadata but no content
 					fileContent := &github.RepositoryContent{
-						Name:        github.Ptr("large-file.bin"),
-						Path:        github.Ptr("large-file.bin"),
-						SHA:         github.Ptr("largesha123"),
-						Type:        github.Ptr("file"),
-						Size:        github.Ptr(2 * 1024 * 1024), // 2MB
-						DownloadURL: github.Ptr("https://raw.githubusercontent.com/owner/repo/main/large-file.bin"),
+						Name:        new("large-file.bin"),
+						Path:        new("large-file.bin"),
+						SHA:         new("largesha123"),
+						Type:        new("file"),
+						Size:        new(2 * 1024 * 1024), // 2MB
+						DownloadURL: new("https://raw.githubusercontent.com/owner/repo/main/large-file.bin"),
 					}
 					contentBytes, _ := json.Marshal(fileContent)
 					_, _ = w.Write(contentBytes)
@@ -461,16 +461,16 @@ func Test_ForkRepository(t *testing.T) {
 
 	// Setup mock forked repo for success case
 	mockForkedRepo := &github.Repository{
-		ID:       github.Ptr(int64(123456)),
-		Name:     github.Ptr("repo"),
-		FullName: github.Ptr("new-owner/repo"),
+		ID:       new(int64(123456)),
+		Name:     new("repo"),
+		FullName: new("new-owner/repo"),
 		Owner: &github.User{
-			Login: github.Ptr("new-owner"),
+			Login: new("new-owner"),
 		},
-		HTMLURL:       github.Ptr("https://github.com/new-owner/repo"),
-		DefaultBranch: github.Ptr("main"),
-		Fork:          github.Ptr(true),
-		ForksCount:    github.Ptr(0),
+		HTMLURL:       new("https://github.com/new-owner/repo"),
+		DefaultBranch: new("main"),
+		Fork:          new(true),
+		ForksCount:    new(0),
 	}
 
 	tests := []struct {
@@ -564,22 +564,22 @@ func Test_CreateBranch(t *testing.T) {
 
 	// Setup mock repository for default branch test
 	mockRepo := &github.Repository{
-		DefaultBranch: github.Ptr("main"),
+		DefaultBranch: new("main"),
 	}
 
 	// Setup mock reference for from_branch tests
 	mockSourceRef := &github.Reference{
-		Ref: github.Ptr("refs/heads/main"),
+		Ref: new("refs/heads/main"),
 		Object: &github.GitObject{
-			SHA: github.Ptr("abc123def456"),
+			SHA: new("abc123def456"),
 		},
 	}
 
 	// Setup mock created reference
 	mockCreatedRef := &github.Reference{
-		Ref: github.Ptr("refs/heads/new-feature"),
+		Ref: new("refs/heads/new-feature"),
 		Object: &github.GitObject{
-			SHA: github.Ptr("abc123def456"),
+			SHA: new("abc123def456"),
 		},
 	}
 
@@ -739,32 +739,32 @@ func Test_GetCommit(t *testing.T) {
 	assert.ElementsMatch(t, schema.Required, []string{"owner", "repo", "sha"})
 
 	mockCommit := &github.RepositoryCommit{
-		SHA: github.Ptr("abc123def456"),
+		SHA: new("abc123def456"),
 		Commit: &github.Commit{
-			Message: github.Ptr("First commit"),
+			Message: new("First commit"),
 			Author: &github.CommitAuthor{
-				Name:  github.Ptr("Test User"),
-				Email: github.Ptr("test@example.com"),
+				Name:  new("Test User"),
+				Email: new("test@example.com"),
 				Date:  &github.Timestamp{Time: time.Now().Add(-48 * time.Hour)},
 			},
 		},
 		Author: &github.User{
-			Login: github.Ptr("testuser"),
+			Login: new("testuser"),
 		},
-		HTMLURL: github.Ptr("https://github.com/owner/repo/commit/abc123def456"),
+		HTMLURL: new("https://github.com/owner/repo/commit/abc123def456"),
 		Stats: &github.CommitStats{
-			Additions: github.Ptr(10),
-			Deletions: github.Ptr(2),
-			Total:     github.Ptr(12),
+			Additions: new(10),
+			Deletions: new(2),
+			Total:     new(12),
 		},
 		Files: []*github.CommitFile{
 			{
-				Filename:  github.Ptr("file1.go"),
-				Status:    github.Ptr("modified"),
-				Additions: github.Ptr(10),
-				Deletions: github.Ptr(2),
-				Changes:   github.Ptr(12),
-				Patch:     github.Ptr("@@ -1,2 +1,10 @@"),
+				Filename:  new("file1.go"),
+				Status:    new("modified"),
+				Additions: new(10),
+				Deletions: new(2),
+				Changes:   new(12),
+				Patch:     new("@@ -1,2 +1,10 @@"),
 			},
 		},
 	}
@@ -873,73 +873,73 @@ func Test_ListCommits(t *testing.T) {
 	// Setup mock commits for success case
 	mockCommits := []*github.RepositoryCommit{
 		{
-			SHA: github.Ptr("abc123def456"),
+			SHA: new("abc123def456"),
 			Commit: &github.Commit{
-				Message: github.Ptr("First commit"),
+				Message: new("First commit"),
 				Author: &github.CommitAuthor{
-					Name:  github.Ptr("Test User"),
-					Email: github.Ptr("test@example.com"),
+					Name:  new("Test User"),
+					Email: new("test@example.com"),
 					Date:  &github.Timestamp{Time: time.Now().Add(-48 * time.Hour)},
 				},
 			},
 			Author: &github.User{
-				Login:     github.Ptr("testuser"),
-				ID:        github.Ptr(int64(12345)),
-				HTMLURL:   github.Ptr("https://github.com/testuser"),
-				AvatarURL: github.Ptr("https://github.com/testuser.png"),
+				Login:     new("testuser"),
+				ID:        new(int64(12345)),
+				HTMLURL:   new("https://github.com/testuser"),
+				AvatarURL: new("https://github.com/testuser.png"),
 			},
-			HTMLURL: github.Ptr("https://github.com/owner/repo/commit/abc123def456"),
+			HTMLURL: new("https://github.com/owner/repo/commit/abc123def456"),
 			Stats: &github.CommitStats{
-				Additions: github.Ptr(10),
-				Deletions: github.Ptr(5),
-				Total:     github.Ptr(15),
+				Additions: new(10),
+				Deletions: new(5),
+				Total:     new(15),
 			},
 			Files: []*github.CommitFile{
 				{
-					Filename:  github.Ptr("src/main.go"),
-					Status:    github.Ptr("modified"),
-					Additions: github.Ptr(8),
-					Deletions: github.Ptr(3),
-					Changes:   github.Ptr(11),
+					Filename:  new("src/main.go"),
+					Status:    new("modified"),
+					Additions: new(8),
+					Deletions: new(3),
+					Changes:   new(11),
 				},
 				{
-					Filename:  github.Ptr("README.md"),
-					Status:    github.Ptr("added"),
-					Additions: github.Ptr(2),
-					Deletions: github.Ptr(2),
-					Changes:   github.Ptr(4),
+					Filename:  new("README.md"),
+					Status:    new("added"),
+					Additions: new(2),
+					Deletions: new(2),
+					Changes:   new(4),
 				},
 			},
 		},
 		{
-			SHA: github.Ptr("def456abc789"),
+			SHA: new("def456abc789"),
 			Commit: &github.Commit{
-				Message: github.Ptr("Second commit"),
+				Message: new("Second commit"),
 				Author: &github.CommitAuthor{
-					Name:  github.Ptr("Another User"),
-					Email: github.Ptr("another@example.com"),
+					Name:  new("Another User"),
+					Email: new("another@example.com"),
 					Date:  &github.Timestamp{Time: time.Now().Add(-24 * time.Hour)},
 				},
 			},
 			Author: &github.User{
-				Login:     github.Ptr("anotheruser"),
-				ID:        github.Ptr(int64(67890)),
-				HTMLURL:   github.Ptr("https://github.com/anotheruser"),
-				AvatarURL: github.Ptr("https://github.com/anotheruser.png"),
+				Login:     new("anotheruser"),
+				ID:        new(int64(67890)),
+				HTMLURL:   new("https://github.com/anotheruser"),
+				AvatarURL: new("https://github.com/anotheruser.png"),
 			},
-			HTMLURL: github.Ptr("https://github.com/owner/repo/commit/def456abc789"),
+			HTMLURL: new("https://github.com/owner/repo/commit/def456abc789"),
 			Stats: &github.CommitStats{
-				Additions: github.Ptr(20),
-				Deletions: github.Ptr(10),
-				Total:     github.Ptr(30),
+				Additions: new(20),
+				Deletions: new(10),
+				Total:     new(30),
 			},
 			Files: []*github.CommitFile{
 				{
-					Filename:  github.Ptr("src/utils.go"),
-					Status:    github.Ptr("added"),
-					Additions: github.Ptr(20),
-					Deletions: github.Ptr(10),
-					Changes:   github.Ptr(30),
+					Filename:  new("src/utils.go"),
+					Status:    new("added"),
+					Additions: new(20),
+					Deletions: new(10),
+					Changes:   new(30),
 				},
 			},
 		},
@@ -1098,22 +1098,22 @@ func Test_CreateOrUpdateFile(t *testing.T) {
 	// Setup mock file content response
 	mockFileResponse := &github.RepositoryContentResponse{
 		Content: &github.RepositoryContent{
-			Name:        github.Ptr("example.md"),
-			Path:        github.Ptr("docs/example.md"),
-			SHA:         github.Ptr("abc123def456"),
-			Size:        github.Ptr(42),
-			HTMLURL:     github.Ptr("https://github.com/owner/repo/blob/main/docs/example.md"),
-			DownloadURL: github.Ptr("https://raw.githubusercontent.com/owner/repo/main/docs/example.md"),
+			Name:        new("example.md"),
+			Path:        new("docs/example.md"),
+			SHA:         new("abc123def456"),
+			Size:        new(42),
+			HTMLURL:     new("https://github.com/owner/repo/blob/main/docs/example.md"),
+			DownloadURL: new("https://raw.githubusercontent.com/owner/repo/main/docs/example.md"),
 		},
 		Commit: github.Commit{
-			SHA:     github.Ptr("def456abc789"),
-			Message: github.Ptr("Add example file"),
+			SHA:     new("def456abc789"),
+			Message: new("Add example file"),
 			Author: &github.CommitAuthor{
-				Name:  github.Ptr("Test User"),
-				Email: github.Ptr("test@example.com"),
+				Name:  new("Test User"),
+				Email: new("test@example.com"),
 				Date:  &github.Timestamp{Time: time.Now()},
 			},
-			HTMLURL: github.Ptr("https://github.com/owner/repo/commit/def456abc789"),
+			HTMLURL: new("https://github.com/owner/repo/commit/def456abc789"),
 		},
 	}
 
@@ -1479,13 +1479,13 @@ func Test_CreateRepository(t *testing.T) {
 
 	// Setup mock repository response
 	mockRepo := &github.Repository{
-		Name:        github.Ptr("test-repo"),
-		Description: github.Ptr("Test repository"),
-		Private:     github.Ptr(true),
-		HTMLURL:     github.Ptr("https://github.com/testuser/test-repo"),
+		Name:        new("test-repo"),
+		Description: new("Test repository"),
+		Private:     new(true),
+		HTMLURL:     new("https://github.com/testuser/test-repo"),
 		CreatedAt:   &github.Timestamp{Time: time.Now()},
 		Owner: &github.User{
-			Login: github.Ptr("testuser"),
+			Login: new("testuser"),
 		},
 	}
 
@@ -1647,35 +1647,35 @@ func Test_PushFiles(t *testing.T) {
 
 	// Setup mock objects
 	mockRef := &github.Reference{
-		Ref: github.Ptr("refs/heads/main"),
+		Ref: new("refs/heads/main"),
 		Object: &github.GitObject{
-			SHA: github.Ptr("abc123"),
-			URL: github.Ptr("https://api.github.com/repos/owner/repo/git/trees/abc123"),
+			SHA: new("abc123"),
+			URL: new("https://api.github.com/repos/owner/repo/git/trees/abc123"),
 		},
 	}
 
 	mockCommit := &github.Commit{
-		SHA: github.Ptr("abc123"),
+		SHA: new("abc123"),
 		Tree: &github.Tree{
-			SHA: github.Ptr("def456"),
+			SHA: new("def456"),
 		},
 	}
 
 	mockTree := &github.Tree{
-		SHA: github.Ptr("ghi789"),
+		SHA: new("ghi789"),
 	}
 
 	mockNewCommit := &github.Commit{
-		SHA:     github.Ptr("jkl012"),
-		Message: github.Ptr("Update multiple files"),
-		HTMLURL: github.Ptr("https://github.com/owner/repo/commit/jkl012"),
+		SHA:     new("jkl012"),
+		Message: new("Update multiple files"),
+		HTMLURL: new("https://github.com/owner/repo/commit/jkl012"),
 	}
 
 	mockUpdatedRef := &github.Reference{
-		Ref: github.Ptr("refs/heads/main"),
+		Ref: new("refs/heads/main"),
 		Object: &github.GitObject{
-			SHA: github.Ptr("jkl012"),
-			URL: github.Ptr("https://api.github.com/repos/owner/repo/git/trees/jkl012"),
+			SHA: new("jkl012"),
+			URL: new("https://api.github.com/repos/owner/repo/git/trees/jkl012"),
 		},
 	}
 
@@ -1958,7 +1958,7 @@ func Test_PushFiles(t *testing.T) {
 				WithRequestMatch(
 					GetReposByOwnerByRepo,
 					&github.Repository{
-						DefaultBranch: github.Ptr("main"),
+						DefaultBranch: new("main"),
 					},
 				),
 				// Create initial file using Contents API
@@ -1972,7 +1972,7 @@ func Test_PushFiles(t *testing.T) {
 						require.Equal(t, "main", body["branch"])
 						w.WriteHeader(http.StatusCreated)
 						response := &github.RepositoryContentResponse{
-							Commit: github.Commit{SHA: github.Ptr("abc123")},
+							Commit: github.Commit{SHA: new("abc123")},
 						}
 						b, _ := json.Marshal(response)
 						_, _ = w.Write(b)
@@ -2036,8 +2036,8 @@ func Test_PushFiles(t *testing.T) {
 								// Second call: returns the updated reference after first file creation
 								w.WriteHeader(http.StatusOK)
 								b, _ := json.Marshal(&github.Reference{
-									Ref:    github.Ptr("refs/heads/main"),
-									Object: &github.GitObject{SHA: github.Ptr("init456")},
+									Ref:    new("refs/heads/main"),
+									Object: &github.GitObject{SHA: new("init456")},
 								})
 								_, _ = w.Write(b)
 							}
@@ -2048,7 +2048,7 @@ func Test_PushFiles(t *testing.T) {
 				WithRequestMatch(
 					GetReposByOwnerByRepo,
 					&github.Repository{
-						DefaultBranch: github.Ptr("main"),
+						DefaultBranch: new("main"),
 					},
 				),
 				// Create initial empty README.md file using Contents API to initialize repo
@@ -2066,12 +2066,12 @@ func Test_PushFiles(t *testing.T) {
 						w.WriteHeader(http.StatusCreated)
 						response := &github.RepositoryContentResponse{
 							Content: &github.RepositoryContent{
-								SHA: github.Ptr("readme123"),
+								SHA: new("readme123"),
 							},
 							Commit: github.Commit{
-								SHA: github.Ptr("init456"),
+								SHA: new("init456"),
 								Tree: &github.Tree{
-									SHA: github.Ptr("tree456"),
+									SHA: new("tree456"),
 								},
 							},
 						}
@@ -2085,9 +2085,9 @@ func Test_PushFiles(t *testing.T) {
 					http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 						w.WriteHeader(http.StatusOK)
 						response := &github.Commit{
-							SHA: github.Ptr("init456"),
+							SHA: new("init456"),
 							Tree: &github.Tree{
-								SHA: github.Ptr("tree456"),
+								SHA: new("tree456"),
 							},
 						}
 						b, _ := json.Marshal(response)
@@ -2187,7 +2187,7 @@ func Test_PushFiles(t *testing.T) {
 				WithRequestMatch(
 					GetReposByOwnerByRepo,
 					&github.Repository{
-						DefaultBranch: github.Ptr("main"),
+						DefaultBranch: new("main"),
 					},
 				),
 				// Fail to create initial file using Contents API
@@ -2240,15 +2240,15 @@ func Test_PushFiles(t *testing.T) {
 				WithRequestMatch(
 					GetReposByOwnerByRepo,
 					&github.Repository{
-						DefaultBranch: github.Ptr("main"),
+						DefaultBranch: new("main"),
 					},
 				),
 				// Create initial file using Contents API
 				WithRequestMatch(
 					PutReposContentsByOwnerByRepoByPath,
 					&github.RepositoryContentResponse{
-						Content: &github.RepositoryContent{SHA: github.Ptr("readme123")},
-						Commit:  github.Commit{SHA: github.Ptr("init456")},
+						Content: &github.RepositoryContent{SHA: new("readme123")},
+						Commit:  github.Commit{SHA: new("init456")},
 					},
 				),
 			),
@@ -2286,15 +2286,15 @@ func Test_PushFiles(t *testing.T) {
 				WithRequestMatch(
 					GetReposByOwnerByRepo,
 					&github.Repository{
-						DefaultBranch: github.Ptr("main"),
+						DefaultBranch: new("main"),
 					},
 				),
 				// Create initial file using Contents API
 				WithRequestMatch(
 					PutReposContentsByOwnerByRepoByPath,
 					&github.RepositoryContentResponse{
-						Content: &github.RepositoryContent{SHA: github.Ptr("readme123")},
-						Commit:  github.Commit{SHA: github.Ptr("init456")},
+						Content: &github.RepositoryContent{SHA: new("readme123")},
+						Commit:  github.Commit{SHA: new("init456")},
 					},
 				),
 				// Fail to get commit
@@ -2393,12 +2393,12 @@ func Test_ListBranches(t *testing.T) {
 	// Setup mock branches for success case
 	mockBranches := []*github.Branch{
 		{
-			Name:   github.Ptr("main"),
-			Commit: &github.RepositoryCommit{SHA: github.Ptr("abc123")},
+			Name:   new("main"),
+			Commit: &github.RepositoryCommit{SHA: new("abc123")},
 		},
 		{
-			Name:   github.Ptr("develop"),
-			Commit: &github.RepositoryCommit{SHA: github.Ptr("def456")},
+			Name:   new("develop"),
+			Commit: &github.RepositoryCommit{SHA: new("def456")},
 		},
 	}
 
@@ -2512,27 +2512,27 @@ func Test_DeleteFile(t *testing.T) {
 
 	// Setup mock objects for Git Data API
 	mockRef := &github.Reference{
-		Ref: github.Ptr("refs/heads/main"),
+		Ref: new("refs/heads/main"),
 		Object: &github.GitObject{
-			SHA: github.Ptr("abc123"),
+			SHA: new("abc123"),
 		},
 	}
 
 	mockCommit := &github.Commit{
-		SHA: github.Ptr("abc123"),
+		SHA: new("abc123"),
 		Tree: &github.Tree{
-			SHA: github.Ptr("def456"),
+			SHA: new("def456"),
 		},
 	}
 
 	mockTree := &github.Tree{
-		SHA: github.Ptr("ghi789"),
+		SHA: new("ghi789"),
 	}
 
 	mockNewCommit := &github.Commit{
-		SHA:     github.Ptr("jkl012"),
-		Message: github.Ptr("Delete example file"),
-		HTMLURL: github.Ptr("https://github.com/owner/repo/commit/jkl012"),
+		SHA:     new("jkl012"),
+		Message: new("Delete example file"),
+		HTMLURL: new("https://github.com/owner/repo/commit/jkl012"),
 	}
 
 	tests := []struct {
@@ -2592,9 +2592,9 @@ func Test_DeleteFile(t *testing.T) {
 						"force": false,
 					}).andThen(
 						mockResponse(t, http.StatusOK, &github.Reference{
-							Ref: github.Ptr("refs/heads/main"),
+							Ref: new("refs/heads/main"),
 							Object: &github.GitObject{
-								SHA: github.Ptr("jkl012"),
+								SHA: new("jkl012"),
 							},
 						}),
 					),
@@ -2693,22 +2693,22 @@ func Test_ListTags(t *testing.T) {
 	// Setup mock tags for success case
 	mockTags := []*github.RepositoryTag{
 		{
-			Name: github.Ptr("v1.0.0"),
+			Name: new("v1.0.0"),
 			Commit: &github.Commit{
-				SHA: github.Ptr("v1.0.0-tag-sha"),
-				URL: github.Ptr("https://api.github.com/repos/owner/repo/commits/abc123"),
+				SHA: new("v1.0.0-tag-sha"),
+				URL: new("https://api.github.com/repos/owner/repo/commits/abc123"),
 			},
-			ZipballURL: github.Ptr("https://github.com/owner/repo/zipball/v1.0.0"),
-			TarballURL: github.Ptr("https://github.com/owner/repo/tarball/v1.0.0"),
+			ZipballURL: new("https://github.com/owner/repo/zipball/v1.0.0"),
+			TarballURL: new("https://github.com/owner/repo/tarball/v1.0.0"),
 		},
 		{
-			Name: github.Ptr("v0.9.0"),
+			Name: new("v0.9.0"),
 			Commit: &github.Commit{
-				SHA: github.Ptr("v0.9.0-tag-sha"),
-				URL: github.Ptr("https://api.github.com/repos/owner/repo/commits/def456"),
+				SHA: new("v0.9.0-tag-sha"),
+				URL: new("https://api.github.com/repos/owner/repo/commits/def456"),
 			},
-			ZipballURL: github.Ptr("https://github.com/owner/repo/zipball/v0.9.0"),
-			TarballURL: github.Ptr("https://github.com/owner/repo/tarball/v0.9.0"),
+			ZipballURL: new("https://github.com/owner/repo/zipball/v0.9.0"),
+			TarballURL: new("https://github.com/owner/repo/tarball/v0.9.0"),
 		},
 	}
 
@@ -2822,19 +2822,19 @@ func Test_GetTag(t *testing.T) {
 	assert.ElementsMatch(t, schema.Required, []string{"owner", "repo", "tag"})
 
 	mockTagRef := &github.Reference{
-		Ref: github.Ptr("refs/tags/v1.0.0"),
+		Ref: new("refs/tags/v1.0.0"),
 		Object: &github.GitObject{
-			SHA: github.Ptr("v1.0.0-tag-sha"),
+			SHA: new("v1.0.0-tag-sha"),
 		},
 	}
 
 	mockTagObj := &github.Tag{
-		SHA:     github.Ptr("v1.0.0-tag-sha"),
-		Tag:     github.Ptr("v1.0.0"),
-		Message: github.Ptr("Release v1.0.0"),
+		SHA:     new("v1.0.0-tag-sha"),
+		Tag:     new("v1.0.0"),
+		Message: new("Release v1.0.0"),
 		Object: &github.GitObject{
-			Type: github.Ptr("commit"),
-			SHA:  github.Ptr("abc123"),
+			Type: new("commit"),
+			SHA:  new("abc123"),
 		},
 	}
 
@@ -2980,14 +2980,14 @@ func Test_ListReleases(t *testing.T) {
 
 	mockReleases := []*github.RepositoryRelease{
 		{
-			ID:      github.Ptr(int64(1)),
-			TagName: github.Ptr("v1.0.0"),
-			Name:    github.Ptr("First Release"),
+			ID:      new(int64(1)),
+			TagName: new("v1.0.0"),
+			Name:    new("First Release"),
 		},
 		{
-			ID:      github.Ptr(int64(2)),
-			TagName: github.Ptr("v0.9.0"),
-			Name:    github.Ptr("Beta Release"),
+			ID:      new(int64(2)),
+			TagName: new("v0.9.0"),
+			Name:    new("Beta Release"),
 		},
 	}
 
@@ -3077,9 +3077,9 @@ func Test_GetLatestRelease(t *testing.T) {
 	assert.ElementsMatch(t, schema.Required, []string{"owner", "repo"})
 
 	mockRelease := &github.RepositoryRelease{
-		ID:      github.Ptr(int64(1)),
-		TagName: github.Ptr("v1.0.0"),
-		Name:    github.Ptr("First Release"),
+		ID:      new(int64(1)),
+		TagName: new("v1.0.0"),
+		Name:    new("First Release"),
 	}
 
 	tests := []struct {
@@ -3167,14 +3167,14 @@ func Test_GetReleaseByTag(t *testing.T) {
 	assert.ElementsMatch(t, schema.Required, []string{"owner", "repo", "tag"})
 
 	mockRelease := &github.RepositoryRelease{
-		ID:      github.Ptr(int64(1)),
-		TagName: github.Ptr("v1.0.0"),
-		Name:    github.Ptr("Release v1.0.0"),
-		Body:    github.Ptr("This is the first stable release."),
+		ID:      new(int64(1)),
+		TagName: new("v1.0.0"),
+		Name:    new("Release v1.0.0"),
+		Body:    new("This is the first stable release."),
 		Assets: []*github.ReleaseAsset{
 			{
-				ID:   github.Ptr(int64(1)),
-				Name: github.Ptr("release-v1.0.0.tar.gz"),
+				ID:   new(int64(1)),
+				Name: new("release-v1.0.0.tar.gz"),
 			},
 		},
 	}
@@ -3399,10 +3399,10 @@ func Test_filterPaths(t *testing.T) {
 		{
 			name: "file name",
 			tree: []*github.TreeEntry{
-				{Path: github.Ptr("folder/foo.txt"), Type: github.Ptr("blob")},
-				{Path: github.Ptr("bar.txt"), Type: github.Ptr("blob")},
-				{Path: github.Ptr("nested/folder/foo.txt"), Type: github.Ptr("blob")},
-				{Path: github.Ptr("nested/folder/baz.txt"), Type: github.Ptr("blob")},
+				{Path: new("folder/foo.txt"), Type: new("blob")},
+				{Path: new("bar.txt"), Type: new("blob")},
+				{Path: new("nested/folder/foo.txt"), Type: new("blob")},
+				{Path: new("nested/folder/baz.txt"), Type: new("blob")},
 			},
 			path:       "foo.txt",
 			maxResults: -1,
@@ -3411,10 +3411,10 @@ func Test_filterPaths(t *testing.T) {
 		{
 			name: "dir name",
 			tree: []*github.TreeEntry{
-				{Path: github.Ptr("folder"), Type: github.Ptr("tree")},
-				{Path: github.Ptr("bar.txt"), Type: github.Ptr("blob")},
-				{Path: github.Ptr("nested/folder"), Type: github.Ptr("tree")},
-				{Path: github.Ptr("nested/folder/baz.txt"), Type: github.Ptr("blob")},
+				{Path: new("folder"), Type: new("tree")},
+				{Path: new("bar.txt"), Type: new("blob")},
+				{Path: new("nested/folder"), Type: new("tree")},
+				{Path: new("nested/folder/baz.txt"), Type: new("blob")},
 			},
 			path:       "folder/",
 			maxResults: -1,
@@ -3423,8 +3423,8 @@ func Test_filterPaths(t *testing.T) {
 		{
 			name: "dir and file match",
 			tree: []*github.TreeEntry{
-				{Path: github.Ptr("name"), Type: github.Ptr("tree")},
-				{Path: github.Ptr("name"), Type: github.Ptr("blob")},
+				{Path: new("name"), Type: new("tree")},
+				{Path: new("name"), Type: new("blob")},
 			},
 			path:       "name", // No trailing slash can match both files and directories
 			maxResults: -1,
@@ -3433,8 +3433,8 @@ func Test_filterPaths(t *testing.T) {
 		{
 			name: "dir only match",
 			tree: []*github.TreeEntry{
-				{Path: github.Ptr("name"), Type: github.Ptr("tree")},
-				{Path: github.Ptr("name"), Type: github.Ptr("blob")},
+				{Path: new("name"), Type: new("tree")},
+				{Path: new("name"), Type: new("blob")},
 			},
 			path:       "name/", // Trialing slash ensures only directories are matched
 			maxResults: -1,
@@ -3443,9 +3443,9 @@ func Test_filterPaths(t *testing.T) {
 		{
 			name: "max results limit 2",
 			tree: []*github.TreeEntry{
-				{Path: github.Ptr("folder"), Type: github.Ptr("tree")},
-				{Path: github.Ptr("nested/folder"), Type: github.Ptr("tree")},
-				{Path: github.Ptr("nested/nested/folder"), Type: github.Ptr("tree")},
+				{Path: new("folder"), Type: new("tree")},
+				{Path: new("nested/folder"), Type: new("tree")},
+				{Path: new("nested/nested/folder"), Type: new("tree")},
 			},
 			path:       "folder/",
 			maxResults: 2,
@@ -3454,9 +3454,9 @@ func Test_filterPaths(t *testing.T) {
 		{
 			name: "max results limit 1",
 			tree: []*github.TreeEntry{
-				{Path: github.Ptr("folder"), Type: github.Ptr("tree")},
-				{Path: github.Ptr("nested/folder"), Type: github.Ptr("tree")},
-				{Path: github.Ptr("nested/nested/folder"), Type: github.Ptr("tree")},
+				{Path: new("folder"), Type: new("tree")},
+				{Path: new("nested/folder"), Type: new("tree")},
+				{Path: new("nested/nested/folder"), Type: new("tree")},
 			},
 			path:       "folder/",
 			maxResults: 1,
@@ -3465,9 +3465,9 @@ func Test_filterPaths(t *testing.T) {
 		{
 			name: "max results limit 0",
 			tree: []*github.TreeEntry{
-				{Path: github.Ptr("folder"), Type: github.Ptr("tree")},
-				{Path: github.Ptr("nested/folder"), Type: github.Ptr("tree")},
-				{Path: github.Ptr("nested/nested/folder"), Type: github.Ptr("tree")},
+				{Path: new("folder"), Type: new("tree")},
+				{Path: new("nested/folder"), Type: new("tree")},
+				{Path: new("nested/nested/folder"), Type: new("tree")},
 			},
 			path:       "folder/",
 			maxResults: 0,
@@ -3769,39 +3769,39 @@ func Test_ListStarredRepositories(t *testing.T) {
 		{
 			StarredAt: &github.Timestamp{Time: starredAt},
 			Repository: &github.Repository{
-				ID:              github.Ptr(int64(12345)),
-				Name:            github.Ptr("awesome-repo"),
-				FullName:        github.Ptr("owner/awesome-repo"),
-				Description:     github.Ptr("An awesome repository"),
-				HTMLURL:         github.Ptr("https://github.com/owner/awesome-repo"),
-				Language:        github.Ptr("Go"),
-				StargazersCount: github.Ptr(100),
-				ForksCount:      github.Ptr(25),
-				OpenIssuesCount: github.Ptr(5),
+				ID:              new(int64(12345)),
+				Name:            new("awesome-repo"),
+				FullName:        new("owner/awesome-repo"),
+				Description:     new("An awesome repository"),
+				HTMLURL:         new("https://github.com/owner/awesome-repo"),
+				Language:        new("Go"),
+				StargazersCount: new(100),
+				ForksCount:      new(25),
+				OpenIssuesCount: new(5),
 				UpdatedAt:       &github.Timestamp{Time: updatedAt},
-				Private:         github.Ptr(false),
-				Fork:            github.Ptr(false),
-				Archived:        github.Ptr(false),
-				DefaultBranch:   github.Ptr("main"),
+				Private:         new(false),
+				Fork:            new(false),
+				Archived:        new(false),
+				DefaultBranch:   new("main"),
 			},
 		},
 		{
 			StarredAt: &github.Timestamp{Time: starredAt.Add(-12 * time.Hour)},
 			Repository: &github.Repository{
-				ID:              github.Ptr(int64(67890)),
-				Name:            github.Ptr("cool-project"),
-				FullName:        github.Ptr("user/cool-project"),
-				Description:     github.Ptr("A very cool project"),
-				HTMLURL:         github.Ptr("https://github.com/user/cool-project"),
-				Language:        github.Ptr("Python"),
-				StargazersCount: github.Ptr(500),
-				ForksCount:      github.Ptr(75),
-				OpenIssuesCount: github.Ptr(10),
+				ID:              new(int64(67890)),
+				Name:            new("cool-project"),
+				FullName:        new("user/cool-project"),
+				Description:     new("A very cool project"),
+				HTMLURL:         new("https://github.com/user/cool-project"),
+				Language:        new("Python"),
+				StargazersCount: new(500),
+				ForksCount:      new(75),
+				OpenIssuesCount: new(10),
 				UpdatedAt:       &github.Timestamp{Time: updatedAt.Add(-1 * time.Hour)},
-				Private:         github.Ptr(false),
-				Fork:            github.Ptr(true),
-				Archived:        github.Ptr(false),
-				DefaultBranch:   github.Ptr("master"),
+				Private:         new(false),
+				Fork:            new(true),
+				Archived:        new(false),
+				DefaultBranch:   new("master"),
 			},
 		},
 	}

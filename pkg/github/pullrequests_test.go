@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/github/github-mcp-server/internal/githubv4mock"
-	"github.com/github/github-mcp-server/internal/toolsnaps"
-	"github.com/github/github-mcp-server/pkg/lockdown"
-	"github.com/github/github-mcp-server/pkg/translations"
+	"github.com/aifity/omnigit-mcp/internal/githubv4mock"
+	"github.com/aifity/omnigit-mcp/internal/toolsnaps"
+	"github.com/aifity/omnigit-mcp/pkg/lockdown"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
 	"github.com/google/go-github/v82/github"
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/shurcooL/githubv4"
@@ -35,20 +35,20 @@ func Test_GetPullRequest(t *testing.T) {
 
 	// Setup mock PR for success case
 	mockPR := &github.PullRequest{
-		Number:  github.Ptr(42),
-		Title:   github.Ptr("Test PR"),
-		State:   github.Ptr("open"),
-		HTMLURL: github.Ptr("https://github.com/owner/repo/pull/42"),
+		Number:  new(42),
+		Title:   new("Test PR"),
+		State:   new("open"),
+		HTMLURL: new("https://github.com/owner/repo/pull/42"),
 		Head: &github.PullRequestBranch{
-			SHA: github.Ptr("abcd1234"),
-			Ref: github.Ptr("feature-branch"),
+			SHA: new("abcd1234"),
+			Ref: new("feature-branch"),
 		},
 		Base: &github.PullRequestBranch{
-			Ref: github.Ptr("main"),
+			Ref: new("main"),
 		},
-		Body: github.Ptr("This is a test PR"),
+		Body: new("This is a test PR"),
 		User: &github.User{
-			Login: github.Ptr("testuser"),
+			Login: new("testuser"),
 		},
 	}
 
@@ -162,32 +162,32 @@ func Test_UpdatePullRequest(t *testing.T) {
 
 	// Setup mock PR for success case
 	mockUpdatedPR := &github.PullRequest{
-		Number:              github.Ptr(42),
-		Title:               github.Ptr("Updated Test PR Title"),
-		State:               github.Ptr("open"),
-		HTMLURL:             github.Ptr("https://github.com/owner/repo/pull/42"),
-		Body:                github.Ptr("Updated test PR body."),
-		MaintainerCanModify: github.Ptr(false),
-		Draft:               github.Ptr(false),
+		Number:              new(42),
+		Title:               new("Updated Test PR Title"),
+		State:               new("open"),
+		HTMLURL:             new("https://github.com/owner/repo/pull/42"),
+		Body:                new("Updated test PR body."),
+		MaintainerCanModify: new(false),
+		Draft:               new(false),
 		Base: &github.PullRequestBranch{
-			Ref: github.Ptr("develop"),
+			Ref: new("develop"),
 		},
 	}
 
 	mockClosedPR := &github.PullRequest{
-		Number: github.Ptr(42),
-		Title:  github.Ptr("Test PR"),
-		State:  github.Ptr("closed"), // State updated
+		Number: new(42),
+		Title:  new("Test PR"),
+		State:  new("closed"), // State updated
 	}
 
 	// Mock PR for when there are no updates but we still need a response
 	mockPRWithReviewers := &github.PullRequest{
-		Number: github.Ptr(42),
-		Title:  github.Ptr("Test PR"),
-		State:  github.Ptr("open"),
+		Number: new(42),
+		Title:  new("Test PR"),
+		State:  new("open"),
 		RequestedReviewers: []*github.User{
-			{Login: github.Ptr("reviewer1")},
-			{Login: github.Ptr("reviewer2")},
+			{Login: new("reviewer1")},
+			{Login: new("reviewer2")},
 		},
 	}
 
@@ -371,15 +371,15 @@ func Test_UpdatePullRequest(t *testing.T) {
 func Test_UpdatePullRequest_Draft(t *testing.T) {
 	// Setup mock PR for success case
 	mockUpdatedPR := &github.PullRequest{
-		Number:              github.Ptr(42),
-		Title:               github.Ptr("Test PR Title"),
-		State:               github.Ptr("open"),
-		HTMLURL:             github.Ptr("https://github.com/owner/repo/pull/42"),
-		Body:                github.Ptr("Test PR body."),
-		MaintainerCanModify: github.Ptr(false),
-		Draft:               github.Ptr(false), // Updated to ready for review
+		Number:              new(42),
+		Title:               new("Test PR Title"),
+		State:               new("open"),
+		HTMLURL:             new("https://github.com/owner/repo/pull/42"),
+		Body:                new("Test PR body."),
+		MaintainerCanModify: new(false),
+		Draft:               new(false), // Updated to ready for review
 		Base: &github.PullRequestBranch{
-			Ref: github.Ptr("main"),
+			Ref: new("main"),
 		},
 	}
 
@@ -575,16 +575,16 @@ func Test_ListPullRequests(t *testing.T) {
 	// Setup mock PRs for success case
 	mockPRs := []*github.PullRequest{
 		{
-			Number:  github.Ptr(42),
-			Title:   github.Ptr("First PR"),
-			State:   github.Ptr("open"),
-			HTMLURL: github.Ptr("https://github.com/owner/repo/pull/42"),
+			Number:  new(42),
+			Title:   new("First PR"),
+			State:   new("open"),
+			HTMLURL: new("https://github.com/owner/repo/pull/42"),
 		},
 		{
-			Number:  github.Ptr(43),
-			Title:   github.Ptr("Second PR"),
-			State:   github.Ptr("closed"),
-			HTMLURL: github.Ptr("https://github.com/owner/repo/pull/43"),
+			Number:  new(43),
+			Title:   new("Second PR"),
+			State:   new("closed"),
+			HTMLURL: new("https://github.com/owner/repo/pull/43"),
 		},
 	}
 
@@ -704,9 +704,9 @@ func Test_MergePullRequest(t *testing.T) {
 
 	// Setup mock merge result for success case
 	mockMergeResult := &github.PullRequestMergeResult{
-		Merged:  github.Ptr(true),
-		Message: github.Ptr("Pull Request successfully merged"),
-		SHA:     github.Ptr("abcd1234efgh5678"),
+		Merged:  new(true),
+		Message: new("Pull Request successfully merged"),
+		SHA:     new("abcd1234efgh5678"),
 	}
 
 	tests := []struct {
@@ -817,29 +817,29 @@ func Test_SearchPullRequests(t *testing.T) {
 	assert.ElementsMatch(t, schema.Required, []string{"query"})
 
 	mockSearchResult := &github.IssuesSearchResult{
-		Total:             github.Ptr(2),
-		IncompleteResults: github.Ptr(false),
+		Total:             new(2),
+		IncompleteResults: new(false),
 		Issues: []*github.Issue{
 			{
-				Number:   github.Ptr(42),
-				Title:    github.Ptr("Test PR 1"),
-				Body:     github.Ptr("Updated tests."),
-				State:    github.Ptr("open"),
-				HTMLURL:  github.Ptr("https://github.com/owner/repo/pull/1"),
-				Comments: github.Ptr(5),
+				Number:   new(42),
+				Title:    new("Test PR 1"),
+				Body:     new("Updated tests."),
+				State:    new("open"),
+				HTMLURL:  new("https://github.com/owner/repo/pull/1"),
+				Comments: new(5),
 				User: &github.User{
-					Login: github.Ptr("user1"),
+					Login: new("user1"),
 				},
 			},
 			{
-				Number:   github.Ptr(43),
-				Title:    github.Ptr("Test PR 2"),
-				Body:     github.Ptr("Updated build scripts."),
-				State:    github.Ptr("open"),
-				HTMLURL:  github.Ptr("https://github.com/owner/repo/pull/2"),
-				Comments: github.Ptr(3),
+				Number:   new(43),
+				Title:    new("Test PR 2"),
+				Body:     new("Updated build scripts."),
+				State:    new("open"),
+				HTMLURL:  new("https://github.com/owner/repo/pull/2"),
+				Comments: new(3),
 				User: &github.User{
-					Login: github.Ptr("user2"),
+					Login: new("user2"),
 				},
 			},
 		},
@@ -964,7 +964,7 @@ func Test_SearchPullRequests(t *testing.T) {
 				GetSearchIssues: expectQueryParams(
 					t,
 					map[string]string{
-						"q":        "is:pr repo:github/github-mcp-server is:open draft:false",
+						"q":        "is:pr repo:aifity/omnigit-mcp is:open draft:false",
 						"page":     "1",
 						"per_page": "30",
 					},
@@ -973,7 +973,7 @@ func Test_SearchPullRequests(t *testing.T) {
 				),
 			}),
 			requestArgs: map[string]any{
-				"query": "is:pr repo:github/github-mcp-server is:open draft:false",
+				"query": "is:pr repo:aifity/omnigit-mcp is:open draft:false",
 			},
 			expectError:    false,
 			expectedResult: mockSearchResult,
@@ -984,7 +984,7 @@ func Test_SearchPullRequests(t *testing.T) {
 				GetSearchIssues: expectQueryParams(
 					t,
 					map[string]string{
-						"q":        "is:pr repo:github/github-mcp-server author:octocat",
+						"q":        "is:pr repo:aifity/omnigit-mcp author:octocat",
 						"page":     "1",
 						"per_page": "30",
 					},
@@ -993,7 +993,7 @@ func Test_SearchPullRequests(t *testing.T) {
 				),
 			}),
 			requestArgs: map[string]any{
-				"query": "repo:github/github-mcp-server author:octocat",
+				"query": "repo:aifity/omnigit-mcp author:octocat",
 				"owner": "different-owner",
 				"repo":  "different-repo",
 			},
@@ -1006,7 +1006,7 @@ func Test_SearchPullRequests(t *testing.T) {
 				GetSearchIssues: expectQueryParams(
 					t,
 					map[string]string{
-						"q":        "is:pr repo:github/github-mcp-server (label:bug OR label:enhancement OR label:feature)",
+						"q":        "is:pr repo:aifity/omnigit-mcp (label:bug OR label:enhancement OR label:feature)",
 						"page":     "1",
 						"per_page": "30",
 					},
@@ -1015,7 +1015,7 @@ func Test_SearchPullRequests(t *testing.T) {
 				),
 			}),
 			requestArgs: map[string]any{
-				"query": "is:pr repo:github/github-mcp-server (label:bug OR label:enhancement OR label:feature)",
+				"query": "is:pr repo:aifity/omnigit-mcp (label:bug OR label:enhancement OR label:feature)",
 			},
 			expectError:    false,
 			expectedResult: mockSearchResult,
@@ -1106,20 +1106,20 @@ func Test_GetPullRequestFiles(t *testing.T) {
 	// Setup mock PR files for success case
 	mockFiles := []*github.CommitFile{
 		{
-			Filename:  github.Ptr("file1.go"),
-			Status:    github.Ptr("modified"),
-			Additions: github.Ptr(10),
-			Deletions: github.Ptr(5),
-			Changes:   github.Ptr(15),
-			Patch:     github.Ptr("@@ -1,5 +1,10 @@"),
+			Filename:  new("file1.go"),
+			Status:    new("modified"),
+			Additions: new(10),
+			Deletions: new(5),
+			Changes:   new(15),
+			Patch:     new("@@ -1,5 +1,10 @@"),
 		},
 		{
-			Filename:  github.Ptr("file2.go"),
-			Status:    github.Ptr("added"),
-			Additions: github.Ptr(20),
-			Deletions: github.Ptr(0),
-			Changes:   github.Ptr(20),
-			Patch:     github.Ptr("@@ -0,0 +1,20 @@"),
+			Filename:  new("file2.go"),
+			Status:    new("added"),
+			Additions: new(20),
+			Deletions: new(0),
+			Changes:   new(20),
+			Patch:     new("@@ -0,0 +1,20 @@"),
 		},
 	}
 
@@ -1260,37 +1260,37 @@ func Test_GetPullRequestStatus(t *testing.T) {
 
 	// Setup mock PR for successful PR fetch
 	mockPR := &github.PullRequest{
-		Number:  github.Ptr(42),
-		Title:   github.Ptr("Test PR"),
-		HTMLURL: github.Ptr("https://github.com/owner/repo/pull/42"),
+		Number:  new(42),
+		Title:   new("Test PR"),
+		HTMLURL: new("https://github.com/owner/repo/pull/42"),
 		Head: &github.PullRequestBranch{
-			SHA: github.Ptr("abcd1234"),
-			Ref: github.Ptr("feature-branch"),
+			SHA: new("abcd1234"),
+			Ref: new("feature-branch"),
 		},
 	}
 
 	// Setup mock status for success case
 	mockStatus := &github.CombinedStatus{
-		State:      github.Ptr("success"),
-		TotalCount: github.Ptr(3),
+		State:      new("success"),
+		TotalCount: new(3),
 		Statuses: []*github.RepoStatus{
 			{
-				State:       github.Ptr("success"),
-				Context:     github.Ptr("continuous-integration/travis-ci"),
-				Description: github.Ptr("Build succeeded"),
-				TargetURL:   github.Ptr("https://travis-ci.org/owner/repo/builds/123"),
+				State:       new("success"),
+				Context:     new("continuous-integration/travis-ci"),
+				Description: new("Build succeeded"),
+				TargetURL:   new("https://travis-ci.org/owner/repo/builds/123"),
 			},
 			{
-				State:       github.Ptr("success"),
-				Context:     github.Ptr("codecov/patch"),
-				Description: github.Ptr("Coverage increased"),
-				TargetURL:   github.Ptr("https://codecov.io/gh/owner/repo/pull/42"),
+				State:       new("success"),
+				Context:     new("codecov/patch"),
+				Description: new("Coverage increased"),
+				TargetURL:   new("https://codecov.io/gh/owner/repo/pull/42"),
 			},
 			{
-				State:       github.Ptr("success"),
-				Context:     github.Ptr("lint/golangci-lint"),
-				Description: github.Ptr("No issues found"),
-				TargetURL:   github.Ptr("https://golangci.com/r/owner/repo/pull/42"),
+				State:       new("success"),
+				Context:     new("lint/golangci-lint"),
+				Description: new("No issues found"),
+				TargetURL:   new("https://golangci.com/r/owner/repo/pull/42"),
 			},
 		},
 	}
@@ -1421,8 +1421,8 @@ func Test_UpdatePullRequestBranch(t *testing.T) {
 
 	// Setup mock update result for success case
 	mockUpdateResult := &github.PullRequestBranchUpdateResponse{
-		Message: github.Ptr("Branch was updated successfully"),
-		URL:     github.Ptr("https://api.github.com/repos/owner/repo/pulls/42"),
+		Message: new("Branch was updated successfully"),
+		URL:     new("https://api.github.com/repos/owner/repo/pulls/42"),
 	}
 
 	tests := []struct {
@@ -1866,25 +1866,25 @@ func Test_GetPullRequestReviews(t *testing.T) {
 	// Setup mock PR reviews for success case
 	mockReviews := []*github.PullRequestReview{
 		{
-			ID:      github.Ptr(int64(201)),
-			State:   github.Ptr("APPROVED"),
-			Body:    github.Ptr("LGTM"),
-			HTMLURL: github.Ptr("https://github.com/owner/repo/pull/42#pullrequestreview-201"),
+			ID:      new(int64(201)),
+			State:   new("APPROVED"),
+			Body:    new("LGTM"),
+			HTMLURL: new("https://github.com/owner/repo/pull/42#pullrequestreview-201"),
 			User: &github.User{
-				Login: github.Ptr("approver"),
+				Login: new("approver"),
 			},
-			CommitID:    github.Ptr("abcdef123456"),
+			CommitID:    new("abcdef123456"),
 			SubmittedAt: &github.Timestamp{Time: time.Now().Add(-24 * time.Hour)},
 		},
 		{
-			ID:      github.Ptr(int64(202)),
-			State:   github.Ptr("CHANGES_REQUESTED"),
-			Body:    github.Ptr("Please address the following issues"),
-			HTMLURL: github.Ptr("https://github.com/owner/repo/pull/42#pullrequestreview-202"),
+			ID:      new(int64(202)),
+			State:   new("CHANGES_REQUESTED"),
+			Body:    new("Please address the following issues"),
+			HTMLURL: new("https://github.com/owner/repo/pull/42#pullrequestreview-202"),
 			User: &github.User{
-				Login: github.Ptr("reviewer"),
+				Login: new("reviewer"),
 			},
-			CommitID:    github.Ptr("abcdef123456"),
+			CommitID:    new("abcdef123456"),
 			SubmittedAt: &github.Timestamp{Time: time.Now().Add(-12 * time.Hour)},
 		},
 	}
@@ -1935,16 +1935,16 @@ func Test_GetPullRequestReviews(t *testing.T) {
 			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
 				GetReposPullsReviewsByOwnerByRepoByPullNumber: mockResponse(t, http.StatusOK, []*github.PullRequestReview{
 					{
-						ID:    github.Ptr(int64(2030)),
-						State: github.Ptr("APPROVED"),
-						Body:  github.Ptr("Maintainer review"),
-						User:  &github.User{Login: github.Ptr("maintainer")},
+						ID:    new(int64(2030)),
+						State: new("APPROVED"),
+						Body:  new("Maintainer review"),
+						User:  &github.User{Login: new("maintainer")},
 					},
 					{
-						ID:    github.Ptr(int64(2031)),
-						State: github.Ptr("COMMENTED"),
-						Body:  github.Ptr("External reviewer"),
-						User:  &github.User{Login: github.Ptr("testuser")},
+						ID:    new(int64(2031)),
+						State: new("COMMENTED"),
+						Body:  new("External reviewer"),
+						User:  &github.User{Login: new("testuser")},
 					},
 				}),
 			}),
@@ -1958,10 +1958,10 @@ func Test_GetPullRequestReviews(t *testing.T) {
 			expectError: false,
 			expectedReviews: []*github.PullRequestReview{
 				{
-					ID:    github.Ptr(int64(2030)),
-					State: github.Ptr("APPROVED"),
-					Body:  github.Ptr("Maintainer review"),
-					User:  &github.User{Login: github.Ptr("maintainer")},
+					ID:    new(int64(2030)),
+					State: new("APPROVED"),
+					Body:  new("Maintainer review"),
+					User:  &github.User{Login: new("maintainer")},
 				},
 			},
 			lockdownEnabled: true,
@@ -2048,23 +2048,23 @@ func Test_CreatePullRequest(t *testing.T) {
 
 	// Setup mock PR for success case
 	mockPR := &github.PullRequest{
-		Number:  github.Ptr(42),
-		Title:   github.Ptr("Test PR"),
-		State:   github.Ptr("open"),
-		HTMLURL: github.Ptr("https://github.com/owner/repo/pull/42"),
+		Number:  new(42),
+		Title:   new("Test PR"),
+		State:   new("open"),
+		HTMLURL: new("https://github.com/owner/repo/pull/42"),
 		Head: &github.PullRequestBranch{
-			SHA: github.Ptr("abcd1234"),
-			Ref: github.Ptr("feature-branch"),
+			SHA: new("abcd1234"),
+			Ref: new("feature-branch"),
 		},
 		Base: &github.PullRequestBranch{
-			SHA: github.Ptr("efgh5678"),
-			Ref: github.Ptr("main"),
+			SHA: new("efgh5678"),
+			Ref: new("main"),
 		},
-		Body:                github.Ptr("This is a test PR"),
-		Draft:               github.Ptr(false),
-		MaintainerCanModify: github.Ptr(true),
+		Body:                new("This is a test PR"),
+		Draft:               new(false),
+		MaintainerCanModify: new(true),
 		User: &github.User{
-			Login: github.Ptr("testuser"),
+			Login: new("testuser"),
 		},
 	}
 
@@ -2183,12 +2183,12 @@ func Test_CreatePullRequest_InsidersMode_UIGate(t *testing.T) {
 	t.Parallel()
 
 	mockPR := &github.PullRequest{
-		Number:  github.Ptr(42),
-		Title:   github.Ptr("Test PR"),
-		HTMLURL: github.Ptr("https://github.com/owner/repo/pull/42"),
-		Head:    &github.PullRequestBranch{SHA: github.Ptr("abc"), Ref: github.Ptr("feature")},
-		Base:    &github.PullRequestBranch{SHA: github.Ptr("def"), Ref: github.Ptr("main")},
-		User:    &github.User{Login: github.Ptr("testuser")},
+		Number:  new(42),
+		Title:   new("Test PR"),
+		HTMLURL: new("https://github.com/owner/repo/pull/42"),
+		Head:    &github.PullRequestBranch{SHA: new("abc"), Ref: new("feature")},
+		Base:    &github.PullRequestBranch{SHA: new("def"), Ref: new("main")},
+		User:    &github.User{Login: new("testuser")},
 	}
 
 	serverTool := CreatePullRequest(translations.NullTranslationHelper)
@@ -2259,21 +2259,21 @@ func Test_CreatePullRequest_BodyFiltering(t *testing.T) {
 
 	// Setup mock PR for success case
 	mockPR := &github.PullRequest{
-		Number:  github.Ptr(42),
-		Title:   github.Ptr("Test PR"),
-		State:   github.Ptr("open"),
-		HTMLURL: github.Ptr("https://github.com/owner/repo/pull/42"),
+		Number:  new(42),
+		Title:   new("Test PR"),
+		State:   new("open"),
+		HTMLURL: new("https://github.com/owner/repo/pull/42"),
 		Head: &github.PullRequestBranch{
-			SHA: github.Ptr("abcd1234"),
-			Ref: github.Ptr("feature-branch"),
+			SHA: new("abcd1234"),
+			Ref: new("feature-branch"),
 		},
 		Base: &github.PullRequestBranch{
-			SHA: github.Ptr("efgh5678"),
-			Ref: github.Ptr("main"),
+			SHA: new("efgh5678"),
+			Ref: new("main"),
 		},
-		Body: github.Ptr("This is a test PR\n\nFixes #123"),
+		Body: new("This is a test PR\n\nFixes #123"),
 		User: &github.User{
-			Login: github.Ptr("testuser"),
+			Login: new("testuser"),
 		},
 	}
 
@@ -2370,19 +2370,19 @@ func Test_UpdatePullRequest_BodyFiltering(t *testing.T) {
 					"body": tc.expectedBody,
 				}).andThen(
 					mockResponse(t, http.StatusOK, &github.PullRequest{
-						Number:  github.Ptr(42),
-						Title:   github.Ptr("Test PR"),
-						State:   github.Ptr("open"),
-						HTMLURL: github.Ptr("https://github.com/owner/repo/pull/42"),
-						Body:    github.Ptr(tc.expectedBody),
+						Number:  new(42),
+						Title:   new("Test PR"),
+						State:   new("open"),
+						HTMLURL: new("https://github.com/owner/repo/pull/42"),
+						Body:    new(tc.expectedBody),
 					}),
 				),
 				GetReposPullsByOwnerByRepoByPullNumber: mockResponse(t, http.StatusOK, &github.PullRequest{
-					Number:  github.Ptr(42),
-					Title:   github.Ptr("Test PR"),
-					State:   github.Ptr("open"),
-					HTMLURL: github.Ptr("https://github.com/owner/repo/pull/42"),
-					Body:    github.Ptr(tc.expectedBody),
+					Number:  new(42),
+					Title:   new("Test PR"),
+					State:   new("open"),
+					HTMLURL: new("https://github.com/owner/repo/pull/42"),
+					Body:    new(tc.expectedBody),
 				}),
 			})
 
@@ -2631,20 +2631,20 @@ func Test_RequestCopilotReview(t *testing.T) {
 
 	// Setup mock PR for success case
 	mockPR := &github.PullRequest{
-		Number:  github.Ptr(42),
-		Title:   github.Ptr("Test PR"),
-		State:   github.Ptr("open"),
-		HTMLURL: github.Ptr("https://github.com/owner/repo/pull/42"),
+		Number:  new(42),
+		Title:   new("Test PR"),
+		State:   new("open"),
+		HTMLURL: new("https://github.com/owner/repo/pull/42"),
 		Head: &github.PullRequestBranch{
-			SHA: github.Ptr("abcd1234"),
-			Ref: github.Ptr("feature-branch"),
+			SHA: new("abcd1234"),
+			Ref: new("feature-branch"),
 		},
 		Base: &github.PullRequestBranch{
-			Ref: github.Ptr("main"),
+			Ref: new("main"),
 		},
-		Body: github.Ptr("This is a test PR"),
+		Body: new("This is a test PR"),
 		User: &github.User{
-			Login: github.Ptr("testuser"),
+			Login: new("testuser"),
 		},
 	}
 
@@ -2987,7 +2987,7 @@ func TestAddPullRequestReviewCommentToPendingReview(t *testing.T) {
 						} `graphql:"addPullRequestReviewThread(input: $input)"`
 					}{},
 					githubv4.AddPullRequestReviewThreadInput{
-						Path:                githubv4.String("file.go"),
+						Path:                githubv4.NewString("file.go"),
 						Body:                githubv4.String("This is a test comment"),
 						SubjectType:         githubv4mock.Ptr(githubv4.PullRequestReviewThreadSubjectTypeLine),
 						Line:                githubv4.NewInt(10),
@@ -3044,7 +3044,7 @@ func TestAddPullRequestReviewCommentToPendingReview(t *testing.T) {
 						} `graphql:"addPullRequestReviewThread(input: $input)"`
 					}{},
 					githubv4.AddPullRequestReviewThreadInput{
-						Path:                githubv4.String("file.go"),
+						Path:                githubv4.NewString("file.go"),
 						Body:                githubv4.String("Comment on non-existent line"),
 						SubjectType:         githubv4mock.Ptr(githubv4.PullRequestReviewThreadSubjectTypeLine),
 						Line:                githubv4.NewInt(999),
@@ -3486,12 +3486,12 @@ func TestAddReplyToPullRequestComment(t *testing.T) {
 
 	// Setup mock reply comment for success case
 	mockReplyComment := &github.PullRequestComment{
-		ID:        github.Ptr(int64(456)),
-		Body:      github.Ptr("This is a reply to the comment"),
-		InReplyTo: github.Ptr(int64(123)),
-		HTMLURL:   github.Ptr("https://github.com/owner/repo/pull/42#discussion_r456"),
+		ID:        new(int64(456)),
+		Body:      new("This is a reply to the comment"),
+		InReplyTo: new(int64(123)),
+		HTMLURL:   new("https://github.com/owner/repo/pull/42#discussion_r456"),
 		User: &github.User{
-			Login: github.Ptr("responder"),
+			Login: new("responder"),
 		},
 		CreatedAt: &github.Timestamp{Time: time.Now()},
 		UpdatedAt: &github.Timestamp{Time: time.Now()},
@@ -3650,11 +3650,11 @@ func TestPullRequestCommentWrite(t *testing.T) {
 
 	// Setup mock comment for success case
 	mockComment := &github.PullRequestComment{
-		ID:      github.Ptr(int64(456)),
-		Body:    github.Ptr("Updated review comment"),
-		HTMLURL: github.Ptr("https://github.com/owner/repo/pull/42#discussion_r456"),
+		ID:      new(int64(456)),
+		Body:    new("Updated review comment"),
+		HTMLURL: new("https://github.com/owner/repo/pull/42#discussion_r456"),
 		User: &github.User{
-			Login: github.Ptr("testuser"),
+			Login: new("testuser"),
 		},
 		CreatedAt: &github.Timestamp{Time: time.Now()},
 		UpdatedAt: &github.Timestamp{Time: time.Now()},

@@ -1,5 +1,5 @@
 version: 2
-project_name: github-mcp-server
+project_name: omnigit-mcp
 before:
   hooks:
     - go mod tidy
@@ -14,7 +14,7 @@ builds:
       - linux
       - windows
       - darwin
-    main: ./cmd/github-mcp-server
+    main: ./cmd/omnigit-mcp
 
 archives:
   - formats: tar.gz

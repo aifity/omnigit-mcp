@@ -7,11 +7,11 @@ import (
 	"io"
 	"net/http"
 
-	ghErrors "github.com/github/github-mcp-server/pkg/errors"
-	"github.com/github/github-mcp-server/pkg/inventory"
-	"github.com/github/github-mcp-server/pkg/scopes"
-	"github.com/github/github-mcp-server/pkg/translations"
-	"github.com/github/github-mcp-server/pkg/utils"
+	ghErrors "github.com/aifity/omnigit-mcp/pkg/errors"
+	"github.com/aifity/omnigit-mcp/pkg/inventory"
+	"github.com/aifity/omnigit-mcp/pkg/scopes"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
+	"github.com/aifity/omnigit-mcp/pkg/utils"
 	"github.com/google/go-github/v82/github"
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -221,14 +221,14 @@ func CreateGist(t translations.TranslationHelperFunc) inventory.ServerTool {
 
 			files := make(map[github.GistFilename]github.GistFile)
 			files[github.GistFilename(filename)] = github.GistFile{
-				Filename: github.Ptr(filename),
-				Content:  github.Ptr(content),
+				Filename: new(filename),
+				Content:  new(content),
 			}
 
 			gist := &github.Gist{
 				Files:       files,
-				Public:      github.Ptr(public),
-				Description: github.Ptr(description),
+				Public:      new(public),
+				Description: new(description),
 			}
 
 			client, err := deps.GetClient(ctx)
@@ -323,13 +323,13 @@ func UpdateGist(t translations.TranslationHelperFunc) inventory.ServerTool {
 
 			files := make(map[github.GistFilename]github.GistFile)
 			files[github.GistFilename(filename)] = github.GistFile{
-				Filename: github.Ptr(filename),
-				Content:  github.Ptr(content),
+				Filename: new(filename),
+				Content:  new(content),
 			}
 
 			gist := &github.Gist{
 				Files:       files,
-				Description: github.Ptr(description),
+				Description: new(description),
 			}
 
 			client, err := deps.GetClient(ctx)

@@ -43,13 +43,13 @@ mkdir -p "$REPORT_DIR"/{main,branch,diffs}
 log "${YELLOW}Building binaries...${NC}"
 
 log "Building current branch ($CURRENT_BRANCH)..."
-go build -o "$REPORT_DIR/branch/github-mcp-server" ./cmd/github-mcp-server
+go build -o "$REPORT_DIR/branch/omnigit-mcp" ./cmd/omnigit-mcp
 BRANCH_BUILD_OK=$?
 
 log "Building main branch (using temp worktree at merge-base)..."
 TEMP_WORKTREE=$(mktemp -d)
 git worktree add --quiet "$TEMP_WORKTREE" "$MERGE_BASE"
-(cd "$TEMP_WORKTREE" && go build -o "$REPORT_DIR/main/github-mcp-server" ./cmd/github-mcp-server)
+(cd "$TEMP_WORKTREE" && go build -o "$REPORT_DIR/main/omnigit-mcp" ./cmd/omnigit-mcp)
 MAIN_BUILD_OK=$?
 git worktree remove --force "$TEMP_WORKTREE"
 
@@ -257,19 +257,19 @@ for config in "${TEST_CONFIGS[@]}"; do
     
     if [ "$test_type" = "dynamic" ]; then
         # Run dynamic tool call test
-        main_time=$(run_mcp_dynamic_test "$REPORT_DIR/main/github-mcp-server" "main" "$flags" "$REPORT_DIR/main/$test_name/output")
+        main_time=$(run_mcp_dynamic_test "$REPORT_DIR/main/omnigit-mcp" "main" "$flags" "$REPORT_DIR/main/$test_name/output")
         log "  Main:   ${main_time}s"
         
-        branch_time=$(run_mcp_dynamic_test "$REPORT_DIR/branch/github-mcp-server" "branch" "$flags" "$REPORT_DIR/branch/$test_name/output")
+        branch_time=$(run_mcp_dynamic_test "$REPORT_DIR/branch/omnigit-mcp" "branch" "$flags" "$REPORT_DIR/branch/$test_name/output")
         log "  Branch: ${branch_time}s"
         
         endpoints="initialize list_toolsets_before get_toolset_tools enable_toolset list_toolsets_after"
     else
         # Run standard test
-        main_time=$(run_mcp_test "$REPORT_DIR/main/github-mcp-server" "main" "$flags" "$REPORT_DIR/main/$test_name/output")
+        main_time=$(run_mcp_test "$REPORT_DIR/main/omnigit-mcp" "main" "$flags" "$REPORT_DIR/main/$test_name/output")
         log "  Main:   ${main_time}s"
         
-        branch_time=$(run_mcp_test "$REPORT_DIR/branch/github-mcp-server" "branch" "$flags" "$REPORT_DIR/branch/$test_name/output")
+        branch_time=$(run_mcp_test "$REPORT_DIR/branch/omnigit-mcp" "branch" "$flags" "$REPORT_DIR/branch/$test_name/output")
         log "  Branch: ${branch_time}s"
         
         endpoints="initialize tools resources prompts"

@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strings"
 
-	ghcontext "github.com/github/github-mcp-server/pkg/context"
-	headers "github.com/github/github-mcp-server/pkg/http/headers"
+	ghcontext "github.com/aifity/omnigit-mcp/pkg/context"
+	headers "github.com/aifity/omnigit-mcp/pkg/http/headers"
 )
 
 type BearerAuthTransport struct {

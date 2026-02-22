@@ -69,5 +69,5 @@ func (c *Client) GetRawContent(ctx context.Context, owner, repo, path string, op
 		return nil, err
 	}
 
-	return c.client.Client().Do(req)
+	return c.client.Client().Do(req) //nolint:gosec // G704: URL is constructed internally from validated owner/repo/path parameters, not from raw user input
 }

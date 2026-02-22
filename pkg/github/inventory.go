@@ -1,9 +1,9 @@
 package github
 
 import (
-	"github.com/github/github-mcp-server/pkg/git"
-	"github.com/github/github-mcp-server/pkg/inventory"
-	"github.com/github/github-mcp-server/pkg/translations"
+	"github.com/aifity/omnigit-mcp/pkg/git"
+	"github.com/aifity/omnigit-mcp/pkg/inventory"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
 )
 
 // NewInventory creates an Inventory with all available tools, resources, and prompts.

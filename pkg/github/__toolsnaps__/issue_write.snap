@@ -1,7 +1,7 @@
 {
   "_meta": {
     "ui": {
-      "resourceUri": "ui://github-mcp-server/issue-write",
+      "resourceUri": "ui://omnigit-mcp/issue-write",
       "visibility": [
         "model",
         "app"

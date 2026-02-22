@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/github/github-mcp-server/internal/ghmcp"
-	"github.com/github/github-mcp-server/pkg/github"
-	"github.com/github/github-mcp-server/pkg/translations"
+	"github.com/aifity/omnigit-mcp/internal/ghmcp"
+	"github.com/aifity/omnigit-mcp/pkg/github"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
 	gogithub "github.com/google/go-github/v82/github"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/require"
@@ -113,7 +113,7 @@ func waitForRateLimit(t *testing.T) {
 func ensureDockerImageBuilt(t *testing.T) {
 	buildOnce.Do(func() {
 		t.Log("Building Docker image for e2e tests...")
-		cmd := exec.Command("docker", "build", "-t", "github/e2e-github-mcp-server", ".")
+		cmd := exec.Command("docker", "build", "-t", "github/e2e-omnigit-mcp", ".")
 		cmd.Dir = ".." // Run this in the context of the root, where the Dockerfile is located.
 		output, err := cmd.CombinedOutput()
 		buildError = err
@@ -188,7 +188,7 @@ func setupMCPClient(t *testing.T, options ...clientOption) *mcp.ClientSession {
 		}
 
 		// Add the image name
-		args = append(args, "github/e2e-github-mcp-server")
+		args = append(args, "github/e2e-omnigit-mcp")
 
 		// Construct the env vars for the MCP Client to execute docker with
 		// We need to include os.Environ() so docker can find its socket and config
@@ -336,7 +336,7 @@ func TestTags(t *testing.T) {
 	currentOwner := trimmedGetMeText.Login
 
 	// Then create a repository with a README (via autoInit)
-	repoName := fmt.Sprintf("github-mcp-server-e2e-%s-%d", t.Name(), time.Now().UnixMilli())
+	repoName := fmt.Sprintf("omnigit-mcp-e2e-%s-%d", t.Name(), time.Now().UnixMilli())
 
 	t.Logf("Creating repository %s/%s...", currentOwner, repoName)
 	_, err = mcpClient.CallTool(ctx, &mcp.CallToolParams{
@@ -468,7 +468,7 @@ func TestFileDeletion(t *testing.T) {
 	currentOwner := trimmedGetMeText.Login
 
 	// Then create a repository with a README (via autoInit)
-	repoName := fmt.Sprintf("github-mcp-server-e2e-%s-%d", t.Name(), time.Now().UnixMilli())
+	repoName := fmt.Sprintf("omnigit-mcp-e2e-%s-%d", t.Name(), time.Now().UnixMilli())
 	t.Logf("Creating repository %s/%s...", currentOwner, repoName)
 	_, err = mcpClient.CallTool(ctx, &mcp.CallToolParams{
 		Name: "create_repository",
@@ -655,7 +655,7 @@ func TestDirectoryDeletion(t *testing.T) {
 	currentOwner := trimmedGetMeText.Login
 
 	// Then create a repository with a README (via autoInit)
-	repoName := fmt.Sprintf("github-mcp-server-e2e-%s-%d", t.Name(), time.Now().UnixMilli())
+	repoName := fmt.Sprintf("omnigit-mcp-e2e-%s-%d", t.Name(), time.Now().UnixMilli())
 	t.Logf("Creating repository %s/%s...", currentOwner, repoName)
 	_, err = mcpClient.CallTool(ctx, &mcp.CallToolParams{
 		Name: "create_repository",
@@ -871,7 +871,7 @@ func TestRequestCopilotReview(t *testing.T) {
 	currentOwner := trimmedGetMeText.Login
 
 	// Then create a repository with a README (via autoInit)
-	repoName := fmt.Sprintf("github-mcp-server-e2e-%s-%d", t.Name(), time.Now().UnixMilli())
+	repoName := fmt.Sprintf("omnigit-mcp-e2e-%s-%d", t.Name(), time.Now().UnixMilli())
 
 	t.Logf("Creating repository %s/%s...", currentOwner, repoName)
 	_, err = mcpClient.CallTool(ctx, &mcp.CallToolParams{
@@ -1031,7 +1031,7 @@ func TestAssignCopilotToIssue(t *testing.T) {
 	currentOwner := trimmedGetMeText.Login
 
 	// Then create a repository with a README (via autoInit)
-	repoName := fmt.Sprintf("github-mcp-server-e2e-%s-%d", t.Name(), time.Now().UnixMilli())
+	repoName := fmt.Sprintf("omnigit-mcp-e2e-%s-%d", t.Name(), time.Now().UnixMilli())
 
 	t.Logf("Creating repository %s/%s...", currentOwner, repoName)
 	_, err = mcpClient.CallTool(ctx, &mcp.CallToolParams{
@@ -1133,7 +1133,7 @@ func TestPullRequestAtomicCreateAndSubmit(t *testing.T) {
 	currentOwner := trimmedGetMeText.Login
 
 	// Then create a repository with a README (via autoInit)
-	repoName := fmt.Sprintf("github-mcp-server-e2e-%s-%d", t.Name(), time.Now().UnixMilli())
+	repoName := fmt.Sprintf("omnigit-mcp-e2e-%s-%d", t.Name(), time.Now().UnixMilli())
 
 	t.Logf("Creating repository %s/%s...", currentOwner, repoName)
 	_, err = mcpClient.CallTool(ctx, &mcp.CallToolParams{
@@ -1294,7 +1294,7 @@ func TestPullRequestReviewCommentSubmit(t *testing.T) {
 	currentOwner := trimmedGetMeText.Login
 
 	// Then create a repository with a README (via autoInit)
-	repoName := fmt.Sprintf("github-mcp-server-e2e-%s-%d", t.Name(), time.Now().UnixMilli())
+	repoName := fmt.Sprintf("omnigit-mcp-e2e-%s-%d", t.Name(), time.Now().UnixMilli())
 
 	t.Logf("Creating repository %s/%s...", currentOwner, repoName)
 	_, err = mcpClient.CallTool(ctx, &mcp.CallToolParams{
@@ -1552,7 +1552,7 @@ func TestPullRequestReviewDeletion(t *testing.T) {
 	currentOwner := trimmedGetMeText.Login
 
 	// Then create a repository with a README (via autoInit)
-	repoName := fmt.Sprintf("github-mcp-server-e2e-%s-%d", t.Name(), time.Now().UnixMilli())
+	repoName := fmt.Sprintf("omnigit-mcp-e2e-%s-%d", t.Name(), time.Now().UnixMilli())
 
 	t.Logf("Creating repository %s/%s...", currentOwner, repoName)
 	_, err = mcpClient.CallTool(ctx, &mcp.CallToolParams{

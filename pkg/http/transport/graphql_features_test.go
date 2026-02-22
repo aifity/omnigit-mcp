@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	ghcontext "github.com/github/github-mcp-server/pkg/context"
-	"github.com/github/github-mcp-server/pkg/http/headers"
+	ghcontext "github.com/aifity/omnigit-mcp/pkg/context"
+	"github.com/aifity/omnigit-mcp/pkg/http/headers"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -5,9 +5,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/github/github-mcp-server/pkg/git"
-	"github.com/github/github-mcp-server/pkg/inventory"
-	"github.com/github/github-mcp-server/pkg/translations"
+	"github.com/aifity/omnigit-mcp/pkg/git"
+	"github.com/aifity/omnigit-mcp/pkg/inventory"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
 	"github.com/google/go-github/v82/github"
 	"github.com/shurcooL/githubv4"
 )
@@ -282,8 +282,10 @@ func AllTools(t translations.TranslationHelperFunc) []inventory.ServerTool {
 }
 
 // ToBoolPtr converts a bool to a *bool pointer.
+//
+//go:fix inline
 func ToBoolPtr(b bool) *bool {
-	return &b
+	return new(b)
 }
 
 // ToStringPtr converts a string to a *string pointer.

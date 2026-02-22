@@ -9,15 +9,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/github/github-mcp-server/pkg/bodyfilter"
-	ghcontext "github.com/github/github-mcp-server/pkg/context"
-	ghErrors "github.com/github/github-mcp-server/pkg/errors"
-	"github.com/github/github-mcp-server/pkg/inventory"
-	"github.com/github/github-mcp-server/pkg/octicons"
-	"github.com/github/github-mcp-server/pkg/sanitize"
-	"github.com/github/github-mcp-server/pkg/scopes"
-	"github.com/github/github-mcp-server/pkg/translations"
-	"github.com/github/github-mcp-server/pkg/utils"
+	"github.com/aifity/omnigit-mcp/pkg/bodyfilter"
+	ghcontext "github.com/aifity/omnigit-mcp/pkg/context"
+	ghErrors "github.com/aifity/omnigit-mcp/pkg/errors"
+	"github.com/aifity/omnigit-mcp/pkg/inventory"
+	"github.com/aifity/omnigit-mcp/pkg/octicons"
+	"github.com/aifity/omnigit-mcp/pkg/sanitize"
+	"github.com/aifity/omnigit-mcp/pkg/scopes"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
+	"github.com/aifity/omnigit-mcp/pkg/utils"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/google/go-github/v82/github"
 	"github.com/google/jsonschema-go/jsonschema"
@@ -210,25 +210,25 @@ func fragmentToIssue(fragment IssueFragment) *github.Issue {
 	var foundLabels []*github.Label
 	for _, labelNode := range fragment.Labels.Nodes {
 		foundLabels = append(foundLabels, &github.Label{
-			Name:        github.Ptr(string(labelNode.Name)),
-			NodeID:      github.Ptr(string(labelNode.ID)),
-			Description: github.Ptr(string(labelNode.Description)),
+			Name:        new(string(labelNode.Name)),
+			NodeID:      new(string(labelNode.ID)),
+			Description: new(string(labelNode.Description)),
 		})
 	}
 
 	return &github.Issue{
-		Number:    github.Ptr(int(fragment.Number)),
-		Title:     github.Ptr(sanitize.Sanitize(string(fragment.Title))),
+		Number:    new(int(fragment.Number)),
+		Title:     new(sanitize.Sanitize(string(fragment.Title))),
 		CreatedAt: &github.Timestamp{Time: fragment.CreatedAt.Time},
 		UpdatedAt: &github.Timestamp{Time: fragment.UpdatedAt.Time},
 		User: &github.User{
-			Login: github.Ptr(string(fragment.Author.Login)),
+			Login: new(string(fragment.Author.Login)),
 		},
-		State:    github.Ptr(string(fragment.State)),
-		ID:       github.Ptr(fragment.DatabaseID),
-		Body:     github.Ptr(sanitize.Sanitize(string(fragment.Body))),
+		State:    new(string(fragment.State)),
+		ID:       new(fragment.DatabaseID),
+		Body:     new(sanitize.Sanitize(string(fragment.Body))),
 		Labels:   foundLabels,
-		Comments: github.Ptr(int(fragment.Comments.TotalCount)),
+		Comments: new(int(fragment.Comments.TotalCount)),
 	}
 }
 
@@ -370,10 +370,10 @@ func GetIssue(ctx context.Context, client *github.Client, deps ToolDependencies,
 	// Sanitize title/body on response
 	if issue != nil {
 		if issue.Title != nil {
-			issue.Title = github.Ptr(sanitize.Sanitize(*issue.Title))
+			issue.Title = new(sanitize.Sanitize(*issue.Title))
 		}
 		if issue.Body != nil {
-			issue.Body = github.Ptr(sanitize.Sanitize(*issue.Body))
+			issue.Body = new(sanitize.Sanitize(*issue.Body))
 		}
 	}
 
@@ -671,7 +671,7 @@ func AddIssueComment(t translations.TranslationHelperFunc) inventory.ServerTool 
 			}
 
 			comment := &github.IssueComment{
-				Body: github.Ptr(body),
+				Body: new(body),
 			}
 
 			client, err := deps.GetClient(ctx)
@@ -776,7 +776,7 @@ Options are:
 				}
 
 				comment := &github.IssueComment{
-					Body: github.Ptr(body),
+					Body: new(body),
 				}
 
 				updatedComment, resp, err := client.Issues.EditComment(ctx, owner, repo, commentID, comment)
@@ -948,7 +948,7 @@ Options are:
 func AddSubIssue(ctx context.Context, client *github.Client, owner string, repo string, issueNumber int, subIssueID int, replaceParent bool) (*mcp.CallToolResult, error) {
 	subIssueRequest := github.SubIssueRequest{
 		SubIssueID:    int64(subIssueID),
-		ReplaceParent: github.Ptr(replaceParent),
+		ReplaceParent: new(replaceParent),
 	}
 
 	subIssue, resp, err := client.SubIssue.Add(ctx, owner, repo, int64(issueNumber), subIssueRequest)
@@ -1123,7 +1123,7 @@ func SearchIssues(t translations.TranslationHelperFunc) inventory.ServerTool {
 
 // IssueWrite creates a tool to create a new or update an existing issue in a GitHub repository.
 // IssueWriteUIResourceURI is the URI for the issue_write tool's MCP App UI resource.
-const IssueWriteUIResourceURI = "ui://github-mcp-server/issue-write"
+const IssueWriteUIResourceURI = "ui://omnigit-mcp/issue-write"
 
 func IssueWrite(t translations.TranslationHelperFunc) inventory.ServerTool {
 	return NewTool(
@@ -1341,8 +1341,8 @@ func CreateIssue(ctx context.Context, client *github.Client, owner string, repo 
 
 	// Create the issue request
 	issueRequest := &github.IssueRequest{
-		Title:     github.Ptr(title),
-		Body:      github.Ptr(filteredBody),
+		Title:     new(title),
+		Body:      new(filteredBody),
 		Assignees: &assignees,
 		Labels:    &labels,
 	}
@@ -1352,7 +1352,7 @@ func CreateIssue(ctx context.Context, client *github.Client, owner string, repo 
 	}
 
 	if issueType != "" {
-		issueRequest.Type = github.Ptr(issueType)
+		issueRequest.Type = new(issueType)
 	}
 
 	issue, resp, err := client.Issues.Create(ctx, owner, repo, issueRequest)
@@ -1393,13 +1393,13 @@ func UpdateIssue(ctx context.Context, client *github.Client, gqlClient *githubv4
 
 	// Set optional parameters if provided
 	if title != "" {
-		issueRequest.Title = github.Ptr(title)
+		issueRequest.Title = new(title)
 	}
 
 	if body != "" {
 		// Filter out unwanted patterns from the body before updating the issue
 		filteredBody := bodyfilter.FilterBody(body)
-		issueRequest.Body = github.Ptr(filteredBody)
+		issueRequest.Body = new(filteredBody)
 	}
 
 	if len(labels) > 0 {
@@ -1415,7 +1415,7 @@ func UpdateIssue(ctx context.Context, client *github.Client, gqlClient *githubv4
 	}
 
 	if issueType != "" {
-		issueRequest.Type = github.Ptr(issueType)
+		issueRequest.Type = new(issueType)
 	}
 
 	updatedIssue, resp, err := client.Issues.Edit(ctx, owner, repo, issueNumber, issueRequest)
@@ -1771,7 +1771,7 @@ func (d *mvpDescription) String() string {
 		sb.WriteString("\n\n")
 		sb.WriteString("This tool can help with the following outcomes:\n")
 		for _, outcome := range d.outcomes {
-			sb.WriteString(fmt.Sprintf("- %s\n", outcome))
+			fmt.Fprintf(&sb, "- %s\n", outcome)
 		}
 	}
 
@@ -1779,7 +1779,7 @@ func (d *mvpDescription) String() string {
 		sb.WriteString("\n\n")
 		sb.WriteString("More information can be found at:\n")
 		for _, link := range d.referenceLinks {
-			sb.WriteString(fmt.Sprintf("- %s\n", link))
+			fmt.Fprintf(&sb, "- %s\n", link)
 		}
 	}
 

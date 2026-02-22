@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/github/github-mcp-server/pkg/http/headers"
+	"github.com/aifity/omnigit-mcp/pkg/http/headers"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

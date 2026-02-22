@@ -107,6 +107,6 @@ Use the principle of least privilege: add scopes only when a tool request fails 
 
 ## References
 - Remote server URL: `https://api.githubcopilot.com/mcp/`
-- Release binaries: [GitHub Releases](https://github.com/github/github-mcp-server/releases)
+- Release binaries: [GitHub Releases](https://github.com/aifity/omnigit-mcp/releases)
 - OpenAI Codex MCP docs: https://developers.openai.com/codex/mcp
 - Main project README: [Advanced configuration options](../../README.md)

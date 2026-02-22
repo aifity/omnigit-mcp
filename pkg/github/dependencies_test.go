@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/github/github-mcp-server/pkg/github"
-	"github.com/github/github-mcp-server/pkg/translations"
+	"github.com/aifity/omnigit-mcp/pkg/github"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
 	"github.com/stretchr/testify/assert"
 )
 

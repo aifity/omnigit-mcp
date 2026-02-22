@@ -7,15 +7,15 @@ import (
 	"net/http"
 	"os"
 
-	ghcontext "github.com/github/github-mcp-server/pkg/context"
-	"github.com/github/github-mcp-server/pkg/git/gitops"
-	"github.com/github/github-mcp-server/pkg/http/transport"
-	"github.com/github/github-mcp-server/pkg/inventory"
-	"github.com/github/github-mcp-server/pkg/lockdown"
-	"github.com/github/github-mcp-server/pkg/raw"
-	"github.com/github/github-mcp-server/pkg/scopes"
-	"github.com/github/github-mcp-server/pkg/translations"
-	"github.com/github/github-mcp-server/pkg/utils"
+	ghcontext "github.com/aifity/omnigit-mcp/pkg/context"
+	"github.com/aifity/omnigit-mcp/pkg/git/gitops"
+	"github.com/aifity/omnigit-mcp/pkg/http/transport"
+	"github.com/aifity/omnigit-mcp/pkg/inventory"
+	"github.com/aifity/omnigit-mcp/pkg/lockdown"
+	"github.com/aifity/omnigit-mcp/pkg/raw"
+	"github.com/aifity/omnigit-mcp/pkg/scopes"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
+	"github.com/aifity/omnigit-mcp/pkg/utils"
 	gogithub "github.com/google/go-github/v82/github"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/shurcooL/githubv4"
@@ -315,7 +315,7 @@ func (d *RequestDeps) GetClient(ctx context.Context) (*gogithub.Client, error) {
 
 	// Construct REST client
 	restClient := gogithub.NewClient(nil).WithAuthToken(token)
-	restClient.UserAgent = fmt.Sprintf("github-mcp-server/%s", d.version)
+	restClient.UserAgent = fmt.Sprintf("omnigit-mcp/%s", d.version)
 	restClient.BaseURL = baseRestURL
 	restClient.UploadURL = uploadURL
 	return restClient, nil

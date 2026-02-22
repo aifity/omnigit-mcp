@@ -9,11 +9,11 @@ import (
 	"strconv"
 	"time"
 
-	ghErrors "github.com/github/github-mcp-server/pkg/errors"
-	"github.com/github/github-mcp-server/pkg/inventory"
-	"github.com/github/github-mcp-server/pkg/scopes"
-	"github.com/github/github-mcp-server/pkg/translations"
-	"github.com/github/github-mcp-server/pkg/utils"
+	ghErrors "github.com/aifity/omnigit-mcp/pkg/errors"
+	"github.com/aifity/omnigit-mcp/pkg/inventory"
+	"github.com/aifity/omnigit-mcp/pkg/scopes"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
+	"github.com/aifity/omnigit-mcp/pkg/utils"
 	"github.com/google/go-github/v82/github"
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -456,10 +456,10 @@ func ManageNotificationSubscription(t translations.TranslationHelperFunc) invent
 
 			switch action {
 			case NotificationActionIgnore:
-				sub := &github.Subscription{Ignored: ToBoolPtr(true)}
+				sub := &github.Subscription{Ignored: new(true)}
 				result, resp, apiErr = client.Activity.SetThreadSubscription(ctx, notificationID, sub)
 			case NotificationActionWatch:
-				sub := &github.Subscription{Ignored: ToBoolPtr(false), Subscribed: ToBoolPtr(true)}
+				sub := &github.Subscription{Ignored: new(false), Subscribed: new(true)}
 				result, resp, apiErr = client.Activity.SetThreadSubscription(ctx, notificationID, sub)
 			case NotificationActionDelete:
 				resp, apiErr = client.Activity.DeleteThreadSubscription(ctx, notificationID)
@@ -560,10 +560,10 @@ func ManageRepositoryNotificationSubscription(t translations.TranslationHelperFu
 
 			switch action {
 			case RepositorySubscriptionActionIgnore:
-				sub := &github.Subscription{Ignored: ToBoolPtr(true)}
+				sub := &github.Subscription{Ignored: new(true)}
 				result, resp, apiErr = client.Activity.SetRepositorySubscription(ctx, owner, repo, sub)
 			case RepositorySubscriptionActionWatch:
-				sub := &github.Subscription{Ignored: ToBoolPtr(false), Subscribed: ToBoolPtr(true)}
+				sub := &github.Subscription{Ignored: new(false), Subscribed: new(true)}
 				result, resp, apiErr = client.Activity.SetRepositorySubscription(ctx, owner, repo, sub)
 			case RepositorySubscriptionActionDelete:
 				resp, apiErr = client.Activity.DeleteRepositorySubscription(ctx, owner, repo)

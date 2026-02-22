@@ -127,7 +127,7 @@ function CreatePRApp() {
   const [maintainerCanModify, setMaintainerCanModify] = useState(true);
 
   const { app, error: appError, toolInput, callTool } = useMcpApp({
-    appName: "github-mcp-server-create-pull-request",
+    appName: "omnigit-mcp-create-pull-request",
   });
 
   const owner = (toolInput?.owner as string) || "";
