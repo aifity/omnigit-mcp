@@ -1571,10 +1571,11 @@ func Test_GetPullRequestComments(t *testing.T) {
 												"totalCount": 2,
 												"nodes": []map[string]any{
 													{
-														"id":   "PRRC_kwDOA0xdyM4AX1Y0",
-														"body": "This looks good",
-														"path": "file1.go",
-														"line": 5,
+														"id":         "PRRC_kwDOA0xdyM4AX1Y0",
+														"databaseId": 101,
+														"body":       "This looks good",
+														"path":       "file1.go",
+														"line":       5,
 														"author": map[string]any{
 															"login": "reviewer1",
 														},
@@ -1583,10 +1584,11 @@ func Test_GetPullRequestComments(t *testing.T) {
 														"url":       "https://github.com/owner/repo/pull/42#discussion_r101",
 													},
 													{
-														"id":   "PRRC_kwDOA0xdyM4AX1Y1",
-														"body": "Please fix this",
-														"path": "file1.go",
-														"line": 10,
+														"id":         "PRRC_kwDOA0xdyM4AX1Y1",
+														"databaseId": 102,
+														"body":       "Please fix this",
+														"path":       "file1.go",
+														"line":       10,
 														"author": map[string]any{
 															"login": "reviewer2",
 														},
@@ -1633,7 +1635,7 @@ func Test_GetPullRequestComments(t *testing.T) {
 				assert.Len(t, threads, 1)
 
 				thread := threads[0].(map[string]any)
-				assert.Equal(t, "RT_kwDOA0xdyM4AX1Yz", thread["ID"])
+				assert.Equal(t, "RT_kwDOA0xdyM4AX1Yz", thread["NodeID"])
 				assert.Equal(t, false, thread["IsResolved"])
 				assert.Equal(t, false, thread["IsOutdated"])
 				assert.Equal(t, false, thread["IsCollapsed"])
@@ -1645,7 +1647,8 @@ func Test_GetPullRequestComments(t *testing.T) {
 
 				// Validate first comment
 				comment1 := commentNodes[0].(map[string]any)
-				assert.Equal(t, "PRRC_kwDOA0xdyM4AX1Y0", comment1["ID"])
+				assert.Equal(t, "PRRC_kwDOA0xdyM4AX1Y0", comment1["NodeID"])
+				assert.Equal(t, float64(101), comment1["DatabaseID"])
 				assert.Equal(t, "This looks good", comment1["Body"])
 				assert.Equal(t, "file1.go", comment1["Path"])
 
@@ -1712,10 +1715,11 @@ func Test_GetPullRequestComments(t *testing.T) {
 												"totalCount": 2,
 												"nodes": []map[string]any{
 													{
-														"id":   "PRRC_kwDOA0xdyM4AX1Y0",
-														"body": "Maintainer review comment",
-														"path": "file1.go",
-														"line": 5,
+														"id":         "PRRC_kwDOA0xdyM4AX1Y0",
+														"databaseId": 2010,
+														"body":       "Maintainer review comment",
+														"path":       "file1.go",
+														"line":       5,
 														"author": map[string]any{
 															"login": "maintainer",
 														},
@@ -1724,10 +1728,11 @@ func Test_GetPullRequestComments(t *testing.T) {
 														"url":       "https://github.com/owner/repo/pull/42#discussion_r2010",
 													},
 													{
-														"id":   "PRRC_kwDOA0xdyM4AX1Y1",
-														"body": "External review comment",
-														"path": "file1.go",
-														"line": 10,
+														"id":         "PRRC_kwDOA0xdyM4AX1Y1",
+														"databaseId": 2011,
+														"body":       "External review comment",
+														"path":       "file1.go",
+														"line":       10,
 														"author": map[string]any{
 															"login": "testuser",
 														},

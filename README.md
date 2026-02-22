@@ -16,6 +16,32 @@ Built for developers who want to connect their AI tools to GitHub context and ca
 
 ---
 
+## Fork differences from upstream
+
+This is a fork of [github/github-mcp-server](https://github.com/github/github-mcp-server) with the following additions and improvements.
+
+### Improved review comment ID resolution
+
+`get_review_comments` now returns a `databaseId` (numeric REST API ID) alongside the GraphQL `nodeId` for every comment node. Previously only the opaque base64 GraphQL node ID was returned, forcing the model to decode it or scrape the numeric ID from comment URLs before calling `add_reply_to_pull_request_comment` or `pull_request_comment_write`. The `commentId` / `comment_id` parameter descriptions in those tools now explicitly say to use `databaseId`.
+
+### Issue comment management (`issue_comment_write`)
+
+A new `issue_comment_write` tool lets AI agents update or delete existing issue comments. Previously only `add_issue_comment` (create) was available.
+
+### PR review comment management (`pull_request_comment_write`)
+
+A new `pull_request_comment_write` tool lets AI agents update or delete existing pull request review comments.
+
+### Body filtering (`filter_patterns`)
+
+Issue bodies, PR bodies, and local git commit messages are filtered before being sent to GitHub. By default, `Co-Authored-By:` trailers and generic AI-generated PR footers are stripped. The filter list is fully configurable via `filter_patterns` in `github-mcp-server-config.json`. See [i18n / Overriding Descriptions](#i18n--overriding-descriptions) for details.
+
+### Local Git toolset (`local_git`)
+
+A full set of `git_*` tools for operating on local repositories without going through the GitHub API: `git_add`, `git_apply_patch_file`, `git_apply_patch_string`, `git_checkout`, `git_commit`, `git_create_branch`, `git_diff`, `git_diff_staged`, `git_diff_unstaged`, `git_init`, `git_list_repositories`, `git_log`, `git_pull`, `git_push`, `git_reset`, `git_show`, and `git_status`.
+
+---
+
 ## Remote GitHub MCP Server
 
 [![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Server-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=github&config=%7B%22type%22%3A%20%22http%22%2C%22url%22%3A%20%22https%3A%2F%2Fapi.githubcopilot.com%2Fmcp%2F%22%7D) [![Install in VS Code Insiders](https://img.shields.io/badge/VS_Code_Insiders-Install_Server-24bfa5?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=github&config=%7B%22type%22%3A%20%22http%22%2C%22url%22%3A%20%22https%3A%2F%2Fapi.githubcopilot.com%2Fmcp%2F%22%7D&quality=insiders)
