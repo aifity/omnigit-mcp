@@ -184,7 +184,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, inventory.ErrUnknownTools) {
 			w.WriteHeader(http.StatusBadRequest)
-			if _, writeErr := w.Write([]byte(err.Error())); writeErr != nil {
+			if _, writeErr := w.Write([]byte(err.Error())); writeErr != nil { //nolint:gosec // G705: err.Error() is a controlled internal error string, not user-supplied input
 				h.logger.Error("failed to write response", "error", writeErr)
 			}
 			return

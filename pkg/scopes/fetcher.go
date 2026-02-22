@@ -83,7 +83,7 @@ func (f *Fetcher) FetchTokenScopes(ctx context.Context, token string) ([]string,
 	req.Header.Set(headers.AcceptHeader, "application/vnd.github+json")
 	req.Header.Set(headers.GitHubAPIVersionHeader, "2022-11-28")
 
-	resp, err := f.client.Do(req)
+	resp, err := f.client.Do(req) //nolint:gosec // G704: request URL is constructed from a validated API host and a static path, not from arbitrary user input
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch scopes: %w", err)
 	}

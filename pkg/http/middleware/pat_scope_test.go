@@ -55,7 +55,7 @@ func TestWithPATScopes(t *testing.T) {
 		},
 		{
 			name: "fine-grained PAT skips scope fetching",
-			tokenInfo: &ghcontext.TokenInfo{
+			tokenInfo: &ghcontext.TokenInfo{ //nolint:gosec // G101: fake token used only in tests, not a real credential
 				Token:     "github_pat_xxxxxxxxxxxxxxxxxxxxxxx",
 				TokenType: utils.TokenTypeFineGrainedPersonalAccessToken,
 			},

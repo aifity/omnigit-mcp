@@ -33,6 +33,9 @@ jobs:
           setup_go: "true"
           install_command: go mod download
           start_command: go run ./cmd/omnigit-mcp stdio
+          # The baseline (origin/main) still has cmd/github-mcp-server before this rename PR
+          # is merged; probe errors are therefore expected. Re-enable once main is updated.
+          fail_on_error: "false"
           env_vars: |
             GITHUB_PERSONAL_ACCESS_TOKEN=test-token
           configurations: |
