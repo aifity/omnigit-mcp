@@ -12,9 +12,9 @@ The following open source dependencies are used to build the [github/omnigit-mcp
 
 The following packages are included for the amd64, arm64 architectures.
 
+ - [github.com/aifity/omnigit-mcp](https://pkg.go.dev/github.com/aifity/omnigit-mcp) ([MIT](https://github.com/aifity/omnigit-mcp/blob/HEAD/LICENSE))
  - [github.com/aymerick/douceur](https://pkg.go.dev/github.com/aymerick/douceur) ([MIT](https://github.com/aymerick/douceur/blob/v0.2.0/LICENSE))
  - [github.com/fsnotify/fsnotify](https://pkg.go.dev/github.com/fsnotify/fsnotify) ([BSD-3-Clause](https://github.com/fsnotify/fsnotify/blob/v1.9.0/LICENSE))
- - [github.com/aifity/omnigit-mcp](https://pkg.go.dev/github.com/aifity/omnigit-mcp) ([MIT](https://github.com/aifity/omnigit-mcp/blob/HEAD/LICENSE))
  - [github.com/go-chi/chi/v5](https://pkg.go.dev/github.com/go-chi/chi/v5) ([MIT](https://github.com/go-chi/chi/blob/v5.2.5/LICENSE))
  - [github.com/go-openapi/jsonpointer](https://pkg.go.dev/github.com/go-openapi/jsonpointer) ([Apache-2.0](https://github.com/go-openapi/jsonpointer/blob/v0.22.4/LICENSE))
  - [github.com/go-openapi/swag/jsonname](https://pkg.go.dev/github.com/go-openapi/swag/jsonname) ([Apache-2.0](https://github.com/go-openapi/swag/blob/jsonname/v0.25.4/jsonname/LICENSE))
