@@ -32,18 +32,5 @@
         }
       ]
     }
-  ],
-  "remotes": [
-    {
-      "type": "streamable-http",
-      "url": "https://api.githubcopilot.com/mcp/",
-      "headers": [
-        {
-          "name": "Authorization",
-          "description": "Authorization header with authentication token (PAT or App token)",
-          "isSecret": true
-        }
-      ]
-    }
   ]
 }
