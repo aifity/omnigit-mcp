@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "MCP App UIs for github-mcp-server using Primer React",
+  "description": "MCP App UIs for omnigit-mcp using Primer React",
   "scripts": {
     "build": "npm run build:get-me && npm run build:issue-write && npm run build:pr-write",
     "build:get-me": "cross-env APP=get-me vite build",

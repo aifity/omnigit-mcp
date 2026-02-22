@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.github/github-mcp-server",
-  "description": "Connect AI assistants to GitHub and local Git repositories - manage repos, issues, PRs, workflows, and local git operations through natural language.",
+  "name": "io.github.github/omnigit-mcp",
+  "description": "Connect AI assistants to GitHub - manage repos, issues, PRs, workflows, and git operations.",
   "title": "GitHub",
   "repository": {
-    "url": "https://github.com/github/github-mcp-server",
+    "url": "https://github.com/github/omnigit-mcp",
     "source": "github"
   },
   "version": "${VERSION}",
   "packages": [
     {
       "registryType": "oci",
-      "identifier": "ghcr.io/github/github-mcp-server:${VERSION}",
+      "identifier": "ghcr.io/github/omnigit-mcp:${VERSION}",
       "transport": {
         "type": "stdio"
       },

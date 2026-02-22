@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/github/github-mcp-server/pkg/inventory"
-	"github.com/github/github-mcp-server/pkg/translations"
+	"github.com/github/omnigit-mcp/pkg/inventory"
+	"github.com/github/omnigit-mcp/pkg/translations"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	ghcontext "github.com/github/github-mcp-server/pkg/context"
+	ghcontext "github.com/github/omnigit-mcp/pkg/context"
 )
 
 // mcpJSONRPCRequest represents the structure of an MCP JSON-RPC request.

@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/github/github-mcp-server/pkg/bodyfilter"
-	"github.com/github/github-mcp-server/pkg/git/gitops"
+	"github.com/github/omnigit-mcp/pkg/bodyfilter"
+	"github.com/github/omnigit-mcp/pkg/git/gitops"
 )
 
 // GitOperations implements GitOperations using git CLI commands

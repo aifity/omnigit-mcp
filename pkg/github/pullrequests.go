@@ -13,14 +13,14 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/shurcooL/githubv4"
 
-	"github.com/github/github-mcp-server/pkg/bodyfilter"
-	ghErrors "github.com/github/github-mcp-server/pkg/errors"
-	"github.com/github/github-mcp-server/pkg/inventory"
-	"github.com/github/github-mcp-server/pkg/octicons"
-	"github.com/github/github-mcp-server/pkg/sanitize"
-	"github.com/github/github-mcp-server/pkg/scopes"
-	"github.com/github/github-mcp-server/pkg/translations"
-	"github.com/github/github-mcp-server/pkg/utils"
+	"github.com/github/omnigit-mcp/pkg/bodyfilter"
+	ghErrors "github.com/github/omnigit-mcp/pkg/errors"
+	"github.com/github/omnigit-mcp/pkg/inventory"
+	"github.com/github/omnigit-mcp/pkg/octicons"
+	"github.com/github/omnigit-mcp/pkg/sanitize"
+	"github.com/github/omnigit-mcp/pkg/scopes"
+	"github.com/github/omnigit-mcp/pkg/translations"
+	"github.com/github/omnigit-mcp/pkg/utils"
 )
 
 // PullRequestRead creates a tool to get details of a specific pull request.
@@ -485,7 +485,7 @@ func GetPullRequestReviews(ctx context.Context, client *github.Client, deps Tool
 }
 
 // PullRequestWriteUIResourceURI is the URI for the create_pull_request tool's MCP App UI resource.
-const PullRequestWriteUIResourceURI = "ui://github-mcp-server/pr-write"
+const PullRequestWriteUIResourceURI = "ui://omnigit-mcp/pr-write"
 
 // CreatePullRequest creates a tool to create a new pull request.
 func CreatePullRequest(t translations.TranslationHelperFunc) inventory.ServerTool {

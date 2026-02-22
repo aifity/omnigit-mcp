@@ -9,15 +9,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/github/github-mcp-server/pkg/bodyfilter"
-	ghcontext "github.com/github/github-mcp-server/pkg/context"
-	ghErrors "github.com/github/github-mcp-server/pkg/errors"
-	"github.com/github/github-mcp-server/pkg/inventory"
-	"github.com/github/github-mcp-server/pkg/octicons"
-	"github.com/github/github-mcp-server/pkg/sanitize"
-	"github.com/github/github-mcp-server/pkg/scopes"
-	"github.com/github/github-mcp-server/pkg/translations"
-	"github.com/github/github-mcp-server/pkg/utils"
+	"github.com/github/omnigit-mcp/pkg/bodyfilter"
+	ghcontext "github.com/github/omnigit-mcp/pkg/context"
+	ghErrors "github.com/github/omnigit-mcp/pkg/errors"
+	"github.com/github/omnigit-mcp/pkg/inventory"
+	"github.com/github/omnigit-mcp/pkg/octicons"
+	"github.com/github/omnigit-mcp/pkg/sanitize"
+	"github.com/github/omnigit-mcp/pkg/scopes"
+	"github.com/github/omnigit-mcp/pkg/translations"
+	"github.com/github/omnigit-mcp/pkg/utils"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/google/go-github/v82/github"
 	"github.com/google/jsonschema-go/jsonschema"
@@ -1123,7 +1123,7 @@ func SearchIssues(t translations.TranslationHelperFunc) inventory.ServerTool {
 
 // IssueWrite creates a tool to create a new or update an existing issue in a GitHub repository.
 // IssueWriteUIResourceURI is the URI for the issue_write tool's MCP App UI resource.
-const IssueWriteUIResourceURI = "ui://github-mcp-server/issue-write"
+const IssueWriteUIResourceURI = "ui://omnigit-mcp/issue-write"
 
 func IssueWrite(t translations.TranslationHelperFunc) inventory.ServerTool {
 	return NewTool(

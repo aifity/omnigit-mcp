@@ -17,7 +17,7 @@ The Streamable HTTP mode enables the GitHub MCP Server to run as an HTTP service
 Start the server on the default port (8082):
 
 ```bash
-github-mcp-server http
+omnigit-mcp http
 ```
 
 The server will be available at `http://localhost:8082`.
@@ -27,7 +27,7 @@ The server will be available at `http://localhost:8082`.
 Enable scope validation to enforce GitHub permission checks:
 
 ```bash
-github-mcp-server http --scope-challenge
+omnigit-mcp http --scope-challenge
 ```
 
 When `--scope-challenge` is enabled, requests with insufficient scopes receive a `403 Forbidden` response with a `WWW-Authenticate` header indicating the required scopes.
@@ -37,7 +37,7 @@ When `--scope-challenge` is enabled, requests with insufficient scopes receive a
 For use behind reverse proxies or with custom domains, expose OAuth metadata endpoints:
 
 ```bash
-github-mcp-server http --scope-challenge --base-url https://myserver.com --base-path /mcp
+omnigit-mcp http --scope-challenge --base-url https://myserver.com --base-path /mcp
 ```
 
 The OAuth protected resource metadata's `resource` attribute will be populated with the full URL to the server's protected resource endpoint:

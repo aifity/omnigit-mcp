@@ -32,7 +32,7 @@ jobs:
         with:
           setup_go: "true"
           install_command: go mod download
-          start_command: go run ./cmd/github-mcp-server stdio
+          start_command: go run ./cmd/omnigit-mcp stdio
           env_vars: |
             GITHUB_PERSONAL_ACCESS_TOKEN=test-token
           configurations: |

@@ -13,7 +13,7 @@ messages:
 
       Analyze the issue for these key elements:
       1. Clear description of the problem (not template text)
-      2. Affected version (from running `docker run -i --rm ghcr.io/github/github-mcp-server ./github-mcp-server --version`)
+      2. Affected version (from running `docker run -i --rm ghcr.io/github/omnigit-mcp ./omnigit-mcp --version`)
       3. Steps to reproduce the behavior (actual steps, not placeholders)
       4. Expected vs actual behavior (real descriptions, not template text)
       5. Relevant logs (if applicable)

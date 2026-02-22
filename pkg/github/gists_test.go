@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/github/github-mcp-server/internal/toolsnaps"
-	"github.com/github/github-mcp-server/pkg/translations"
+	"github.com/github/omnigit-mcp/internal/toolsnaps"
+	"github.com/github/omnigit-mcp/pkg/translations"
 	"github.com/google/go-github/v82/github"
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/stretchr/testify/assert"

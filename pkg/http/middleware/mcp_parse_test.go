@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	ghcontext "github.com/github/github-mcp-server/pkg/context"
+	ghcontext "github.com/github/omnigit-mcp/pkg/context"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

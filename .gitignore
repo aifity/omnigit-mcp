@@ -1,5 +1,5 @@
 .idea
-cmd/github-mcp-server/github-mcp-server
+cmd/omnigit-mcp/omnigit-mcp
 
 # VSCode
 .vscode/*
@@ -17,7 +17,7 @@ bin/
 .DS_Store
 
 # binary
-github-mcp-server
+omnigit-mcp
 mcpcurl
 e2e.test
 

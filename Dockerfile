@@ -27,21 +27,21 @@ COPY --from=ui-build /app/pkg/github/ui_dist/* ./pkg/github/ui_dist/
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 go build -ldflags="-s -w -X main.version=${VERSION} -X main.commit=$(git rev-parse HEAD) -X main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    -o /bin/github-mcp-server ./cmd/github-mcp-server
+    -o /bin/omnigit-mcp ./cmd/omnigit-mcp
 
 # Make a stage to run the app
 FROM gcr.io/distroless/base-debian12@sha256:937c7eaaf6f3f2d38a1f8c4aeff326f0c56e4593ea152e9e8f74d976dde52f56
 
 # Add required MCP server annotation
-LABEL io.modelcontextprotocol.server.name="io.github.github/github-mcp-server"
+LABEL io.modelcontextprotocol.server.name="io.github.github/omnigit-mcp"
 
 # Set the working directory
 WORKDIR /server
 # Copy the binary from the build stage
-COPY --from=build /bin/github-mcp-server .
+COPY --from=build /bin/omnigit-mcp .
 # Expose the default port
 EXPOSE 8082
 # Set the entrypoint to the server binary
-ENTRYPOINT ["/server/github-mcp-server"]
+ENTRYPOINT ["/server/omnigit-mcp"]
 # Default arguments for ENTRYPOINT
 CMD ["stdio"]

@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/github/github-mcp-server/pkg/raw"
+	"github.com/github/omnigit-mcp/pkg/raw"
 	"github.com/google/go-github/v82/github"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/require"

@@ -1,8 +1,8 @@
 package github
 
 import (
-	"github.com/github/github-mcp-server/pkg/inventory"
-	"github.com/github/github-mcp-server/pkg/translations"
+	"github.com/github/omnigit-mcp/pkg/inventory"
+	"github.com/github/omnigit-mcp/pkg/translations"
 )
 
 // AllResources returns all resource templates with their embedded toolset metadata.

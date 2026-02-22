@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	gherrors "github.com/github/github-mcp-server/pkg/errors"
-	"github.com/github/github-mcp-server/pkg/git"
-	"github.com/github/github-mcp-server/pkg/inventory"
-	"github.com/github/github-mcp-server/pkg/octicons"
-	"github.com/github/github-mcp-server/pkg/translations"
-	"github.com/github/github-mcp-server/pkg/utils"
+	gherrors "github.com/github/omnigit-mcp/pkg/errors"
+	"github.com/github/omnigit-mcp/pkg/git"
+	"github.com/github/omnigit-mcp/pkg/inventory"
+	"github.com/github/omnigit-mcp/pkg/octicons"
+	"github.com/github/omnigit-mcp/pkg/translations"
+	"github.com/github/omnigit-mcp/pkg/utils"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -28,7 +28,7 @@ type MCPServerConfig struct {
 	Token string
 
 	// EnabledToolsets is a list of toolsets to enable
-	// See: https://github.com/github/github-mcp-server?tab=readme-ov-file#tool-configuration
+	// See: https://github.com/github/omnigit-mcp?tab=readme-ov-file#tool-configuration
 	EnabledToolsets []string
 
 	// EnabledTools is a list of specific tools to enable (additive to toolsets)
@@ -40,7 +40,7 @@ type MCPServerConfig struct {
 	EnabledFeatures []string
 
 	// Whether to enable dynamic toolsets
-	// See: https://github.com/github/github-mcp-server?tab=readme-ov-file#dynamic-tool-discovery
+	// See: https://github.com/github/omnigit-mcp?tab=readme-ov-file#dynamic-tool-discovery
 	DynamicToolsets bool
 
 	// ReadOnly indicates if we should only offer read-only tools
@@ -198,7 +198,7 @@ func NewServer(version string, opts *mcp.ServerOptions) *mcp.Server {
 
 	// Create a new MCP server
 	s := mcp.NewServer(&mcp.Implementation{
-		Name:    "github-mcp-server",
+		Name:    "omnigit-mcp",
 		Title:   "GitHub MCP Server",
 		Version: version,
 		Icons:   octicons.Icons("mark-github"),

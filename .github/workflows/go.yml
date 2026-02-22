@@ -49,4 +49,4 @@ jobs:
         run: script/test
 
       - name: Build
-        run: go build -v ./cmd/github-mcp-server
+        run: go build -v ./cmd/omnigit-mcp

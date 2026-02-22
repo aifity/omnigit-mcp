@@ -10,7 +10,7 @@ This code is adapted from the **git-mcp-go** project by **Gero Posmyk-Leinemann*
 - **Original Repository**: https://github.com/geropl/git-mcp-go
 - **License**: MIT License (see original repository)
 
-The code has been adapted to integrate with the github-mcp-server architecture while preserving the original functionality and design.
+The code has been adapted to integrate with the omnigit-mcp architecture while preserving the original functionality and design.
 
 ## Overview
 
@@ -94,7 +94,7 @@ The main adaptations from git-mcp-go include:
 1. **Tool Registration Pattern**: Uses `inventory.NewServerToolFromHandler` instead of direct MCP tool registration
 2. **Dependency Injection**: Uses `GitToolDependencies` interface for cleaner separation
 3. **Toolset Metadata**: Tools are grouped under `ToolsetMetadataLocalGit` toolset
-4. **Translation Support**: Integrated with github-mcp-server's translation system
+4. **Translation Support**: Integrated with omnigit-mcp's translation system
 5. **Error Handling**: Uses `utils.NewToolResultError` and `utils.NewToolResultText` helpers
 
 ## License

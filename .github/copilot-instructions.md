@@ -7,7 +7,7 @@ This is the **GitHub MCP Server**, a Model Context Protocol (MCP) server that co
 **Key Details:**
 - **Language:** Go 1.24+ (~38k lines of code)
 - **Type:** MCP server application with CLI interface
-- **Primary Package:** github-mcp-server (stdio MCP server - **this is the main focus**)
+- **Primary Package:** omnigit-mcp (stdio MCP server - **this is the main focus**)
 - **Secondary Package:** mcpcurl (testing utility - don't break it, but not the priority)
 - **Framework:** Uses modelcontextprotocol/go-sdk for MCP protocol, google/go-github for GitHub API
 - **Size:** ~60MB repository, 70 Go files
@@ -47,10 +47,10 @@ If you change any MCP tool definitions or schemas:
 go mod download
 
 # Build the server binary
-go build -v ./cmd/github-mcp-server
+go build -v ./cmd/omnigit-mcp
 
 # Run the server
-./github-mcp-server stdio
+./omnigit-mcp stdio
 
 # Run specific package tests
 go test ./pkg/github -v
@@ -66,7 +66,7 @@ go test ./pkg/github -run TestGetMe
 ```
 .
 ├── cmd/
-│   ├── github-mcp-server/    # Main MCP server entry point (PRIMARY FOCUS)
+│   ├── omnigit-mcp/    # Main MCP server entry point (PRIMARY FOCUS)
 │   └── mcpcurl/              # MCP testing utility (secondary - don't break it)
 ├── pkg/                      # Public API packages
 │   ├── github/               # GitHub API MCP tools implementation
@@ -97,7 +97,7 @@ go test ./pkg/github -run TestGetMe
 - **Dockerfile:** Multi-stage build (golang:1.25.3-alpine → distroless)
 - **server.json:** MCP server metadata for registry
 - **.goreleaser.yaml:** Release automation config
-- **.gitignore:** Excludes bin/, dist/, vendor/, *.DS_Store, github-mcp-server binary
+- **.gitignore:** Excludes bin/, dist/, vendor/, *.DS_Store, omnigit-mcp binary
 
 ### Important Scripts (script/ directory)
 
@@ -270,14 +270,14 @@ server.json         - MCP server registry metadata
 
 ### Main Entry Point
 
-`cmd/github-mcp-server/main.go` - Uses cobra for CLI, viper for config, supports:
+`cmd/omnigit-mcp/main.go` - Uses cobra for CLI, viper for config, supports:
 - `stdio` command (default) - MCP stdio transport
 - `generate-docs` command - Documentation generation
 - Flags: --toolsets, --read-only, --dynamic-toolsets, --gh-host, --log-file
 
 ## Important Reminders
 
-1. **PRIMARY FOCUS:** The local stdio MCP server (github-mcp-server) - this is what you should work on and test with
+1. **PRIMARY FOCUS:** The local stdio MCP server (omnigit-mcp) - this is what you should work on and test with
 2. **REMOTE SERVER:** Ignore remote server instructions when making code changes (unless specifically asked). This repo is used as a library by the remote server, so keep functions exported (capitalized) if they could be called by other repos, even if not needed internally.
 3. **ALWAYS** trust these instructions first - only search if information is incomplete or incorrect
 4. **NEVER** use `script/tag-release` or push tags

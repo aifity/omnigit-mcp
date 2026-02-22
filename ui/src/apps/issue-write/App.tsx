@@ -122,7 +122,7 @@ function CreateIssueApp() {
   const [successIssue, setSuccessIssue] = useState<IssueResult | null>(null);
 
   const { app, error: appError, toolInput, callTool } = useMcpApp({
-    appName: "github-mcp-server-issue-write",
+    appName: "omnigit-mcp-issue-write",
   });
 
   const method = (toolInput?.method as string) || "create";

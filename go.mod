@@ -1,4 +1,4 @@
-module github.com/github/github-mcp-server
+module github.com/github/omnigit-mcp
 
 go 1.24.0
 

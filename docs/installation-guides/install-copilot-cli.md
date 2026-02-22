@@ -7,7 +7,7 @@ The GitHub MCP server comes pre-installed in Copilot CLI, with read-only tools e
 To verify the server is available, from an active Copilot CLI session:
 
 ```bash
-/mcp show github-mcp-server
+/mcp show omnigit-mcp
 ```
 
 ### Per-Session Customization
@@ -37,7 +37,7 @@ Run `copilot --help` for all available flags. For the list of toolsets, see [Ava
 
 You can configure the GitHub MCP server in Copilot CLI using either the interactive command or by manually editing the configuration file.
 
-> **Server naming:** Name your server `github-mcp-server` to replace the built-in server, or use a different name (e.g., `github`) to run alongside it.
+> **Server naming:** Name your server `omnigit-mcp` to replace the built-in server, or use a different name (e.g., `github`) to run alongside it.
 
 ### Prerequisites
 
@@ -106,7 +106,7 @@ With Docker running, you can run the GitHub MCP server in a container:
         "--rm",
         "-e",
         "GITHUB_PERSONAL_ACCESS_TOKEN",
-        "ghcr.io/github/github-mcp-server"
+        "ghcr.io/github/omnigit-mcp"
       ],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
@@ -118,10 +118,10 @@ With Docker running, you can run the GitHub MCP server in a container:
 
 #### Binary
 
-You can download the latest binary release from the [GitHub releases page](https://github.com/github/github-mcp-server/releases) or build it from source by running:
+You can download the latest binary release from the [GitHub releases page](https://github.com/github/omnigit-mcp/releases) or build it from source by running:
 
 ```bash
-go build -o github-mcp-server ./cmd/github-mcp-server
+go build -o omnigit-mcp ./cmd/omnigit-mcp
 ```
 
 Then configure (replace `/path/to/binary` with the actual path):

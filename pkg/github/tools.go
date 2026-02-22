@@ -5,9 +5,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/github/github-mcp-server/pkg/git"
-	"github.com/github/github-mcp-server/pkg/inventory"
-	"github.com/github/github-mcp-server/pkg/translations"
+	"github.com/github/omnigit-mcp/pkg/git"
+	"github.com/github/omnigit-mcp/pkg/inventory"
+	"github.com/github/omnigit-mcp/pkg/translations"
 	"github.com/google/go-github/v82/github"
 	"github.com/shurcooL/githubv4"
 )

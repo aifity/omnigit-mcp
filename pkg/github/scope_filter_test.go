@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/github/github-mcp-server/pkg/inventory"
+	"github.com/github/omnigit-mcp/pkg/inventory"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

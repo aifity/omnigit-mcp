@@ -3,7 +3,7 @@ package transport
 import (
 	"net/http"
 
-	"github.com/github/github-mcp-server/pkg/http/headers"
+	"github.com/github/omnigit-mcp/pkg/http/headers"
 )
 
 type UserAgentTransport struct {
