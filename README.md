@@ -1451,7 +1451,7 @@ The following sets of tools are available:
   - `order`: Sort order for results (string, optional)
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
-  - `query`: Search query using GitHub's powerful code search syntax. Examples: 'content:Skill language:Java org:github', 'NOT is:archived language:Python OR language:go', 'repo:github/github-mcp-server'. Supports exact matching, language filters, path filters, and more. (string, required)
+  - `query`: Search query using GitHub's powerful code search syntax. Examples: 'content:Skill language:Java org:github', 'NOT is:archived language:Python OR language:go', 'repo:aifity/omnigit-mcp'. Supports exact matching, language filters, path filters, and more. (string, required)
   - `sort`: Sort field ('indexed' only) (string, optional)
 
 - **search_repositories** - Search repositories

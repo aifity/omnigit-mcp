@@ -173,7 +173,7 @@ func SearchCode(t translations.TranslationHelperFunc) inventory.ServerTool {
 		Properties: map[string]*jsonschema.Schema{
 			"query": {
 				Type:        "string",
-				Description: "Search query using GitHub's powerful code search syntax. Examples: 'content:Skill language:Java org:github', 'NOT is:archived language:Python OR language:go', 'repo:github/github-mcp-server'. Supports exact matching, language filters, path filters, and more.",
+				Description: "Search query using GitHub's powerful code search syntax. Examples: 'content:Skill language:Java org:github', 'NOT is:archived language:Python OR language:go', 'repo:aifity/omnigit-mcp'. Supports exact matching, language filters, path filters, and more.",
 			},
 			"sort": {
 				Type:        "string",
