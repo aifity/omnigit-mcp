@@ -964,7 +964,7 @@ func Test_SearchPullRequests(t *testing.T) {
 				GetSearchIssues: expectQueryParams(
 					t,
 					map[string]string{
-						"q":        "is:pr repo:github/github-mcp-server is:open draft:false",
+						"q":        "is:pr repo:aifity/omnigit-mcp is:open draft:false",
 						"page":     "1",
 						"per_page": "30",
 					},
@@ -973,7 +973,7 @@ func Test_SearchPullRequests(t *testing.T) {
 				),
 			}),
 			requestArgs: map[string]any{
-				"query": "is:pr repo:github/github-mcp-server is:open draft:false",
+				"query": "is:pr repo:aifity/omnigit-mcp is:open draft:false",
 			},
 			expectError:    false,
 			expectedResult: mockSearchResult,
@@ -984,7 +984,7 @@ func Test_SearchPullRequests(t *testing.T) {
 				GetSearchIssues: expectQueryParams(
 					t,
 					map[string]string{
-						"q":        "is:pr repo:github/github-mcp-server author:octocat",
+						"q":        "is:pr repo:aifity/omnigit-mcp author:octocat",
 						"page":     "1",
 						"per_page": "30",
 					},
@@ -993,7 +993,7 @@ func Test_SearchPullRequests(t *testing.T) {
 				),
 			}),
 			requestArgs: map[string]any{
-				"query": "repo:github/github-mcp-server author:octocat",
+				"query": "repo:aifity/omnigit-mcp author:octocat",
 				"owner": "different-owner",
 				"repo":  "different-repo",
 			},
@@ -1006,7 +1006,7 @@ func Test_SearchPullRequests(t *testing.T) {
 				GetSearchIssues: expectQueryParams(
 					t,
 					map[string]string{
-						"q":        "is:pr repo:github/github-mcp-server (label:bug OR label:enhancement OR label:feature)",
+						"q":        "is:pr repo:aifity/omnigit-mcp (label:bug OR label:enhancement OR label:feature)",
 						"page":     "1",
 						"per_page": "30",
 					},
@@ -1015,7 +1015,7 @@ func Test_SearchPullRequests(t *testing.T) {
 				),
 			}),
 			requestArgs: map[string]any{
-				"query": "is:pr repo:github/github-mcp-server (label:bug OR label:enhancement OR label:feature)",
+				"query": "is:pr repo:aifity/omnigit-mcp (label:bug OR label:enhancement OR label:feature)",
 			},
 			expectError:    false,
 			expectedResult: mockSearchResult,

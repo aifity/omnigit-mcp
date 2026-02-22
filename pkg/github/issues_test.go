@@ -793,7 +793,7 @@ func Test_SearchIssues(t *testing.T) {
 				GetSearchIssues: expectQueryParams(
 					t,
 					map[string]string{
-						"q":        "repo:github/github-mcp-server is:issue is:open (label:critical OR label:urgent)",
+						"q":        "repo:aifity/omnigit-mcp is:issue is:open (label:critical OR label:urgent)",
 						"page":     "1",
 						"per_page": "30",
 					},
@@ -802,7 +802,7 @@ func Test_SearchIssues(t *testing.T) {
 				),
 			}),
 			requestArgs: map[string]any{
-				"query": "repo:github/github-mcp-server is:issue is:open (label:critical OR label:urgent)",
+				"query": "repo:aifity/omnigit-mcp is:issue is:open (label:critical OR label:urgent)",
 			},
 			expectError:    false,
 			expectedResult: mockSearchResult,
@@ -813,7 +813,7 @@ func Test_SearchIssues(t *testing.T) {
 				GetSearchIssues: expectQueryParams(
 					t,
 					map[string]string{
-						"q":        "is:issue repo:github/github-mcp-server critical",
+						"q":        "is:issue repo:aifity/omnigit-mcp critical",
 						"page":     "1",
 						"per_page": "30",
 					},
@@ -822,7 +822,7 @@ func Test_SearchIssues(t *testing.T) {
 				),
 			}),
 			requestArgs: map[string]any{
-				"query": "repo:github/github-mcp-server critical",
+				"query": "repo:aifity/omnigit-mcp critical",
 				"owner": "different-owner",
 				"repo":  "different-repo",
 			},
@@ -855,7 +855,7 @@ func Test_SearchIssues(t *testing.T) {
 				GetSearchIssues: expectQueryParams(
 					t,
 					map[string]string{
-						"q":        "repo:github/github-mcp-server is:issue (label:critical OR label:urgent OR label:high-priority OR label:blocker)",
+						"q":        "repo:aifity/omnigit-mcp is:issue (label:critical OR label:urgent OR label:high-priority OR label:blocker)",
 						"page":     "1",
 						"per_page": "30",
 					},
@@ -864,7 +864,7 @@ func Test_SearchIssues(t *testing.T) {
 				),
 			}),
 			requestArgs: map[string]any{
-				"query": "repo:github/github-mcp-server is:issue (label:critical OR label:urgent OR label:high-priority OR label:blocker)",
+				"query": "repo:aifity/omnigit-mcp is:issue (label:critical OR label:urgent OR label:high-priority OR label:blocker)",
 			},
 			expectError:    false,
 			expectedResult: mockSearchResult,
