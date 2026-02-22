@@ -1649,6 +1649,7 @@ func Test_GetPullRequestComments(t *testing.T) {
 				comment1 := commentNodes[0].(map[string]any)
 				assert.Equal(t, "PRRC_kwDOA0xdyM4AX1Y0", comment1["NodeID"])
 				assert.Equal(t, float64(101), comment1["DatabaseID"])
+				assert.Equal(t, float64(101), comment1["CommentID"])
 				assert.Equal(t, "This looks good", comment1["Body"])
 				assert.Equal(t, "file1.go", comment1["Path"])
 

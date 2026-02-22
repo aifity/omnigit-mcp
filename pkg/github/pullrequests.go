@@ -324,12 +324,12 @@ type reviewThreadNode struct {
 }
 
 type reviewCommentNode struct {
-	NodeID     githubv4.ID  `graphql:"id"`
-	DatabaseID githubv4.Int `graphql:"databaseId"`
+	NodeID     githubv4.ID `graphql:"id"`
+	DatabaseID int64       `graphql:"databaseId"`
 	Body       githubv4.String
 	Path       githubv4.String
 	Line       *githubv4.Int
-	Author     struct {
+	Author struct {
 		Login githubv4.String
 	}
 	CreatedAt githubv4.DateTime
@@ -412,8 +412,50 @@ func GetPullRequestReviewComments(ctx context.Context, gqlClient *githubv4.Clien
 	}
 
 	// Build response with review threads and pagination info
+	// We need to transform the threads to add CommentID field (using DatabaseID)
+	transformedThreads := make([]map[string]any, 0, len(query.Repository.PullRequest.ReviewThreads.Nodes))
+	for _, thread := range query.Repository.PullRequest.ReviewThreads.Nodes {
+		transformedComments := make([]map[string]any, 0, len(thread.Comments.Nodes))
+		for _, comment := range thread.Comments.Nodes {
+			urlStr := fmt.Sprintf("%v", comment.URL)
+
+			transformedComment := map[string]any{
+				"NodeID":     fmt.Sprintf("%v", comment.NodeID),
+				"DatabaseID": comment.DatabaseID,
+				"CommentID":  comment.DatabaseID, // Use DatabaseID as CommentID for API calls
+				"Body":       string(comment.Body),
+				"Path":       string(comment.Path),
+				"Author": map[string]any{
+					"Login": string(comment.Author.Login),
+				},
+				"CreatedAt": comment.CreatedAt.Time,
+				"UpdatedAt": comment.UpdatedAt.Time,
+				"URL":       urlStr,
+			}
+
+			if comment.Line != nil {
+				transformedComment["Line"] = int(*comment.Line)
+			}
+
+			transformedComments = append(transformedComments, transformedComment)
+		}
+
+		transformedThread := map[string]any{
+			"NodeID":      fmt.Sprintf("%v", thread.NodeID),
+			"IsResolved":  bool(thread.IsResolved),
+			"IsOutdated":  bool(thread.IsOutdated),
+			"IsCollapsed": bool(thread.IsCollapsed),
+			"Comments": map[string]any{
+				"Nodes":      transformedComments,
+				"TotalCount": int(thread.Comments.TotalCount),
+			},
+		}
+
+		transformedThreads = append(transformedThreads, transformedThread)
+	}
+
 	response := map[string]any{
-		"reviewThreads": query.Repository.PullRequest.ReviewThreads.Nodes,
+		"reviewThreads": transformedThreads,
 		"pageInfo": map[string]any{
 			"hasNextPage":     query.Repository.PullRequest.ReviewThreads.PageInfo.HasNextPage,
 			"hasPreviousPage": query.Repository.PullRequest.ReviewThreads.PageInfo.HasPreviousPage,
@@ -968,7 +1010,7 @@ func AddReplyToPullRequestComment(t translations.TranslationHelperFunc) inventor
 			},
 			"commentId": {
 				Type:        "number",
-				Description: "The ID of the comment to reply to. Use the databaseId field from get_review_comments.",
+				Description: "The ID of the comment to reply to. Use the CommentID field from get_review_comments.",
 			},
 			"body": {
 				Type:        "string",
@@ -1073,7 +1115,7 @@ Options are:
 					},
 					"comment_id": {
 						Type:        "number",
-						Description: "Review comment ID to update or delete. Use the databaseId field from get_review_comments.",
+						Description: "Review comment ID to update or delete. Use the CommentID field from get_review_comments.",
 					},
 					"body": {
 						Type:        "string",
