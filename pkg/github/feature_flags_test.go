@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/github/omnigit-mcp/pkg/translations"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/github/omnigit-mcp/pkg/inventory"
-	"github.com/github/omnigit-mcp/pkg/scopes"
-	"github.com/github/omnigit-mcp/pkg/utils"
+	"github.com/aifity/omnigit-mcp/pkg/inventory"
+	"github.com/aifity/omnigit-mcp/pkg/scopes"
+	"github.com/aifity/omnigit-mcp/pkg/utils"
 )
 
 // RemoteMCPEnthusiasticGreeting is a dummy test feature flag .

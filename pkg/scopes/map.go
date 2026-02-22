@@ -1,6 +1,6 @@
 package scopes
 
-import "github.com/github/omnigit-mcp/pkg/inventory"
+import "github.com/aifity/omnigit-mcp/pkg/inventory"
 
 // ToolScopeMap maps tool names to their scope requirements.
 type ToolScopeMap map[string]*ToolScopeInfo

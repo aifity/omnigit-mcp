@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"regexp"
 
-	ghErrors "github.com/github/omnigit-mcp/pkg/errors"
-	"github.com/github/omnigit-mcp/pkg/utils"
+	ghErrors "github.com/aifity/omnigit-mcp/pkg/errors"
+	"github.com/aifity/omnigit-mcp/pkg/utils"
 	"github.com/google/go-github/v82/github"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )

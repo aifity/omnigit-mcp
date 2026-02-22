@@ -13,7 +13,7 @@ A clear and concise description of what the bug is.
 
 ### Affected version
 
-Please run ` docker run -i --rm ghcr.io/github/omnigit-mcp ./omnigit-mcp --version` and paste the output below
+Please run ` docker run -i --rm ghcr.io/aifity/omnigit-mcp ./omnigit-mcp --version` and paste the output below
 
 ### Steps to reproduce the behavior
 

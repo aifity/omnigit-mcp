@@ -86,7 +86,7 @@ If you prefer running the server locally with Docker:
         "--rm",
         "-e",
         "GITHUB_PERSONAL_ACCESS_TOKEN",
-        "ghcr.io/github/omnigit-mcp"
+        "ghcr.io/aifity/omnigit-mcp"
       ],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "YOUR_GITHUB_PAT"

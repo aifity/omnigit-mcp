@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/github/omnigit-mcp/internal/githubv4mock"
-	"github.com/github/omnigit-mcp/internal/toolsnaps"
-	"github.com/github/omnigit-mcp/pkg/translations"
+	"github.com/aifity/omnigit-mcp/internal/githubv4mock"
+	"github.com/aifity/omnigit-mcp/internal/toolsnaps"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
 	"github.com/google/go-github/v82/github"
 	"github.com/shurcooL/githubv4"
 	"github.com/stretchr/testify/assert"

@@ -4,14 +4,14 @@
   "description": "Connect AI assistants to GitHub - manage repos, issues, PRs, workflows, and git operations.",
   "title": "GitHub",
   "repository": {
-    "url": "https://github.com/github/omnigit-mcp",
+    "url": "https://github.com/aifity/omnigit-mcp",
     "source": "github"
   },
   "version": "${VERSION}",
   "packages": [
     {
       "registryType": "oci",
-      "identifier": "ghcr.io/github/omnigit-mcp:${VERSION}",
+      "identifier": "ghcr.io/aifity/omnigit-mcp:${VERSION}",
       "transport": {
         "type": "stdio"
       },

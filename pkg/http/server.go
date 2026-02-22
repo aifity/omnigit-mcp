@@ -12,14 +12,14 @@ import (
 	"syscall"
 	"time"
 
-	ghcontext "github.com/github/omnigit-mcp/pkg/context"
-	"github.com/github/omnigit-mcp/pkg/github"
-	"github.com/github/omnigit-mcp/pkg/http/oauth"
-	"github.com/github/omnigit-mcp/pkg/inventory"
-	"github.com/github/omnigit-mcp/pkg/lockdown"
-	"github.com/github/omnigit-mcp/pkg/scopes"
-	"github.com/github/omnigit-mcp/pkg/translations"
-	"github.com/github/omnigit-mcp/pkg/utils"
+	ghcontext "github.com/aifity/omnigit-mcp/pkg/context"
+	"github.com/aifity/omnigit-mcp/pkg/github"
+	"github.com/aifity/omnigit-mcp/pkg/http/oauth"
+	"github.com/aifity/omnigit-mcp/pkg/inventory"
+	"github.com/aifity/omnigit-mcp/pkg/lockdown"
+	"github.com/aifity/omnigit-mcp/pkg/scopes"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
+	"github.com/aifity/omnigit-mcp/pkg/utils"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -46,7 +46,7 @@ type ServerConfig struct {
 	ResourcePath string
 
 	// ExportTranslations indicates if we should export translations
-	// See: https://github.com/github/omnigit-mcp?tab=readme-ov-file#i18n--overriding-descriptions
+	// See: https://github.com/aifity/omnigit-mcp?tab=readme-ov-file#i18n--overriding-descriptions
 	ExportTranslations bool
 
 	// EnableCommandLogging indicates if we should log commands

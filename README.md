@@ -1,4 +1,4 @@
-[![Go Report Card](https://goreportcard.com/badge/github.com/github/omnigit-mcp)](https://goreportcard.com/report/github.com/github/omnigit-mcp)
+[![Go Report Card](https://goreportcard.com/badge/github.com/aifity/omnigit-mcp)](https://goreportcard.com/report/github.com/aifity/omnigit-mcp)
 
 # Omnigit GitHub & Local Git MCP Server
 
@@ -46,12 +46,12 @@ A full set of `git_*` tools for operating on local repositories without going th
 
 [![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Server-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=github&config=%7B%22type%22%3A%20%22http%22%2C%22url%22%3A%20%22https%3A%2F%2Fapi.githubcopilot.com%2Fmcp%2F%22%7D) [![Install in VS Code Insiders](https://img.shields.io/badge/VS_Code_Insiders-Install_Server-24bfa5?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=github&config=%7B%22type%22%3A%20%22http%22%2C%22url%22%3A%20%22https%3A%2F%2Fapi.githubcopilot.com%2Fmcp%2F%22%7D&quality=insiders)
 
-The remote GitHub MCP Server is hosted by GitHub and provides the easiest method for getting up and running. If your MCP host does not support remote MCP servers, don't worry! You can use the [local version of the GitHub MCP Server](https://github.com/github/omnigit-mcp?tab=readme-ov-file#local-omnigit-mcp) instead.
+The remote GitHub MCP Server is hosted by GitHub and provides the easiest method for getting up and running. If your MCP host does not support remote MCP servers, don't worry! You can use the [local version of the GitHub MCP Server](https://github.com/aifity/omnigit-mcp?tab=readme-ov-file#local-omnigit-mcp) instead.
 
 ### Prerequisites
 
 1. A compatible MCP host with remote server support (VS Code 1.101+, Claude Desktop, Cursor, Windsurf, etc.)
-2. Any applicable [policies enabled](https://github.com/github/omnigit-mcp/blob/main/docs/policies-and-governance.md)
+2. Any applicable [policies enabled](https://github.com/aifity/omnigit-mcp/blob/main/docs/policies-and-governance.md)
 
 ### Install in VS Code
 
@@ -205,7 +205,7 @@ GitHub Enterprise Server does not support remote server hosting. Please refer to
 ### Prerequisites
 
 1. To run the server in a container, you will need to have [Docker](https://www.docker.com/) installed.
-2. Once Docker is installed, you will also need to ensure Docker is running. The Docker image is available at `ghcr.io/github/omnigit-mcp`. The image is public; if you get errors on pull, you may have an expired token and need to `docker logout ghcr.io`.
+2. Once Docker is installed, you will also need to ensure Docker is running. The Docker image is available at `ghcr.io/aifity/omnigit-mcp`. The image is public; if you get errors on pull, you may have an expired token and need to `docker logout ghcr.io`.
 3. Lastly you will need to [Create a GitHub Personal Access Token](https://github.com/settings/personal-access-tokens/new).
 The MCP server can use many of the GitHub APIs, so enable the permissions that you feel comfortable granting your AI tools (to learn more about access tokens, please check out the [documentation](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)).
 
@@ -284,7 +284,7 @@ the hostname for GitHub Enterprise Server or GitHub Enterprise Cloud with data r
     "GITHUB_PERSONAL_ACCESS_TOKEN",
     "-e",
     "GITHUB_HOST",
-    "ghcr.io/github/omnigit-mcp"
+    "ghcr.io/aifity/omnigit-mcp"
     ],
     "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token}",
@@ -325,7 +325,7 @@ Add the following JSON block to your IDE's MCP settings.
           "--rm",
           "-e",
           "GITHUB_PERSONAL_ACCESS_TOKEN",
-          "ghcr.io/github/omnigit-mcp"
+          "ghcr.io/aifity/omnigit-mcp"
         ],
         "env": {
           "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token}"
@@ -361,7 +361,7 @@ Optionally, you can add a similar example (i.e. without the mcp key) to a file c
         "--rm",
         "-e",
         "GITHUB_PERSONAL_ACCESS_TOKEN",
-        "ghcr.io/github/omnigit-mcp"
+        "ghcr.io/aifity/omnigit-mcp"
       ],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token}"
@@ -416,7 +416,7 @@ The `omnigit-mcp` binary includes a few CLI subcommands that are helpful for deb
 - `omnigit-mcp tool-search "<query>"` searches tools by name, description, and input parameter names. Use `--max-results` to return more matches.
 Example (color output requires a TTY; use `docker run -t` (or `-it`) when running in Docker):
 ```bash
-docker run -it --rm ghcr.io/github/omnigit-mcp tool-search "issue" --max-results 5
+docker run -it --rm ghcr.io/aifity/omnigit-mcp tool-search "issue" --max-results 5
 omnigit-mcp tool-search "issue" --max-results 5
 ```
 
@@ -495,7 +495,7 @@ When using Docker, you can pass the toolsets as environment variables:
 docker run -i --rm \
   -e GITHUB_PERSONAL_ACCESS_TOKEN=<your-token> \
   -e GITHUB_TOOLSETS="repos,issues,pull_requests,actions,code_security" \
-  ghcr.io/github/omnigit-mcp
+  ghcr.io/aifity/omnigit-mcp
 ```
 
 ### Using Tools With Docker
@@ -507,14 +507,14 @@ When using Docker, you can pass specific tools as environment variables. You can
 docker run -i --rm \
   -e GITHUB_PERSONAL_ACCESS_TOKEN=<your-token> \
   -e GITHUB_TOOLS="get_file_contents,issue_read,create_pull_request" \
-  ghcr.io/github/omnigit-mcp
+  ghcr.io/aifity/omnigit-mcp
 
 # Tools combined with toolsets (additive)
 docker run -i --rm \
   -e GITHUB_PERSONAL_ACCESS_TOKEN=<your-token> \
   -e GITHUB_TOOLSETS="repos,issues" \
   -e GITHUB_TOOLS="get_gist" \
-  ghcr.io/github/omnigit-mcp
+  ghcr.io/aifity/omnigit-mcp
 ```
 
 ### Special toolsets
@@ -573,7 +573,7 @@ When using Docker:
 docker run -i --rm \
   -e GITHUB_PERSONAL_ACCESS_TOKEN=<your-token> \
   -e GITHUB_INSIDERS=true \
-  ghcr.io/github/omnigit-mcp
+  ghcr.io/aifity/omnigit-mcp
 ```
 
 ### Available Toolsets
@@ -1625,7 +1625,7 @@ When using Docker, you can pass the toolsets as environment variables:
 docker run -i --rm \
   -e GITHUB_PERSONAL_ACCESS_TOKEN=<your-token> \
   -e GITHUB_DYNAMIC_TOOLSETS=1 \
-  ghcr.io/github/omnigit-mcp
+  ghcr.io/aifity/omnigit-mcp
 ```
 
 ## Read-Only Mode
@@ -1642,7 +1642,7 @@ When using Docker, you can pass the read-only mode as an environment variable:
 docker run -i --rm \
   -e GITHUB_PERSONAL_ACCESS_TOKEN=<your-token> \
   -e GITHUB_READ_ONLY=1 \
-  ghcr.io/github/omnigit-mcp
+  ghcr.io/aifity/omnigit-mcp
 ```
 
 ## Lockdown Mode
@@ -1659,7 +1659,7 @@ When running with Docker, set the corresponding environment variable:
 docker run -i --rm \
   -e GITHUB_PERSONAL_ACCESS_TOKEN=<your-token> \
   -e GITHUB_LOCKDOWN_MODE=1 \
-  ghcr.io/github/omnigit-mcp
+  ghcr.io/aifity/omnigit-mcp
 ```
 
 The behavior of lockdown mode depends on the tool invoked.

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/github/omnigit-mcp/pkg/http/headers"
+	"github.com/aifity/omnigit-mcp/pkg/http/headers"
 	"github.com/go-chi/chi/v5"
 	"github.com/modelcontextprotocol/go-sdk/auth"
 	"github.com/modelcontextprotocol/go-sdk/oauthex"

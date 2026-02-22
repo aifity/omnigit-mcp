@@ -208,7 +208,7 @@ func TestToolsetInstructionsFunc(t *testing.T) {
 
 // TestGenerateInstructionsOnlyEnabledToolsets verifies that generateInstructions
 // only includes instructions from enabled toolsets, not all available toolsets.
-// This is a regression test for https://github.com/github/omnigit-mcp/issues/1897
+// This is a regression test for https://github.com/aifity/omnigit-mcp/issues/1897
 func TestGenerateInstructionsOnlyEnabledToolsets(t *testing.T) {
 	// Create tools for multiple toolsets
 	reposToolset := ToolsetMetadata{

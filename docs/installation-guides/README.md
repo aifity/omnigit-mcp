@@ -60,7 +60,7 @@ The GitHub MCP Server can be installed using several methods. **Docker is the mo
 
 ### Important Notes on the GitHub MCP Server
 
-- **Docker Image**: The official Docker image is now `ghcr.io/github/omnigit-mcp`
+- **Docker Image**: The official Docker image is now `ghcr.io/aifity/omnigit-mcp`
 - **npm Package**: The npm package @modelcontextprotocol/server-github is no longer supported as of April 2025
 - **Remote Server**: The remote server URL is `https://api.githubcopilot.com/mcp/`
 

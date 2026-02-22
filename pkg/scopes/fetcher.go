@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/github/omnigit-mcp/pkg/http/headers"
-	"github.com/github/omnigit-mcp/pkg/utils"
+	"github.com/aifity/omnigit-mcp/pkg/http/headers"
+	"github.com/aifity/omnigit-mcp/pkg/utils"
 )
 
 // OAuthScopesHeader is the HTTP response header containing the token's OAuth scopes.

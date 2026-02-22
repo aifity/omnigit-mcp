@@ -14,10 +14,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/github/omnigit-mcp/pkg/git/gitops"
-	"github.com/github/omnigit-mcp/pkg/inventory"
-	"github.com/github/omnigit-mcp/pkg/translations"
-	"github.com/github/omnigit-mcp/pkg/utils"
+	"github.com/aifity/omnigit-mcp/pkg/git/gitops"
+	"github.com/aifity/omnigit-mcp/pkg/inventory"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
+	"github.com/aifity/omnigit-mcp/pkg/utils"
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -310,7 +310,6 @@ func Diff(t translations.TranslationHelperFunc) inventory.ServerTool {
 		},
 	)
 }
-
 
 // Commit creates a tool to commit changes
 func Commit(t translations.TranslationHelperFunc) inventory.ServerTool {
@@ -1106,5 +1105,3 @@ func AllGitTools(t translations.TranslationHelperFunc) []inventory.ServerTool {
 		ApplyPatchFile(t),
 	}
 }
-
-

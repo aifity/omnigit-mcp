@@ -14,7 +14,7 @@ The following packages are included for the amd64, arm64 architectures.
 
  - [github.com/aymerick/douceur](https://pkg.go.dev/github.com/aymerick/douceur) ([MIT](https://github.com/aymerick/douceur/blob/v0.2.0/LICENSE))
  - [github.com/fsnotify/fsnotify](https://pkg.go.dev/github.com/fsnotify/fsnotify) ([BSD-3-Clause](https://github.com/fsnotify/fsnotify/blob/v1.9.0/LICENSE))
- - [github.com/github/omnigit-mcp](https://pkg.go.dev/github.com/github/omnigit-mcp) ([MIT](https://github.com/github/omnigit-mcp/blob/HEAD/LICENSE))
+ - [github.com/aifity/omnigit-mcp](https://pkg.go.dev/github.com/aifity/omnigit-mcp) ([MIT](https://github.com/aifity/omnigit-mcp/blob/HEAD/LICENSE))
  - [github.com/go-chi/chi/v5](https://pkg.go.dev/github.com/go-chi/chi/v5) ([MIT](https://github.com/go-chi/chi/blob/v5.2.5/LICENSE))
  - [github.com/go-openapi/jsonpointer](https://pkg.go.dev/github.com/go-openapi/jsonpointer) ([Apache-2.0](https://github.com/go-openapi/jsonpointer/blob/v0.22.4/LICENSE))
  - [github.com/go-openapi/swag/jsonname](https://pkg.go.dev/github.com/go-openapi/swag/jsonname) ([Apache-2.0](https://github.com/go-openapi/swag/blob/jsonname/v0.25.4/jsonname/LICENSE))
@@ -56,4 +56,4 @@ The following packages are included for the amd64, arm64 architectures.
  - [golang.org/x/text](https://pkg.go.dev/golang.org/x/text) ([BSD-3-Clause](https://cs.opensource.google/go/x/text/+/v0.34.0:LICENSE))
  - [gopkg.in/yaml.v3](https://pkg.go.dev/gopkg.in/yaml.v3) ([MIT](https://github.com/go-yaml/yaml/blob/v3.0.1/LICENSE))
 
-[github/omnigit-mcp]: https://github.com/github/omnigit-mcp
+[github/omnigit-mcp]: https://github.com/aifity/omnigit-mcp

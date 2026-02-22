@@ -163,7 +163,7 @@ EOF
     done
     
     # Add footer
-    echo "[github/omnigit-mcp]: https://github.com/github/omnigit-mcp" >> "${output_file}"
+    echo "[github/omnigit-mcp]: https://github.com/aifity/omnigit-mcp" >> "${output_file}"
     
     echo "Generated ${output_file}"
 done

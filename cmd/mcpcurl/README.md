@@ -27,7 +27,7 @@ go build -o mcpcurl
 
 ### Using Go Install
 ```bash
-go install github.com/github/omnigit-mcp/cmd/mcpcurl@latest
+go install github.com/aifity/omnigit-mcp/cmd/mcpcurl@latest
 ```
 
 ### Verify Installation

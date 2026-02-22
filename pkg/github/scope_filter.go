@@ -3,8 +3,8 @@ package github
 import (
 	"context"
 
-	"github.com/github/omnigit-mcp/pkg/inventory"
-	"github.com/github/omnigit-mcp/pkg/scopes"
+	"github.com/aifity/omnigit-mcp/pkg/inventory"
+	"github.com/aifity/omnigit-mcp/pkg/scopes"
 )
 
 // repoScopesSet contains scopes that grant access to repository content.

@@ -4,9 +4,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	ghcontext "github.com/github/omnigit-mcp/pkg/context"
-	"github.com/github/omnigit-mcp/pkg/scopes"
-	"github.com/github/omnigit-mcp/pkg/utils"
+	ghcontext "github.com/aifity/omnigit-mcp/pkg/context"
+	"github.com/aifity/omnigit-mcp/pkg/scopes"
+	"github.com/aifity/omnigit-mcp/pkg/utils"
 )
 
 // WithPATScopes is a middleware that fetches and stores scopes for classic Personal Access Tokens (PATs) in the request context.

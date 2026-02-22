@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/github/omnigit-mcp/pkg/bodyfilter"
+	"github.com/aifity/omnigit-mcp/pkg/bodyfilter"
 	"github.com/spf13/viper"
 )
 

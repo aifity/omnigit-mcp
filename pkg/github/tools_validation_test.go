@@ -3,7 +3,7 @@ package github
 import (
 	"testing"
 
-	"github.com/github/omnigit-mcp/pkg/inventory"
+	"github.com/aifity/omnigit-mcp/pkg/inventory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

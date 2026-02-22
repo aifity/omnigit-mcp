@@ -66,7 +66,7 @@ go test ./pkg/github -run TestGetMe
 ```
 .
 ├── cmd/
-│   ├── omnigit-mcp/    # Main MCP server entry point (PRIMARY FOCUS)
+│   ├── omnigit-mcp/          # Main MCP server entry point (PRIMARY FOCUS)
 │   └── mcpcurl/              # MCP testing utility (secondary - don't break it)
 ├── pkg/                      # Public API packages
 │   ├── github/               # GitHub API MCP tools implementation

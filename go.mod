@@ -1,4 +1,4 @@
-module github.com/github/omnigit-mcp
+module github.com/aifity/omnigit-mcp
 
 go 1.25.0
 

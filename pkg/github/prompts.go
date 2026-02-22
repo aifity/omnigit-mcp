@@ -1,8 +1,8 @@
 package github
 
 import (
-	"github.com/github/omnigit-mcp/pkg/inventory"
-	"github.com/github/omnigit-mcp/pkg/translations"
+	"github.com/aifity/omnigit-mcp/pkg/inventory"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
 )
 
 // AllPrompts returns all prompts with their embedded toolset metadata.

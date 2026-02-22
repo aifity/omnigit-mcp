@@ -57,19 +57,19 @@ claude mcp add-json github '{"type":"http","url":"https://api.githubcopilot.com/
 ### With Docker
 1. Run the following command in the terminal (not in Claude Code CLI):
 ```bash
-claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN=YOUR_GITHUB_PAT -- docker run -i --rm -e GITHUB_PERSONAL_ACCESS_TOKEN ghcr.io/github/omnigit-mcp
+claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN=YOUR_GITHUB_PAT -- docker run -i --rm -e GITHUB_PERSONAL_ACCESS_TOKEN ghcr.io/aifity/omnigit-mcp
 ```
 
 With an environment variable:
 ```bash
-claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN=$(grep GITHUB_PAT .env | cut -d '=' -f2) -- docker run -i --rm -e GITHUB_PERSONAL_ACCESS_TOKEN ghcr.io/github/omnigit-mcp
+claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN=$(grep GITHUB_PAT .env | cut -d '=' -f2) -- docker run -i --rm -e GITHUB_PERSONAL_ACCESS_TOKEN ghcr.io/aifity/omnigit-mcp
 ```
 2. Restart Claude Code
 3. Run `claude mcp list` to see if the GitHub server is configured
 
 ### With a Binary (no Docker)
 
-1. Download [release binary](https://github.com/github/omnigit-mcp/releases)
+1. Download [release binary](https://github.com/aifity/omnigit-mcp/releases)
 2. Add to your `PATH`
 3. Run:
 ```bash
@@ -139,7 +139,7 @@ Add this codeblock to your `claude_desktop_config.json`:
         "--rm",
         "-e",
         "GITHUB_PERSONAL_ACCESS_TOKEN",
-        "ghcr.io/github/omnigit-mcp"
+        "ghcr.io/aifity/omnigit-mcp"
       ],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "YOUR_GITHUB_PAT"
@@ -175,7 +175,7 @@ Add this codeblock to your `claude_desktop_config.json`:
 
 **Docker Issues (Local Only):**
 - Ensure Docker Desktop is running
-- Try: `docker pull ghcr.io/github/omnigit-mcp`
+- Try: `docker pull ghcr.io/aifity/omnigit-mcp`
 - If pull fails: `docker logout ghcr.io` then retry
 
 **Server Not Starting / Tools Not Showing:**

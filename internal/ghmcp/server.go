@@ -12,17 +12,17 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/github/omnigit-mcp/pkg/errors"
-	"github.com/github/omnigit-mcp/pkg/git/gitops/shell"
-	"github.com/github/omnigit-mcp/pkg/github"
-	"github.com/github/omnigit-mcp/pkg/http/transport"
-	"github.com/github/omnigit-mcp/pkg/inventory"
-	"github.com/github/omnigit-mcp/pkg/lockdown"
-	mcplog "github.com/github/omnigit-mcp/pkg/log"
-	"github.com/github/omnigit-mcp/pkg/raw"
-	"github.com/github/omnigit-mcp/pkg/scopes"
-	"github.com/github/omnigit-mcp/pkg/translations"
-	"github.com/github/omnigit-mcp/pkg/utils"
+	"github.com/aifity/omnigit-mcp/pkg/errors"
+	"github.com/aifity/omnigit-mcp/pkg/git/gitops/shell"
+	"github.com/aifity/omnigit-mcp/pkg/github"
+	"github.com/aifity/omnigit-mcp/pkg/http/transport"
+	"github.com/aifity/omnigit-mcp/pkg/inventory"
+	"github.com/aifity/omnigit-mcp/pkg/lockdown"
+	mcplog "github.com/aifity/omnigit-mcp/pkg/log"
+	"github.com/aifity/omnigit-mcp/pkg/raw"
+	"github.com/aifity/omnigit-mcp/pkg/scopes"
+	"github.com/aifity/omnigit-mcp/pkg/translations"
+	"github.com/aifity/omnigit-mcp/pkg/utils"
 	gogithub "github.com/google/go-github/v82/github"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/shurcooL/githubv4"
@@ -194,7 +194,7 @@ type StdioServerConfig struct {
 	Token string
 
 	// EnabledToolsets is a list of toolsets to enable
-	// See: https://github.com/github/omnigit-mcp?tab=readme-ov-file#tool-configuration
+	// See: https://github.com/aifity/omnigit-mcp?tab=readme-ov-file#tool-configuration
 	EnabledToolsets []string
 
 	// EnabledTools is a list of specific tools to enable (additive to toolsets)
@@ -206,14 +206,14 @@ type StdioServerConfig struct {
 	EnabledFeatures []string
 
 	// Whether to enable dynamic toolsets
-	// See: https://github.com/github/omnigit-mcp?tab=readme-ov-file#dynamic-tool-discovery
+	// See: https://github.com/aifity/omnigit-mcp?tab=readme-ov-file#dynamic-tool-discovery
 	DynamicToolsets bool
 
 	// ReadOnly indicates if we should only register read-only tools
 	ReadOnly bool
 
 	// ExportTranslations indicates if we should export translations
-	// See: https://github.com/github/omnigit-mcp?tab=readme-ov-file#i18n--overriding-descriptions
+	// See: https://github.com/aifity/omnigit-mcp?tab=readme-ov-file#i18n--overriding-descriptions
 	ExportTranslations bool
 
 	// EnableCommandLogging indicates if we should log commands

@@ -3,7 +3,7 @@ package context
 import (
 	"context"
 
-	"github.com/github/omnigit-mcp/pkg/utils"
+	"github.com/aifity/omnigit-mcp/pkg/utils"
 )
 
 type tokenCtxKey struct{}

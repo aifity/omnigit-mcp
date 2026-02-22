@@ -5,8 +5,8 @@ import (
 	"slices"
 	"strings"
 
-	ghcontext "github.com/github/omnigit-mcp/pkg/context"
-	"github.com/github/omnigit-mcp/pkg/http/headers"
+	ghcontext "github.com/aifity/omnigit-mcp/pkg/context"
+	"github.com/aifity/omnigit-mcp/pkg/http/headers"
 )
 
 // WithRequestConfig is a middleware that extracts MCP-related headers and sets them in the request context.
