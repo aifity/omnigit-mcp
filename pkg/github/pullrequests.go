@@ -329,8 +329,8 @@ type reviewCommentNode struct {
 	NodeID githubv4.ID `graphql:"id"`
 	Body   githubv4.String
 	Path   githubv4.String
-	Line       *githubv4.Int
-	Author     struct {
+	Line   *githubv4.Int
+	Author struct {
 		Login githubv4.String
 	}
 	CreatedAt githubv4.DateTime
@@ -447,8 +447,8 @@ func GetPullRequestReviewComments(ctx context.Context, gqlClient *githubv4.Clien
 			transformedComment := map[string]any{
 				"NodeID":    fmt.Sprintf("%v", comment.NodeID),
 				"CommentID": commentID, // The numeric ID from the URL fragment
-				"Body":       string(comment.Body),
-				"Path":       string(comment.Path),
+				"Body":      string(comment.Body),
+				"Path":      string(comment.Path),
 				"Author": map[string]any{
 					"Login": string(comment.Author.Login),
 				},

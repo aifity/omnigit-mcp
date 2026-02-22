@@ -1617,10 +1617,10 @@ func Test_GetPullRequestComments(t *testing.T) {
 												"totalCount": 2,
 												"nodes": []map[string]any{
 													{
-														"id": "PRRC_kwDOA0xdyM4AX1Y0",
-														"body":       "This looks good",
-														"path":       "file1.go",
-														"line":       5,
+														"id":   "PRRC_kwDOA0xdyM4AX1Y0",
+														"body": "This looks good",
+														"path": "file1.go",
+														"line": 5,
 														"author": map[string]any{
 															"login": "reviewer1",
 														},
@@ -1629,10 +1629,10 @@ func Test_GetPullRequestComments(t *testing.T) {
 														"url":       "https://github.com/owner/repo/pull/42#discussion_r101",
 													},
 													{
-														"id": "PRRC_kwDOA0xdyM4AX1Y1",
-														"body":       "Please fix this",
-														"path":       "file1.go",
-														"line":       10,
+														"id":   "PRRC_kwDOA0xdyM4AX1Y1",
+														"body": "Please fix this",
+														"path": "file1.go",
+														"line": 10,
 														"author": map[string]any{
 															"login": "reviewer2",
 														},
@@ -1691,8 +1691,8 @@ func Test_GetPullRequestComments(t *testing.T) {
 
 				// Validate first comment
 				comment1 := commentNodes[0].(map[string]any)
-					assert.Equal(t, "PRRC_kwDOA0xdyM4AX1Y0", comment1["NodeID"])
-					assert.Equal(t, float64(101), comment1["CommentID"]) // Extracted from URL #discussion_r101
+				assert.Equal(t, "PRRC_kwDOA0xdyM4AX1Y0", comment1["NodeID"])
+				assert.Equal(t, float64(101), comment1["CommentID"]) // Extracted from URL #discussion_r101
 				assert.Equal(t, "This looks good", comment1["Body"])
 				assert.Equal(t, "file1.go", comment1["Path"])
 
@@ -1761,8 +1761,8 @@ func Test_GetPullRequestComments(t *testing.T) {
 													{
 														"id":   "PRRC_kwDOA0xdyM4AX1Y0",
 														"body": "Maintainer review comment",
-														"path":       "file1.go",
-														"line":       5,
+														"path": "file1.go",
+														"line": 5,
 														"author": map[string]any{
 															"login": "maintainer",
 														},
@@ -1773,8 +1773,8 @@ func Test_GetPullRequestComments(t *testing.T) {
 													{
 														"id":   "PRRC_kwDOA0xdyM4AX1Y1",
 														"body": "External review comment",
-														"path":       "file1.go",
-														"line":       10,
+														"path": "file1.go",
+														"line": 10,
 														"author": map[string]any{
 															"login": "testuser",
 														},
