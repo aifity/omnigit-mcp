@@ -254,3 +254,115 @@ func (s *GitOperations) ApplyPatchFromString(repoPath string, patchString string
 	// Modify the result to remove the file path reference since it's a temporary file
 	return strings.Replace(result, fmt.Sprintf("from file '%s' ", tmpFile.Name()), "", 1), nil
 }
+
+// ListWorktrees lists all worktrees in the repository
+func (s *GitOperations) ListWorktrees(repoPath string) (string, error) {
+	output, err := gitops.RunGitCommand(repoPath, "worktree", "list", "--porcelain")
+	if err != nil {
+		return "", fmt.Errorf("failed to list worktrees: %w", err)
+	}
+	return output, nil
+}
+
+// AddWorktree creates a new worktree
+func (s *GitOperations) AddWorktree(repoPath string, worktreePath string, commitish string, options []string) (string, error) {
+	// Build the command arguments
+	args := []string{"worktree", "add"}
+
+	// Add any additional options (e.g., --detach, --force, -b <new-branch>)
+	args = append(args, options...)
+
+	// Add the worktree path
+	args = append(args, worktreePath)
+
+	// Add the commitish (branch, tag, or commit) if provided
+	if commitish != "" {
+		args = append(args, commitish)
+	}
+
+	output, err := gitops.RunGitCommand(repoPath, args...)
+	if err != nil {
+		return "", fmt.Errorf("failed to add worktree: %w", err)
+	}
+
+	return fmt.Sprintf("Worktree created at '%s'\n%s", worktreePath, output), nil
+}
+
+// RemoveWorktree removes a worktree
+func (s *GitOperations) RemoveWorktree(repoPath string, worktreeName string, force bool) (string, error) {
+	args := []string{"worktree", "remove"}
+
+	if force {
+		args = append(args, "--force")
+	}
+
+	args = append(args, worktreeName)
+
+	output, err := gitops.RunGitCommand(repoPath, args...)
+	if err != nil {
+		return "", fmt.Errorf("failed to remove worktree: %w", err)
+	}
+
+	return fmt.Sprintf("Worktree '%s' removed successfully\n%s", worktreeName, output), nil
+}
+
+// LockWorktree locks a worktree to prevent it from being pruned
+func (s *GitOperations) LockWorktree(repoPath string, worktreeName string, reason string) (string, error) {
+	args := []string{"worktree", "lock"}
+
+	if reason != "" {
+		args = append(args, "--reason", reason)
+	}
+
+	args = append(args, worktreeName)
+
+	output, err := gitops.RunGitCommand(repoPath, args...)
+	if err != nil {
+		return "", fmt.Errorf("failed to lock worktree: %w", err)
+	}
+
+	reasonMsg := ""
+	if reason != "" {
+		reasonMsg = fmt.Sprintf(" with reason: %s", reason)
+	}
+
+	return fmt.Sprintf("Worktree '%s' locked successfully%s\n%s", worktreeName, reasonMsg, output), nil
+}
+
+// UnlockWorktree unlocks a worktree
+func (s *GitOperations) UnlockWorktree(repoPath string, worktreeName string) (string, error) {
+	output, err := gitops.RunGitCommand(repoPath, "worktree", "unlock", worktreeName)
+	if err != nil {
+		return "", fmt.Errorf("failed to unlock worktree: %w", err)
+	}
+
+	return fmt.Sprintf("Worktree '%s' unlocked successfully\n%s", worktreeName, output), nil
+}
+
+// PruneWorktrees removes worktree information for deleted worktrees
+func (s *GitOperations) PruneWorktrees(repoPath string, dryRun bool, verbose bool) (string, error) {
+	args := []string{"worktree", "prune"}
+
+	if dryRun {
+		args = append(args, "--dry-run")
+	}
+
+	if verbose {
+		args = append(args, "--verbose")
+	}
+
+	output, err := gitops.RunGitCommand(repoPath, args...)
+	if err != nil {
+		return "", fmt.Errorf("failed to prune worktrees: %w", err)
+	}
+
+	if dryRun {
+		return fmt.Sprintf("Dry run - worktrees that would be pruned:\n%s", output), nil
+	}
+
+	if output == "" {
+		return "No worktrees to prune", nil
+	}
+
+	return fmt.Sprintf("Worktrees pruned successfully\n%s", output), nil
+}

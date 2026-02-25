@@ -1083,6 +1083,406 @@ func ApplyPatchFile(t translations.TranslationHelperFunc) inventory.ServerTool {
 	)
 }
 
+// ListWorktrees creates a tool to list all worktrees
+func ListWorktrees(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
+		mcp.Tool{
+			Name:        "git_worktree_list",
+			Description: t("TOOL_GIT_WORKTREE_LIST_DESCRIPTION", "Lists all worktrees in the repository with their paths and branches"),
+			Annotations: &mcp.ToolAnnotations{
+				Title:        t("TOOL_GIT_WORKTREE_LIST_USER_TITLE", "Git worktree list"),
+				ReadOnlyHint: true,
+			},
+			InputSchema: &jsonschema.Schema{
+				Type: "object",
+				Properties: map[string]*jsonschema.Schema{
+					"repo_path": {
+						Type:        "string",
+						Description: "Path to Git repository (optional if default repository is configured)",
+					},
+				},
+			},
+		},
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			var args map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
+			}
+
+			requestedPath := ""
+			if val, ok := args["repo_path"].(string); ok {
+				requestedPath = val
+			}
+
+			repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+			}
+
+			result, err := gitDeps.GetGitOps().ListWorktrees(repoPath)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to list worktrees: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(result), nil
+		},
+	)
+}
+
+// AddWorktree creates a tool to add a new worktree
+func AddWorktree(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
+		mcp.Tool{
+			Name:        "git_worktree_add",
+			Description: t("TOOL_GIT_WORKTREE_ADD_DESCRIPTION", "Creates a new worktree at the specified path. A worktree allows you to have multiple working directories from the same repository"),
+			Annotations: &mcp.ToolAnnotations{
+				Title:        t("TOOL_GIT_WORKTREE_ADD_USER_TITLE", "Git worktree add"),
+				ReadOnlyHint: false,
+			},
+			InputSchema: &jsonschema.Schema{
+				Type: "object",
+				Properties: map[string]*jsonschema.Schema{
+					"repo_path": {
+						Type:        "string",
+						Description: "Path to Git repository (optional if default repository is configured)",
+					},
+					"worktree_path": {
+						Type:        "string",
+						Description: "Path where the new worktree should be created",
+					},
+					"commitish": {
+						Type:        "string",
+						Description: "Branch name, tag, or commit SHA to checkout in the new worktree (optional)",
+					},
+					"new_branch": {
+						Type:        "string",
+						Description: "Create a new branch with this name in the worktree (optional)",
+					},
+					"detach": {
+						Type:        "boolean",
+						Description: "Create a detached HEAD worktree (optional, default: false)",
+					},
+					"force": {
+						Type:        "boolean",
+						Description: "Force creation even if worktree path already exists (optional, default: false)",
+					},
+				},
+				Required: []string{"worktree_path"},
+			},
+		},
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			var args map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
+			}
+
+			requestedPath := ""
+			if val, ok := args["repo_path"].(string); ok {
+				requestedPath = val
+			}
+
+			repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+			}
+
+			worktreePath := ""
+			if val, ok := args["worktree_path"].(string); ok {
+				worktreePath = val
+			}
+
+			commitish := ""
+			if val, ok := args["commitish"].(string); ok {
+				commitish = val
+			}
+
+			newBranch := ""
+			if val, ok := args["new_branch"].(string); ok {
+				newBranch = val
+			}
+
+			detach := false
+			if val, ok := args["detach"].(bool); ok {
+				detach = val
+			}
+
+			force := false
+			if val, ok := args["force"].(bool); ok {
+				force = val
+			}
+
+			// Build options array
+			var options []string
+			if newBranch != "" {
+				options = append(options, "-b", newBranch)
+			}
+			if detach {
+				options = append(options, "--detach")
+			}
+			if force {
+				options = append(options, "--force")
+			}
+
+			result, err := gitDeps.GetGitOps().AddWorktree(repoPath, worktreePath, commitish, options)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to add worktree: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(result), nil
+		},
+	)
+}
+
+// RemoveWorktree creates a tool to remove a worktree
+func RemoveWorktree(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
+		mcp.Tool{
+			Name:        "git_worktree_remove",
+			Description: t("TOOL_GIT_WORKTREE_REMOVE_DESCRIPTION", "Removes a worktree. The worktree must be clean (no uncommitted changes) unless force is used"),
+			Annotations: &mcp.ToolAnnotations{
+				Title:        t("TOOL_GIT_WORKTREE_REMOVE_USER_TITLE", "Git worktree remove"),
+				ReadOnlyHint: false,
+			},
+			InputSchema: &jsonschema.Schema{
+				Type: "object",
+				Properties: map[string]*jsonschema.Schema{
+					"repo_path": {
+						Type:        "string",
+						Description: "Path to Git repository (optional if default repository is configured)",
+					},
+					"worktree": {
+						Type:        "string",
+						Description: "Path or name of the worktree to remove",
+					},
+					"force": {
+						Type:        "boolean",
+						Description: "Force removal even if worktree is dirty or locked (optional, default: false)",
+					},
+				},
+				Required: []string{"worktree"},
+			},
+		},
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			var args map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
+			}
+
+			requestedPath := ""
+			if val, ok := args["repo_path"].(string); ok {
+				requestedPath = val
+			}
+
+			repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+			}
+
+			worktree := ""
+			if val, ok := args["worktree"].(string); ok {
+				worktree = val
+			}
+
+			force := false
+			if val, ok := args["force"].(bool); ok {
+				force = val
+			}
+
+			result, err := gitDeps.GetGitOps().RemoveWorktree(repoPath, worktree, force)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to remove worktree: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(result), nil
+		},
+	)
+}
+
+// LockWorktree creates a tool to lock a worktree
+func LockWorktree(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
+		mcp.Tool{
+			Name:        "git_worktree_lock",
+			Description: t("TOOL_GIT_WORKTREE_LOCK_DESCRIPTION", "Locks a worktree to prevent it from being pruned or removed. Useful for worktrees on portable devices"),
+			Annotations: &mcp.ToolAnnotations{
+				Title:        t("TOOL_GIT_WORKTREE_LOCK_USER_TITLE", "Git worktree lock"),
+				ReadOnlyHint: false,
+			},
+			InputSchema: &jsonschema.Schema{
+				Type: "object",
+				Properties: map[string]*jsonschema.Schema{
+					"repo_path": {
+						Type:        "string",
+						Description: "Path to Git repository (optional if default repository is configured)",
+					},
+					"worktree": {
+						Type:        "string",
+						Description: "Path or name of the worktree to lock",
+					},
+					"reason": {
+						Type:        "string",
+						Description: "Reason for locking the worktree (optional)",
+					},
+				},
+				Required: []string{"worktree"},
+			},
+		},
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			var args map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
+			}
+
+			requestedPath := ""
+			if val, ok := args["repo_path"].(string); ok {
+				requestedPath = val
+			}
+
+			repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+			}
+
+			worktree := ""
+			if val, ok := args["worktree"].(string); ok {
+				worktree = val
+			}
+
+			reason := ""
+			if val, ok := args["reason"].(string); ok {
+				reason = val
+			}
+
+			result, err := gitDeps.GetGitOps().LockWorktree(repoPath, worktree, reason)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to lock worktree: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(result), nil
+		},
+	)
+}
+
+// UnlockWorktree creates a tool to unlock a worktree
+func UnlockWorktree(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
+		mcp.Tool{
+			Name:        "git_worktree_unlock",
+			Description: t("TOOL_GIT_WORKTREE_UNLOCK_DESCRIPTION", "Unlocks a previously locked worktree, allowing it to be pruned or removed"),
+			Annotations: &mcp.ToolAnnotations{
+				Title:        t("TOOL_GIT_WORKTREE_UNLOCK_USER_TITLE", "Git worktree unlock"),
+				ReadOnlyHint: false,
+			},
+			InputSchema: &jsonschema.Schema{
+				Type: "object",
+				Properties: map[string]*jsonschema.Schema{
+					"repo_path": {
+						Type:        "string",
+						Description: "Path to Git repository (optional if default repository is configured)",
+					},
+					"worktree": {
+						Type:        "string",
+						Description: "Path or name of the worktree to unlock",
+					},
+				},
+				Required: []string{"worktree"},
+			},
+		},
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			var args map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
+			}
+
+			requestedPath := ""
+			if val, ok := args["repo_path"].(string); ok {
+				requestedPath = val
+			}
+
+			repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+			}
+
+			worktree := ""
+			if val, ok := args["worktree"].(string); ok {
+				worktree = val
+			}
+
+			result, err := gitDeps.GetGitOps().UnlockWorktree(repoPath, worktree)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to unlock worktree: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(result), nil
+		},
+	)
+}
+
+// PruneWorktrees creates a tool to prune worktree information
+func PruneWorktrees(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return newToolFromHandler(
+		mcp.Tool{
+			Name:        "git_worktree_prune",
+			Description: t("TOOL_GIT_WORKTREE_PRUNE_DESCRIPTION", "Removes stale worktree administrative files. Use this to clean up worktree metadata for worktrees that have been manually deleted"),
+			Annotations: &mcp.ToolAnnotations{
+				Title:        t("TOOL_GIT_WORKTREE_PRUNE_USER_TITLE", "Git worktree prune"),
+				ReadOnlyHint: false,
+			},
+			InputSchema: &jsonschema.Schema{
+				Type: "object",
+				Properties: map[string]*jsonschema.Schema{
+					"repo_path": {
+						Type:        "string",
+						Description: "Path to Git repository (optional if default repository is configured)",
+					},
+					"dry_run": {
+						Type:        "boolean",
+						Description: "Show what would be pruned without actually pruning (optional, default: false)",
+					},
+					"verbose": {
+						Type:        "boolean",
+						Description: "Show verbose output (optional, default: false)",
+					},
+				},
+			},
+		},
+		func(_ context.Context, gitDeps ToolDependencies, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			var args map[string]any
+			if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
+			}
+
+			requestedPath := ""
+			if val, ok := args["repo_path"].(string); ok {
+				requestedPath = val
+			}
+
+			repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+			}
+
+			dryRun := false
+			if val, ok := args["dry_run"].(bool); ok {
+				dryRun = val
+			}
+
+			verbose := false
+			if val, ok := args["verbose"].(bool); ok {
+				verbose = val
+			}
+
+			result, err := gitDeps.GetGitOps().PruneWorktrees(repoPath, dryRun, verbose)
+			if err != nil {
+				return utils.NewToolResultError(fmt.Sprintf("Failed to prune worktrees: %v", err)), nil
+			}
+
+			return utils.NewToolResultText(result), nil
+		},
+	)
+}
+
 // AllGitTools returns all git tools
 func AllGitTools(t translations.TranslationHelperFunc) []inventory.ServerTool {
 	return []inventory.ServerTool{
@@ -1103,5 +1503,11 @@ func AllGitTools(t translations.TranslationHelperFunc) []inventory.ServerTool {
 		ListRepositories(t),
 		ApplyPatchString(t),
 		ApplyPatchFile(t),
+		ListWorktrees(t),
+		AddWorktree(t),
+		RemoveWorktree(t),
+		LockWorktree(t),
+		UnlockWorktree(t),
+		PruneWorktrees(t),
 	}
 }
