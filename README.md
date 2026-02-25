@@ -1088,6 +1088,66 @@ The following sets of tools are available:
 - **git_status** - Git status
   - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
 
+- **git_worktree_add** - Git worktree add
+  - `commitish`: Branch name, tag, or commit SHA to checkout in the new worktree (optional) (string, optional)
+  - `detach`: Create a detached HEAD worktree (optional, default: false) (boolean, optional)
+  - `force`: Force creation even if worktree path already exists (optional, default: false) (boolean, optional)
+  - `new_branch`: Create a new branch with this name in the worktree (optional) (string, optional)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+  - `worktree_path`: Path where the new worktree should be created (string, required)
+
+- **git_worktree_add** - Git worktree add
+  - `commitish`: Branch name, tag, or commit SHA to checkout in the new worktree (optional) (string, optional)
+  - `detach`: Create a detached HEAD worktree (optional, default: false) (boolean, optional)
+  - `force`: Force creation even if worktree path already exists (optional, default: false) (boolean, optional)
+  - `new_branch`: Create a new branch with this name in the worktree (optional) (string, optional)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+  - `worktree_path`: Path where the new worktree should be created (string, required)
+
+- **git_worktree_list** - Git worktree list
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_worktree_list** - Git worktree list
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+
+- **git_worktree_lock** - Git worktree lock
+  - `reason`: Reason for locking the worktree (optional) (string, optional)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+  - `worktree`: Path or name of the worktree to lock (string, required)
+
+- **git_worktree_lock** - Git worktree lock
+  - `reason`: Reason for locking the worktree (optional) (string, optional)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+  - `worktree`: Path or name of the worktree to lock (string, required)
+
+- **git_worktree_prune** - Git worktree prune
+  - `dry_run`: Show what would be pruned without actually pruning (optional, default: false) (boolean, optional)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+  - `verbose`: Show verbose output (optional, default: false) (boolean, optional)
+
+- **git_worktree_prune** - Git worktree prune
+  - `dry_run`: Show what would be pruned without actually pruning (optional, default: false) (boolean, optional)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+  - `verbose`: Show verbose output (optional, default: false) (boolean, optional)
+
+- **git_worktree_remove** - Git worktree remove
+  - `force`: Force removal even if worktree is dirty or locked (optional, default: false) (boolean, optional)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+  - `worktree`: Path or name of the worktree to remove (string, required)
+
+- **git_worktree_remove** - Git worktree remove
+  - `force`: Force removal even if worktree is dirty or locked (optional, default: false) (boolean, optional)
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+  - `worktree`: Path or name of the worktree to remove (string, required)
+
+- **git_worktree_unlock** - Git worktree unlock
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+  - `worktree`: Path or name of the worktree to unlock (string, required)
+
+- **git_worktree_unlock** - Git worktree unlock
+  - `repo_path`: Path to Git repository (optional if default repository is configured) (string, optional)
+  - `worktree`: Path or name of the worktree to unlock (string, required)
+
 </details>
 
 <details>
