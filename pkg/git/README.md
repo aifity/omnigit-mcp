@@ -14,7 +14,7 @@ The code has been adapted to integrate with the omnigit-mcp architecture while p
 
 ## Overview
 
-The git tools package provides 17 tools for working with local git repositories:
+The git tools package provides 23 tools for working with local git repositories:
 
 ### Read-Only Tools
 - **git_status** - Show the working tree status
@@ -24,6 +24,7 @@ The git tools package provides 17 tools for working with local git repositories:
 - **git_log** - Show commit history
 - **git_show** - Show contents of a specific commit
 - **git_list_repositories** - List all configured repositories
+- **git_worktree_list** - List all worktrees in the repository
 
 ### Write Tools
 - **git_add** - Add file contents to the staging area
@@ -36,6 +37,13 @@ The git tools package provides 17 tools for working with local git repositories:
 - **git_pull** - Pull changes from remote repository with automatic rebase and prune
 - **git_apply_patch_string** - Apply a patch from a string
 - **git_apply_patch_file** - Apply a patch from a file
+
+### Worktree Tools
+- **git_worktree_add** - Create a new worktree at a specified path
+- **git_worktree_remove** - Remove an existing worktree
+- **git_worktree_lock** - Lock a worktree to prevent pruning
+- **git_worktree_unlock** - Unlock a previously locked worktree
+- **git_worktree_prune** - Remove stale worktree administrative files
 
 ## Architecture
 

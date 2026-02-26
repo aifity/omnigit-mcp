@@ -23,4 +23,11 @@ type GitOperations interface {
 	PullChanges(repoPath string, remote string, branch string) (string, error)
 	ApplyPatchFromString(repoPath string, patchString string) (string, error)
 	ApplyPatchFromFile(repoPath string, patchFilePath string) (string, error)
+	// Worktree operations
+	ListWorktrees(repoPath string) (string, error)
+	AddWorktree(repoPath string, worktreePath string, commitish string, options []string) (string, error)
+	RemoveWorktree(repoPath string, worktreeName string, force bool) (string, error)
+	LockWorktree(repoPath string, worktreeName string, reason string) (string, error)
+	UnlockWorktree(repoPath string, worktreeName string) (string, error)
+	PruneWorktrees(repoPath string, dryRun bool, verbose bool) (string, error)
 }
