@@ -33,3 +33,6 @@ ui/node_modules/
 pkg/github/ui_dist/*
 !pkg/github/ui_dist/.gitkeep
 !pkg/github/ui_dist/.placeholder.html
+.mcpregistry_github_token
+.mcpregistry_registry_token
+/server.schema.json

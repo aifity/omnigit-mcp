@@ -1186,9 +1186,19 @@ func AddWorktree(t translations.TranslationHelperFunc) inventory.ServerTool {
 				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
 			}
 
-			worktreePath := ""
-			if val, ok := args["worktree_path"].(string); ok {
-				worktreePath = val
+			rawWorktreePath, ok := args["worktree_path"]
+			if !ok {
+				return utils.NewToolResultError("Missing required argument: worktree_path"), nil
+			}
+
+			worktreePathStr, ok := rawWorktreePath.(string)
+			if !ok {
+				return utils.NewToolResultError("Invalid type for worktree_path: expected string"), nil
+			}
+
+			worktreePath := strings.TrimSpace(worktreePathStr)
+			if worktreePath == "" {
+				return utils.NewToolResultError("Invalid worktree_path: value must be a non-empty string"), nil
 			}
 
 			commitish := ""
@@ -1252,7 +1262,7 @@ func RemoveWorktree(t translations.TranslationHelperFunc) inventory.ServerTool {
 					},
 					"worktree": {
 						Type:        "string",
-						Description: "Path or name of the worktree to remove",
+						Description: "Path to the worktree directory to remove",
 					},
 					"force": {
 						Type:        "boolean",
@@ -1278,9 +1288,19 @@ func RemoveWorktree(t translations.TranslationHelperFunc) inventory.ServerTool {
 				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
 			}
 
-			worktree := ""
-			if val, ok := args["worktree"].(string); ok {
-				worktree = val
+			rawWorktree, ok := args["worktree"]
+			if !ok {
+				return utils.NewToolResultError("Invalid 'worktree' argument: missing required field"), nil
+			}
+
+			worktreeStr, ok := rawWorktree.(string)
+			if !ok {
+				return utils.NewToolResultError("Invalid 'worktree' argument: must be a string"), nil
+			}
+
+			worktree := strings.TrimSpace(worktreeStr)
+			if worktree == "" {
+				return utils.NewToolResultError("Invalid 'worktree' argument: must be a non-empty string"), nil
 			}
 
 			force := false
@@ -1317,7 +1337,7 @@ func LockWorktree(t translations.TranslationHelperFunc) inventory.ServerTool {
 					},
 					"worktree": {
 						Type:        "string",
-						Description: "Path or name of the worktree to lock",
+						Description: "Path to the worktree directory to lock",
 					},
 					"reason": {
 						Type:        "string",
@@ -1343,10 +1363,16 @@ func LockWorktree(t translations.TranslationHelperFunc) inventory.ServerTool {
 				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
 			}
 
-			worktree := ""
-			if val, ok := args["worktree"].(string); ok {
-				worktree = val
+			rawWorktree, ok := args["worktree"]
+			if !ok {
+				return utils.NewToolResultError("'worktree' is required and must be a non-empty string"), nil
 			}
+
+			worktree, ok := rawWorktree.(string)
+			if !ok || strings.TrimSpace(worktree) == "" {
+				return utils.NewToolResultError("'worktree' is required and must be a non-empty string"), nil
+			}
+			worktree = strings.TrimSpace(worktree)
 
 			reason := ""
 			if val, ok := args["reason"].(string); ok {
@@ -1382,7 +1408,7 @@ func UnlockWorktree(t translations.TranslationHelperFunc) inventory.ServerTool {
 					},
 					"worktree": {
 						Type:        "string",
-						Description: "Path or name of the worktree to unlock",
+						Description: "Path to the worktree directory to unlock",
 					},
 				},
 				Required: []string{"worktree"},
@@ -1404,9 +1430,19 @@ func UnlockWorktree(t translations.TranslationHelperFunc) inventory.ServerTool {
 				return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
 			}
 
-			worktree := ""
-			if val, ok := args["worktree"].(string); ok {
-				worktree = val
+			worktreeVal, ok := args["worktree"]
+			if !ok {
+				return utils.NewToolResultError("Missing required 'worktree' argument"), nil
+			}
+
+			worktreeStr, ok := worktreeVal.(string)
+			if !ok {
+				return utils.NewToolResultError("Invalid 'worktree' argument: expected a string"), nil
+			}
+
+			worktree := strings.TrimSpace(worktreeStr)
+			if worktree == "" {
+				return utils.NewToolResultError("Invalid 'worktree' argument: must be a non-empty string"), nil
 			}
 
 			result, err := gitDeps.GetGitOps().UnlockWorktree(repoPath, worktree)
