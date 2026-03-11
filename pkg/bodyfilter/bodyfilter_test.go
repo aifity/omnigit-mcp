@@ -189,6 +189,53 @@ Pull Request opened by [CodeBot](https://codebot.io/app) with guidance from the 
 Pull Request opened by [X](http://x.com) with guidance from Y`,
 			expected: "Quick fix",
 		},
+		{
+			name: "filters out Generated with line - with emoji and link",
+			input: `Fix authentication bug
+
+This PR fixes the authentication issue.
+
+🤖 Generated with [Claude Code](https://claude.ai/claude-code)`,
+			expected: "Fix authentication bug\n\nThis PR fixes the authentication issue.",
+		},
+		{
+			name: "filters out Generated with line - without emoji, with link",
+			input: `Add new feature
+
+Implementation details.
+
+Generated with [Claude Code](https://claude.ai/claude-code)`,
+			expected: "Add new feature\n\nImplementation details.",
+		},
+		{
+			name: "filters out Generated with line - with emoji, no link",
+			input: `Update docs
+
+🤖 Generated with Claude Code`,
+			expected: "Update docs",
+		},
+		{
+			name: "filters out Generated with line - no emoji, no link",
+			input: `Bug fix
+
+Generated with Claude Code`,
+			expected: "Bug fix",
+		},
+		{
+			name: "filters out Generated with line - any emoji and any tool/url",
+			input: `Refactor code
+
+✨ Generated with [MyAITool](https://myaitool.example.com/some/path)`,
+			expected: "Refactor code",
+		},
+		{
+			name: "filters out Generated with combined with Co-Authored-By",
+			input: `Fix bug
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+🤖 Generated with [Claude Code](https://claude.ai/claude-code)`,
+			expected: "Fix bug",
+		},
 	}
 
 	for _, tt := range tests {
