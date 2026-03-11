@@ -15,6 +15,9 @@ var defaultFilterPatterns = []string{
 	// Generic PR footer pattern - matches "Pull Request opened by [Tool](url) with guidance from..." format
 	// Uses (?s) for single-line mode to match across newlines, and matches the entire line
 	`(?s)---\s*Pull Request opened by \[[^\]]+\]\([^)]+\) with guidance from [^\n]+`,
+	// "Generated with" footer - matches lines like "🤖 Generated with [Claude Code](url)" or
+	// "Generated with ToolName" (optional emoji prefix, optional markdown link, any tool name/url)
+	`(?m)^\S*\s*Generated with (?:\[[^\]]+\]\([^)]+\)|[^\n]+)$`,
 }
 
 // filterPatterns holds the compiled regex patterns
