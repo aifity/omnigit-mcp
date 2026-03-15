@@ -10,7 +10,7 @@ require (
 	github.com/josephburnett/jd/v2 v2.5.0
 	github.com/lithammer/fuzzysearch v1.1.8
 	github.com/microcosm-cc/bluemonday v1.0.27
-	github.com/modelcontextprotocol/go-sdk v1.4.0
+	github.com/modelcontextprotocol/go-sdk v1.4.1
 	github.com/muesli/cache2go v0.0.0-20221011235721-518229cd8021
 	github.com/shurcooL/githubv4 v0.0.0-20260209031235-2402fdf4a9ed
 	github.com/shurcooL/graphql v0.0.0-20240915155400-7ee5256398cf
@@ -32,7 +32,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
-	github.com/segmentio/encoding v0.5.3 // indirect
+	github.com/segmentio/encoding v0.5.4 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/stretchr/objx v0.5.3 // indirect
