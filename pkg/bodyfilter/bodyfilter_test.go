@@ -236,6 +236,38 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 🤖 Generated with [Claude Code](https://claude.ai/claude-code)`,
 			expected: "Fix bug",
 		},
+		{
+			name: "filters out Warp.dev conversation and plan links",
+			input: `Fix authentication issue
+
+This PR addresses the bug in the login flow.
+
+---
+*Conversation: https://app.warp.dev/conversation/abc123-def4-5678-90gh-ijklmnopqrst*
+*Plan: https://app.warp.dev/drive/notebook/xyz789FakeNotebookId*`,
+			expected: "Fix authentication issue\n\nThis PR addresses the bug in the login flow.",
+		},
+		{
+			name: "filters out Warp.dev links with different IDs",
+			input: `Update documentation
+
+---
+*Conversation: https://app.warp.dev/conversation/fake-conversation-uuid-1234*
+*Plan: https://app.warp.dev/drive/notebook/fakePlanId567*`,
+			expected: "Update documentation",
+		},
+		{
+			name: "filters out Warp.dev links combined with other patterns",
+			input: `Implement new feature
+
+Co-Authored-By: Developer <dev@example.com>
+🤖 Generated with [Claude Code](https://claude.ai/claude-code)
+
+---
+*Conversation: https://app.warp.dev/conversation/example-conversation-id*
+*Plan: https://app.warp.dev/drive/notebook/example-plan-id*`,
+			expected: "Implement new feature",
+		},
 	}
 
 	for _, tt := range tests {
