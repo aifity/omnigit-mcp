@@ -268,6 +268,62 @@ Co-Authored-By: Developer <dev@example.com>
 *Plan: https://app.warp.dev/drive/notebook/example-plan-id*`,
 			expected: "Implement new feature",
 		},
+		{
+			name: "filters out Warp.dev conversation link - new plain format without separator or asterisks",
+			input: `Recreates the configurable buckets feature.
+
+Supersedes #122.
+
+Conversation: https://app.warp.dev/conversation/f2974b5a-e1ce-4428-b1ff-21735457acd5`,
+			expected: "Recreates the configurable buckets feature.\n\nSupersedes #122.",
+		},
+		{
+			name: "filters out Warp.dev conversation link with preceding --- but no asterisks or plan",
+			input: `Fix a bug.
+
+---
+Conversation: https://app.warp.dev/conversation/abc123-def456`,
+			expected: "Fix a bug.",
+		},
+		{
+			name: "filters out Warp.dev conversation link only (no plan) with asterisks",
+			input: `Add feature.
+
+*Conversation: https://app.warp.dev/conversation/abc123*`,
+			expected: "Add feature.",
+		},
+		{
+			name: "filters out Warp.dev ## Artifacts block with list items",
+			input: `Fix bug in login flow.
+
+## Artifacts
+- Conversation: https://app.warp.dev/conversation/7a680e91-3ac5-4cc6-a170-dd976dcabe33
+- Plan: https://app.warp.dev/drive/notebook/yI1A8F434ZAhCpTfW3LANZ`,
+			expected: "Fix bug in login flow.",
+		},
+		{
+			name: "filters out Warp.dev ## Artifacts block - conversation only",
+			input: `Update readme.
+
+## Artifacts
+- Conversation: https://app.warp.dev/conversation/abc123`,
+			expected: "Update readme.",
+		},
+		{
+			name: "filters out Warp.dev list-item links without heading",
+			input: `Refactor auth.
+
+- Conversation: https://app.warp.dev/conversation/abc123
+- Plan: https://app.warp.dev/drive/notebook/planxyz`,
+			expected: "Refactor auth.",
+		},
+		{
+			name: "catch-all: removes any line containing a warp.dev URL",
+			input: `Fix something.
+
+See https://app.warp.dev/conversation/some-unknown-format for context.`,
+			expected: "Fix something.",
+		},
 	}
 
 	for _, tt := range tests {

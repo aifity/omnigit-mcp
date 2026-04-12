@@ -18,11 +18,17 @@ var defaultFilterPatterns = []string{
 	// "Generated with" footer - matches lines like "🤖 Generated with [Claude Code](url)" or
 	// "Generated with ToolName" (optional emoji prefix, optional markdown link, any tool name/url)
 	`(?m)^\S*\s*Generated with (?:\[[^\]]+\]\([^)]+\)|[^\n]+)$`,
-	// Warp.dev conversation/plan links - matches lines like:
-	// ---
-	// *Conversation: https://app.warp.dev/conversation/...*
-	// *Plan: https://app.warp.dev/drive/notebook/...*
-	`(?s)---\s*\*Conversation:\s*https://app\.warp\.dev/[^\*]+\*\s*\*Plan:\s*https://app\.warp\.dev/[^\*]+\*`,
+	// Warp.dev conversation/plan/run links - matches individual link lines in various formats.
+	// Optionally consumes a preceding --- separator or ## Artifacts (any level) heading.
+	// Handles formats like:
+	// Conversation: https://app.warp.dev/...
+	// *Conversation: https://app.warp.dev/...*
+	// - Conversation: https://app.warp.dev/...
+	// ---\n*Conversation: https://app.warp.dev/...*\n*Plan: https://app.warp.dev/...*
+	// ## Artifacts\n- Conversation: https://app.warp.dev/...\n- Plan: https://app.warp.dev/...
+	`(?m)^(?:(?:---|#+\s+Artifacts)\s*\n)?(?:-\s+)?\*?(?:Conversation|Plan|Run):\s*https://app\.warp\.dev/[^\n\*]+\*?\s*$`,
+	// Last-resort catch-all: remove any line that contains a warp.dev URL
+	`(?m)^[^\n]*https?://[^\s]*warp\.dev[^\n]*$`,
 }
 
 // filterPatterns holds the compiled regex patterns
