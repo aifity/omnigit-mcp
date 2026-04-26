@@ -44,7 +44,7 @@ The MCP exposes **far more tools than the table below**. The table only covers t
 | `gh issue comment` | `mcp__github__issue_comment_write` |
 | `gh run list` / view | `mcp__github__actions_*` |
 | `gh run download` (logs) | `mcp__github__get_job_logs` |
-| `gh release …` | `mcp__github__list_releases` / `get_latest_release` / `get_release_by_tag` |
+| `gh release …` | `mcp__github__list_releases` / `mcp__github__get_latest_release` / `mcp__github__get_release_by_tag` |
 
 The MCP tool schemas are deferred — load them via `ToolSearch` with `query="select:mcp__github__<name>[,…]"` before the first call in a session.
 
@@ -80,7 +80,6 @@ Some git/GitHub operations probably have no MCP wrapper. Examples that have come
 - `git tag` create (reading via `list_tags` / `get_tag` exists)
 - `git remote …`
 - `git revert`
-- `gh run download <id> --name <artifact>` for artifacts (`get_job_logs` covers logs only)
 - Anything sufficiently exotic
 
 (`gh auth` is also missing — but it has its own dedicated section below because of the dual-auth split, not the same stop-and-ask flow.)
