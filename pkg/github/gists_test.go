@@ -9,7 +9,7 @@ import (
 
 	"github.com/aifity/omnigit-mcp/internal/toolsnaps"
 	"github.com/aifity/omnigit-mcp/pkg/translations"
-	"github.com/google/go-github/v82/github"
+	"github.com/google/go-github/v89/github"
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -141,7 +141,7 @@ func Test_ListGists(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
-			client := github.NewClient(tc.mockedClient)
+			client := mustNewGHClient(t, tc.mockedClient)
 			deps := BaseDeps{
 				Client: client,
 			}
@@ -252,7 +252,7 @@ func Test_GetGist(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
-			client := github.NewClient(tc.mockedClient)
+			client := mustNewGHClient(t, tc.mockedClient)
 			deps := BaseDeps{
 				Client: client,
 			}
@@ -392,7 +392,7 @@ func Test_CreateGist(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
-			client := github.NewClient(tc.mockedClient)
+			client := mustNewGHClient(t, tc.mockedClient)
 			deps := BaseDeps{
 				Client: client,
 			}
@@ -545,7 +545,7 @@ func Test_UpdateGist(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
-			client := github.NewClient(tc.mockedClient)
+			client := mustNewGHClient(t, tc.mockedClient)
 			deps := BaseDeps{
 				Client: client,
 			}
@@ -578,6 +578,69 @@ func Test_UpdateGist(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, tc.expectedGist.GetHTMLURL(), updateResp.URL)
+		})
+	}
+}
+
+func Test_UpdateGist_DescriptionOnlySentWhenProvided(t *testing.T) {
+	serverTool := UpdateGist(translations.NullTranslationHelper)
+
+	updatedGist := &github.Gist{
+		ID:      new("existing-gist-id"),
+		HTMLURL: new("https://gist.github.com/user/existing-gist-id"),
+	}
+
+	cases := []struct {
+		name            string
+		args            map[string]any
+		wantDescPresent bool
+		wantDescValue   string
+	}{
+		{
+			name: "omitted description is not sent, preserving the existing one",
+			args: map[string]any{
+				"gist_id":  "existing-gist-id",
+				"filename": "updated.go",
+				"content":  "package main",
+			},
+			wantDescPresent: false,
+		},
+		{
+			name: "explicit empty description is sent to clear it",
+			args: map[string]any{
+				"gist_id":     "existing-gist-id",
+				"filename":    "updated.go",
+				"content":     "package main",
+				"description": "",
+			},
+			wantDescPresent: true,
+			wantDescValue:   "",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotBody map[string]any
+			client := mustNewGHClient(t, MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
+				PatchGistsByGistID: func(w http.ResponseWriter, r *http.Request) {
+					require.NoError(t, json.NewDecoder(r.Body).Decode(&gotBody))
+					w.WriteHeader(http.StatusOK)
+					_, _ = w.Write(MustMarshal(updatedGist))
+				},
+			}))
+			deps := BaseDeps{Client: client}
+			handler := serverTool.Handler(deps)
+			request := createMCPRequest(tc.args)
+
+			result, err := handler(ContextWithDeps(context.Background(), deps), &request)
+			require.NoError(t, err)
+			require.False(t, result.IsError)
+
+			desc, present := gotBody["description"]
+			assert.Equal(t, tc.wantDescPresent, present, "description key presence in PATCH body")
+			if tc.wantDescPresent {
+				assert.Equal(t, tc.wantDescValue, desc)
+			}
 		})
 	}
 }

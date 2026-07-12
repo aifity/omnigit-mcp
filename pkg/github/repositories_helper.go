@@ -10,7 +10,7 @@ import (
 	ghErrors "github.com/aifity/omnigit-mcp/pkg/errors"
 	"github.com/aifity/omnigit-mcp/pkg/raw"
 	"github.com/aifity/omnigit-mcp/pkg/utils"
-	"github.com/google/go-github/v82/github"
+	"github.com/google/go-github/v89/github"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

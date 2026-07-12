@@ -18,7 +18,7 @@ import (
 	"github.com/aifity/omnigit-mcp/internal/ghmcp"
 	"github.com/aifity/omnigit-mcp/pkg/github"
 	"github.com/aifity/omnigit-mcp/pkg/translations"
-	gogithub "github.com/google/go-github/v82/github"
+	gogithub "github.com/google/go-github/v89/github"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/require"
 )

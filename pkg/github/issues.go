@@ -6,20 +6,21 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/aifity/omnigit-mcp/pkg/bodyfilter"
 	ghcontext "github.com/aifity/omnigit-mcp/pkg/context"
 	ghErrors "github.com/aifity/omnigit-mcp/pkg/errors"
+	"github.com/aifity/omnigit-mcp/pkg/ifc"
 	"github.com/aifity/omnigit-mcp/pkg/inventory"
-	"github.com/aifity/omnigit-mcp/pkg/octicons"
+	"github.com/aifity/omnigit-mcp/pkg/lockdown"
 	"github.com/aifity/omnigit-mcp/pkg/sanitize"
 	"github.com/aifity/omnigit-mcp/pkg/scopes"
 	"github.com/aifity/omnigit-mcp/pkg/translations"
 	"github.com/aifity/omnigit-mcp/pkg/utils"
-	"github.com/go-viper/mapstructure/v2"
-	"github.com/google/go-github/v82/github"
+	"github.com/google/go-github/v89/github"
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/shurcooL/githubv4"
@@ -37,6 +38,15 @@ type CloseIssueInput struct {
 // IssueClosedStateReason represents the reason an issue was closed.
 // Used to extend the functionality of the githubv4 library to support closing issues as duplicates.
 type IssueClosedStateReason string
+
+// issueWriteFieldInput is a user-friendly issue field input for issue_write.
+// Field IDs and option IDs are resolved internally before calling the REST API.
+type issueWriteFieldInput struct {
+	FieldName       string
+	Value           any
+	FieldOptionName string
+	Delete          bool
+}
 
 const (
 	IssueClosedStateReasonCompleted  IssueClosedStateReason = "COMPLETED"
@@ -66,7 +76,7 @@ func fetchIssueIDs(ctx context.Context, gqlClient *githubv4.Client, owner, repo 
 		}
 
 		if err := gqlClient.Query(ctx, &query, vars); err != nil {
-			return "", "", fmt.Errorf("failed to get issue ID")
+			return "", "", fmt.Errorf("failed to get issue ID: %w", err)
 		}
 
 		return query.Repository.Issue.ID, "", nil
@@ -88,7 +98,7 @@ func fetchIssueIDs(ctx context.Context, gqlClient *githubv4.Client, owner, repo 
 	vars["duplicateOf"] = githubv4.Int(duplicateOf) // #nosec G115 - issue numbers are always small positive integers
 
 	if err := gqlClient.Query(ctx, &query, vars); err != nil {
-		return "", "", fmt.Errorf("failed to get issue ID")
+		return "", "", fmt.Errorf("failed to get issue ID: %w", err)
 	}
 
 	return query.Repository.Issue.ID, query.Repository.DuplicateIssue.ID, nil
@@ -104,6 +114,370 @@ func getCloseStateReason(stateReason string) IssueClosedStateReason {
 	default: // Default to "completed" for empty or "completed" values
 		return IssueClosedStateReasonCompleted
 	}
+}
+
+// issueFieldWriteMetadataNode queries only the fields needed to resolve a write: the field's
+// fullDatabaseId (BigInt scalar, returned as string) plus its name and data type for validation.
+// shurcooL/githubv4 cannot use interface-level fragments at union top-level, so we repeat
+// fullDatabaseId on each concrete type; all four implement IssueFieldCommon.
+type issueFieldWriteMetadataNode struct {
+	TypeName       githubv4.String `graphql:"__typename"`
+	IssueFieldText struct {
+		FullDatabaseID githubv4.String `graphql:"fullDatabaseId"`
+		Name           githubv4.String
+		DataType       githubv4.String
+	} `graphql:"... on IssueFieldText"`
+	IssueFieldNumber struct {
+		FullDatabaseID githubv4.String `graphql:"fullDatabaseId"`
+		Name           githubv4.String
+		DataType       githubv4.String
+	} `graphql:"... on IssueFieldNumber"`
+	IssueFieldDate struct {
+		FullDatabaseID githubv4.String `graphql:"fullDatabaseId"`
+		Name           githubv4.String
+		DataType       githubv4.String
+	} `graphql:"... on IssueFieldDate"`
+	IssueFieldSingleSelect struct {
+		FullDatabaseID githubv4.String `graphql:"fullDatabaseId"`
+		Name           githubv4.String
+		DataType       githubv4.String
+		Options        []struct {
+			FullDatabaseID githubv4.String `graphql:"fullDatabaseId"`
+			Name           githubv4.String
+		}
+	} `graphql:"... on IssueFieldSingleSelect"`
+}
+
+type issueFieldWriteMetadataQuery struct {
+	Repository struct {
+		IssueFields struct {
+			Nodes []issueFieldWriteMetadataNode
+		} `graphql:"issueFields(first: 100)"`
+	} `graphql:"repository(owner: $owner, name: $repo)"`
+}
+
+// IssueFieldRef resolves the name of an issue field across its concrete types.
+// IssueFields is a union of IssueFieldDate, IssueFieldNumber, IssueFieldSingleSelect, IssueFieldText,
+// so we have to ask for `name` on each member.
+type IssueFieldRef struct {
+	Date struct {
+		Name           githubv4.String
+		FullDatabaseID githubv4.String `graphql:"fullDatabaseId"`
+	} `graphql:"... on IssueFieldDate"`
+	Number struct {
+		Name           githubv4.String
+		FullDatabaseID githubv4.String `graphql:"fullDatabaseId"`
+	} `graphql:"... on IssueFieldNumber"`
+	SingleSelect struct {
+		Name           githubv4.String
+		FullDatabaseID githubv4.String `graphql:"fullDatabaseId"`
+	} `graphql:"... on IssueFieldSingleSelect"`
+	Text struct {
+		Name           githubv4.String
+		FullDatabaseID githubv4.String `graphql:"fullDatabaseId"`
+	} `graphql:"... on IssueFieldText"`
+}
+
+// Name returns the populated name from whichever IssueFields union variant the field resolved to.
+func (r IssueFieldRef) Name() string {
+	switch {
+	case r.Date.Name != "":
+		return string(r.Date.Name)
+	case r.Number.Name != "":
+		return string(r.Number.Name)
+	case r.SingleSelect.Name != "":
+		return string(r.SingleSelect.Name)
+	case r.Text.Name != "":
+		return string(r.Text.Name)
+	}
+	return ""
+}
+
+// FullDatabaseIDStr returns the fullDatabaseId string from whichever IssueFields union variant
+// the field resolved to.
+func (r IssueFieldRef) FullDatabaseIDStr() string {
+	switch {
+	case r.Date.FullDatabaseID != "":
+		return string(r.Date.FullDatabaseID)
+	case r.Number.FullDatabaseID != "":
+		return string(r.Number.FullDatabaseID)
+	case r.SingleSelect.FullDatabaseID != "":
+		return string(r.SingleSelect.FullDatabaseID)
+	case r.Text.FullDatabaseID != "":
+		return string(r.Text.FullDatabaseID)
+	}
+	return ""
+}
+
+// IssueFieldValueFragment captures the value of a custom issue field. IssueFieldValue is a union
+// of 4 concrete value types; each carries its own value scalar and a reference to its parent field.
+// The Number variant's `value` is aliased to `valueNumber` to avoid a Float vs String type clash on decode.
+type IssueFieldValueFragment struct {
+	TypeName  string `graphql:"__typename"`
+	DateValue struct {
+		Field IssueFieldRef
+		Value githubv4.String
+	} `graphql:"... on IssueFieldDateValue"`
+	NumberValue struct {
+		Field IssueFieldRef
+		Value githubv4.Float `graphql:"valueNumber: value"`
+	} `graphql:"... on IssueFieldNumberValue"`
+	SingleSelectValue struct {
+		Field IssueFieldRef
+		Value githubv4.String
+	} `graphql:"... on IssueFieldSingleSelectValue"`
+	TextValue struct {
+		Field IssueFieldRef
+		Value githubv4.String
+	} `graphql:"... on IssueFieldTextValue"`
+}
+
+func optionalIssueWriteFields(args map[string]any) ([]issueWriteFieldInput, error) {
+	issueFieldsRaw, exists := args["issue_fields"]
+	if !exists {
+		return nil, nil
+	}
+
+	var inputMaps []map[string]any
+	switch v := issueFieldsRaw.(type) {
+	case []any:
+		for _, item := range v {
+			itemMap, ok := item.(map[string]any)
+			if !ok {
+				return nil, fmt.Errorf("each issue_fields item must be an object")
+			}
+			inputMaps = append(inputMaps, itemMap)
+		}
+	case []map[string]any:
+		inputMaps = v
+	default:
+		return nil, fmt.Errorf("issue_fields must be an array")
+	}
+
+	issueFields := make([]issueWriteFieldInput, 0, len(inputMaps))
+	for _, itemMap := range inputMaps {
+		fieldName, err := RequiredParam[string](itemMap, "field_name")
+		if err != nil || strings.TrimSpace(fieldName) == "" {
+			return nil, fmt.Errorf("field_name is required for each issue_fields item")
+		}
+
+		fieldOptionName, err := OptionalParam[string](itemMap, "field_option_name")
+		if err != nil {
+			return nil, err
+		}
+
+		deleteField, _ := OptionalParam[bool](itemMap, "delete")
+		value, hasValue := itemMap["value"]
+		if hasValue && value == nil {
+			return nil, fmt.Errorf("value cannot be null for field %q", fieldName)
+		}
+
+		if deleteField {
+			if hasValue || fieldOptionName != "" {
+				return nil, fmt.Errorf("issue field %q cannot specify 'delete' together with 'value' or 'field_option_name'", fieldName)
+			}
+			issueFields = append(issueFields, issueWriteFieldInput{
+				FieldName: fieldName,
+				Delete:    true,
+			})
+			continue
+		}
+
+		if hasValue && fieldOptionName != "" {
+			return nil, fmt.Errorf("issue field %q cannot specify both value and field_option_name", fieldName)
+		}
+
+		if !hasValue && fieldOptionName == "" {
+			return nil, fmt.Errorf("issue field %q must specify either value or field_option_name", fieldName)
+		}
+
+		issueFields = append(issueFields, issueWriteFieldInput{
+			FieldName:       fieldName,
+			Value:           value,
+			FieldOptionName: fieldOptionName,
+		})
+	}
+
+	return issueFields, nil
+}
+
+func resolveIssueRequestFieldValues(ctx context.Context, gqlClient *githubv4.Client, owner, repo string, issueFields []issueWriteFieldInput) ([]*github.IssueRequestFieldValue, []int64, error) {
+	if len(issueFields) == 0 {
+		return nil, nil, nil
+	}
+
+	ctxWithFeatures := ghcontext.WithGraphQLFeatures(ctx, "issue_fields", "repo_issue_fields")
+	var query issueFieldWriteMetadataQuery
+	vars := map[string]any{
+		"owner": githubv4.String(owner),
+		"repo":  githubv4.String(repo),
+	}
+	if err := gqlClient.Query(ctxWithFeatures, &query, vars); err != nil {
+		return nil, nil, fmt.Errorf("failed to query issue fields metadata: %w", err)
+	}
+
+	// Build name → node map, dispatching on concrete type to extract name.
+	fieldByName := make(map[string]issueFieldWriteMetadataNode, len(query.Repository.IssueFields.Nodes))
+	for _, node := range query.Repository.IssueFields.Nodes {
+		var name string
+		switch string(node.TypeName) {
+		case "IssueFieldText":
+			name = string(node.IssueFieldText.Name)
+		case "IssueFieldNumber":
+			name = string(node.IssueFieldNumber.Name)
+		case "IssueFieldDate":
+			name = string(node.IssueFieldDate.Name)
+		case "IssueFieldSingleSelect":
+			name = string(node.IssueFieldSingleSelect.Name)
+		default:
+			continue
+		}
+		fieldByName[strings.ToLower(strings.TrimSpace(name))] = node
+	}
+
+	resolved := make([]*github.IssueRequestFieldValue, 0, len(issueFields))
+	var fieldIDsToDelete []int64
+	for _, fieldInput := range issueFields {
+		node, ok := fieldByName[strings.ToLower(strings.TrimSpace(fieldInput.FieldName))]
+		if !ok {
+			return nil, nil, fmt.Errorf("issue field %q was not found in %s/%s", fieldInput.FieldName, owner, repo)
+		}
+
+		var fullDatabaseIDStr, dataType string
+		switch string(node.TypeName) {
+		case "IssueFieldText":
+			fullDatabaseIDStr = string(node.IssueFieldText.FullDatabaseID)
+			dataType = string(node.IssueFieldText.DataType)
+		case "IssueFieldNumber":
+			fullDatabaseIDStr = string(node.IssueFieldNumber.FullDatabaseID)
+			dataType = string(node.IssueFieldNumber.DataType)
+		case "IssueFieldDate":
+			fullDatabaseIDStr = string(node.IssueFieldDate.FullDatabaseID)
+			dataType = string(node.IssueFieldDate.DataType)
+		case "IssueFieldSingleSelect":
+			fullDatabaseIDStr = string(node.IssueFieldSingleSelect.FullDatabaseID)
+			dataType = string(node.IssueFieldSingleSelect.DataType)
+		}
+
+		fieldID := parseFullDatabaseID(fullDatabaseIDStr)
+		if fieldID == 0 {
+			return nil, nil, fmt.Errorf("issue field %q is missing fullDatabaseId", fieldInput.FieldName)
+		}
+
+		if fieldInput.Delete {
+			fieldIDsToDelete = append(fieldIDsToDelete, fieldID)
+			continue
+		}
+
+		resolvedValue := fieldInput.Value
+		if fieldInput.FieldOptionName != "" {
+			if !strings.EqualFold(dataType, "single_select") {
+				return nil, nil, fmt.Errorf("issue field %q is %q, so field_option_name cannot be used", fieldInput.FieldName, dataType)
+			}
+
+			optionFound := false
+			for _, option := range node.IssueFieldSingleSelect.Options {
+				if strings.EqualFold(strings.TrimSpace(string(option.Name)), strings.TrimSpace(fieldInput.FieldOptionName)) {
+					// REST API expects the option name, not the ID
+					resolvedValue = string(option.Name)
+					optionFound = true
+					break
+				}
+			}
+
+			if !optionFound {
+				return nil, nil, fmt.Errorf("issue field option %q was not found for field %q", fieldInput.FieldOptionName, fieldInput.FieldName)
+			}
+		}
+
+		resolved = append(resolved, &github.IssueRequestFieldValue{
+			FieldID: fieldID,
+			Value:   resolvedValue,
+		})
+	}
+
+	return resolved, fieldIDsToDelete, nil
+}
+
+// fetchExistingIssueFieldValues retrieves the current field values for an issue
+// as IssueRequestFieldValue entries, ready to be merged before an update.
+func fetchExistingIssueFieldValues(ctx context.Context, gqlClient *githubv4.Client, owner, repo string, issueNumber int) ([]*github.IssueRequestFieldValue, error) {
+	ctxWithFeatures := ghcontext.WithGraphQLFeatures(ctx, "issue_fields", "repo_issue_fields")
+
+	var query struct {
+		Repository struct {
+			Issue struct {
+				IssueFieldValues struct {
+					Nodes []IssueFieldValueFragment
+				} `graphql:"issueFieldValues(first: 25)"`
+			} `graphql:"issue(number: $number)"`
+		} `graphql:"repository(owner: $owner, name: $repo)"`
+	}
+
+	vars := map[string]any{
+		"owner":  githubv4.String(owner),
+		"repo":   githubv4.String(repo),
+		"number": githubv4.Int(issueNumber), // #nosec G115 - issue numbers are always small positive integers
+	}
+
+	if err := gqlClient.Query(ctxWithFeatures, &query, vars); err != nil {
+		return nil, fmt.Errorf("failed to fetch existing issue field values: %w", err)
+	}
+
+	var result []*github.IssueRequestFieldValue
+	for _, node := range query.Repository.Issue.IssueFieldValues.Nodes {
+		var fieldIDStr string
+		var value any
+
+		switch node.TypeName {
+		case "IssueFieldDateValue":
+			fieldIDStr = node.DateValue.Field.FullDatabaseIDStr()
+			value = string(node.DateValue.Value)
+		case "IssueFieldNumberValue":
+			fieldIDStr = node.NumberValue.Field.FullDatabaseIDStr()
+			value = float64(node.NumberValue.Value)
+		case "IssueFieldSingleSelectValue":
+			fieldIDStr = node.SingleSelectValue.Field.FullDatabaseIDStr()
+			value = string(node.SingleSelectValue.Value)
+		case "IssueFieldTextValue":
+			fieldIDStr = node.TextValue.Field.FullDatabaseIDStr()
+			value = string(node.TextValue.Value)
+		default:
+			continue
+		}
+
+		fieldID := parseFullDatabaseID(fieldIDStr)
+		if fieldID == 0 {
+			continue
+		}
+
+		result = append(result, &github.IssueRequestFieldValue{
+			FieldID: fieldID,
+			Value:   value,
+		})
+	}
+
+	return result, nil
+}
+
+// mergeIssueFieldValues returns a merged slice where incoming values override existing ones
+// for the same field ID, and existing fields not present in incoming are preserved.
+// Ordering is deterministic: incoming entries first in their original order, followed by any
+// existing entries (in their original order) whose field IDs weren't seen in incoming.
+func mergeIssueFieldValues(existing, incoming []*github.IssueRequestFieldValue) []*github.IssueRequestFieldValue {
+	seen := make(map[int64]struct{}, len(incoming))
+	result := make([]*github.IssueRequestFieldValue, 0, len(existing)+len(incoming))
+	for _, v := range incoming {
+		seen[v.FieldID] = struct{}{}
+		result = append(result, v)
+	}
+	for _, v := range existing {
+		if _, ok := seen[v.FieldID]; ok {
+			continue
+		}
+		result = append(result, v)
+	}
+	return result
 }
 
 // IssueFragment represents a fragment of an issue node in the GraphQL API.
@@ -129,11 +503,15 @@ type IssueFragment struct {
 	Comments struct {
 		TotalCount githubv4.Int
 	} `graphql:"comments"`
+	IssueFieldValues struct {
+		Nodes []IssueFieldValueFragment
+	} `graphql:"issueFieldValues(first: 25)"`
 }
 
 // Common interface for all issue query types
 type IssueQueryResult interface {
 	GetIssueFragment() IssueQueryFragment
+	GetIsPrivate() bool
 }
 
 type IssueQueryFragment struct {
@@ -150,29 +528,43 @@ type IssueQueryFragment struct {
 // ListIssuesQuery is the root query structure for fetching issues with optional label filtering.
 type ListIssuesQuery struct {
 	Repository struct {
-		Issues IssueQueryFragment `graphql:"issues(first: $first, after: $after, states: $states, orderBy: {field: $orderBy, direction: $direction})"`
+		Issues    IssueQueryFragment `graphql:"issues(first: $first, after: $after, states: $states, orderBy: {field: $orderBy, direction: $direction}, filterBy: {issueFieldValues: $issueFieldValues})"`
+		IsPrivate githubv4.Boolean
 	} `graphql:"repository(owner: $owner, name: $repo)"`
 }
 
 // ListIssuesQueryTypeWithLabels is the query structure for fetching issues with optional label filtering.
 type ListIssuesQueryTypeWithLabels struct {
 	Repository struct {
-		Issues IssueQueryFragment `graphql:"issues(first: $first, after: $after, labels: $labels, states: $states, orderBy: {field: $orderBy, direction: $direction})"`
+		Issues    IssueQueryFragment `graphql:"issues(first: $first, after: $after, labels: $labels, states: $states, orderBy: {field: $orderBy, direction: $direction}, filterBy: {issueFieldValues: $issueFieldValues})"`
+		IsPrivate githubv4.Boolean
 	} `graphql:"repository(owner: $owner, name: $repo)"`
 }
 
 // ListIssuesQueryWithSince is the query structure for fetching issues without label filtering but with since filtering.
 type ListIssuesQueryWithSince struct {
 	Repository struct {
-		Issues IssueQueryFragment `graphql:"issues(first: $first, after: $after, states: $states, orderBy: {field: $orderBy, direction: $direction}, filterBy: {since: $since})"`
+		Issues    IssueQueryFragment `graphql:"issues(first: $first, after: $after, states: $states, orderBy: {field: $orderBy, direction: $direction}, filterBy: {since: $since, issueFieldValues: $issueFieldValues})"`
+		IsPrivate githubv4.Boolean
 	} `graphql:"repository(owner: $owner, name: $repo)"`
 }
 
 // ListIssuesQueryTypeWithLabelsWithSince is the query structure for fetching issues with both label and since filtering.
 type ListIssuesQueryTypeWithLabelsWithSince struct {
 	Repository struct {
-		Issues IssueQueryFragment `graphql:"issues(first: $first, after: $after, labels: $labels, states: $states, orderBy: {field: $orderBy, direction: $direction}, filterBy: {since: $since})"`
+		Issues    IssueQueryFragment `graphql:"issues(first: $first, after: $after, labels: $labels, states: $states, orderBy: {field: $orderBy, direction: $direction}, filterBy: {since: $since, issueFieldValues: $issueFieldValues})"`
+		IsPrivate githubv4.Boolean
 	} `graphql:"repository(owner: $owner, name: $repo)"`
+}
+
+// IssueFieldValueFilter mirrors the GraphQL IssueFieldValueFilter input. Exactly one typed value
+// field should be set per filter (the monolith resolver rejects multiple).
+type IssueFieldValueFilter struct {
+	FieldName               githubv4.String  `json:"fieldName"`
+	TextValue               *githubv4.String `json:"textValue,omitempty"`
+	DateValue               *githubv4.String `json:"dateValue,omitempty"`
+	NumberValue             *githubv4.Float  `json:"numberValue,omitempty"`
+	SingleSelectOptionValue *githubv4.String `json:"singleSelectOptionValue,omitempty"`
 }
 
 // Implement the interface for all query types
@@ -180,16 +572,26 @@ func (q *ListIssuesQueryTypeWithLabels) GetIssueFragment() IssueQueryFragment {
 	return q.Repository.Issues
 }
 
+func (q *ListIssuesQueryTypeWithLabels) GetIsPrivate() bool { return bool(q.Repository.IsPrivate) }
+
 func (q *ListIssuesQuery) GetIssueFragment() IssueQueryFragment {
 	return q.Repository.Issues
 }
+
+func (q *ListIssuesQuery) GetIsPrivate() bool { return bool(q.Repository.IsPrivate) }
 
 func (q *ListIssuesQueryWithSince) GetIssueFragment() IssueQueryFragment {
 	return q.Repository.Issues
 }
 
+func (q *ListIssuesQueryWithSince) GetIsPrivate() bool { return bool(q.Repository.IsPrivate) }
+
 func (q *ListIssuesQueryTypeWithLabelsWithSince) GetIssueFragment() IssueQueryFragment {
 	return q.Repository.Issues
+}
+
+func (q *ListIssuesQueryTypeWithLabelsWithSince) GetIsPrivate() bool {
+	return bool(q.Repository.IsPrivate)
 }
 
 func getIssueQueryType(hasLabels bool, hasSince bool) any {
@@ -205,33 +607,6 @@ func getIssueQueryType(hasLabels bool, hasSince bool) any {
 	}
 }
 
-func fragmentToIssue(fragment IssueFragment) *github.Issue {
-	// Convert GraphQL labels to GitHub API labels format
-	var foundLabels []*github.Label
-	for _, labelNode := range fragment.Labels.Nodes {
-		foundLabels = append(foundLabels, &github.Label{
-			Name:        new(string(labelNode.Name)),
-			NodeID:      new(string(labelNode.ID)),
-			Description: new(string(labelNode.Description)),
-		})
-	}
-
-	return &github.Issue{
-		Number:    new(int(fragment.Number)),
-		Title:     new(sanitize.Sanitize(string(fragment.Title))),
-		CreatedAt: &github.Timestamp{Time: fragment.CreatedAt.Time},
-		UpdatedAt: &github.Timestamp{Time: fragment.UpdatedAt.Time},
-		User: &github.User{
-			Login: new(string(fragment.Author.Login)),
-		},
-		State:    new(string(fragment.State)),
-		ID:       new(fragment.DatabaseID),
-		Body:     new(sanitize.Sanitize(string(fragment.Body))),
-		Labels:   foundLabels,
-		Comments: new(int(fragment.Comments.TotalCount)),
-	}
-}
-
 // IssueRead creates a tool to get details of a specific issue in a GitHub repository.
 func IssueRead(t translations.TranslationHelperFunc) inventory.ServerTool {
 	schema := &jsonschema.Schema{
@@ -239,14 +614,14 @@ func IssueRead(t translations.TranslationHelperFunc) inventory.ServerTool {
 		Properties: map[string]*jsonschema.Schema{
 			"method": {
 				Type: "string",
-				Description: `The read operation to perform on a single issue.
-Options are:
-1. get - Get details of a specific issue.
-2. get_comments - Get issue comments.
-3. get_sub_issues - Get sub-issues of the issue.
-4. get_labels - Get labels assigned to the issue.
-`,
-				Enum: []any{"get", "get_comments", "get_sub_issues", "get_labels"},
+				Description: "The read operation to perform on a single issue.\n" +
+					"Options are:\n" +
+					"1. get - Get issue details. Also returns best-effort hierarchy flags (`has_parent`, `has_children`); `parent` and `sub_issues_summary` are optional relationship summaries.\n" +
+					"2. get_comments - Get issue comments.\n" +
+					"3. get_sub_issues - Get sub-issues (children) of the issue.\n" +
+					"4. get_parent - Get the parent issue, if this issue is a sub-issue of another.\n" +
+					"5. get_labels - Get labels assigned to the issue.\n",
+				Enum: []any{"get", "get_comments", "get_sub_issues", "get_parent", "get_labels"},
 			},
 			"owner": {
 				Type:        "string",
@@ -311,19 +686,27 @@ Options are:
 				return utils.NewToolResultErrorFromErr("failed to get GitHub graphql client", err), nil, nil
 			}
 
+			// attachIFC adds the IFC label to a successful tool result when
+			// IFC labels are enabled. If the visibility lookup fails the
+			// label is omitted rather than misclassifying the result.
+			attachIFC := newRepoVisibilityIFCLabeler(ctx, deps, client, owner, repo, ifc.LabelRepoUserContent)
+
 			switch method {
 			case "get":
 				result, err := GetIssue(ctx, client, deps, owner, repo, issueNumber)
-				return result, nil, err
+				return attachIFC(result), nil, err
 			case "get_comments":
 				result, err := GetIssueComments(ctx, client, deps, owner, repo, issueNumber, pagination)
-				return result, nil, err
+				return attachIFC(result), nil, err
 			case "get_sub_issues":
 				result, err := GetSubIssues(ctx, client, deps, owner, repo, issueNumber, pagination)
-				return result, nil, err
+				return attachIFC(result), nil, err
+			case "get_parent":
+				result, err := GetIssueParent(ctx, gqlClient, deps, owner, repo, issueNumber)
+				return attachIFC(result), nil, err
 			case "get_labels":
 				result, err := GetIssueLabels(ctx, gqlClient, owner, repo, issueNumber)
-				return result, nil, err
+				return attachIFC(result), nil, err
 			default:
 				return utils.NewToolResultError(fmt.Sprintf("unknown method: %s", method)), nil, nil
 			}
@@ -379,7 +762,68 @@ func GetIssue(ctx context.Context, client *github.Client, deps ToolDependencies,
 
 	minimalIssue := convertToMinimalIssue(issue)
 
+	// Always drop the verbose REST IssueFieldValues; enrich with the GraphQL
+	// field_values view and the hierarchy relationship signals instead. The
+	// enrichment is best-effort: a failure here must never fail `get`.
+	minimalIssue.IssueFieldValues = nil
+	if issue != nil && issue.NodeID != nil && *issue.NodeID != "" {
+		gqlClient, err := deps.GetGQLClient(ctx)
+		if err == nil {
+			if enrichment, err := fetchIssueReadEnrichment(ctx, gqlClient, *issue.NodeID); err == nil {
+				applyIssueReadEnrichment(ctx, &minimalIssue, enrichment, cache, flags.LockdownMode)
+			}
+		}
+	}
+
 	return MarshalledTextResult(minimalIssue), nil
+}
+
+// applyIssueReadEnrichment populates the hierarchy relationship signals (has_parent/has_children,
+// parent, sub_issues_summary) and field_values onto the minimal issue. In lockdown mode the parent
+// reference is omitted unless the parent content can be verified as safe; has_parent and the numeric
+// counts are structural routing signals and are always safe to surface.
+func applyIssueReadEnrichment(ctx context.Context, minimalIssue *MinimalIssue, enrichment *issueReadEnrichment, cache *lockdown.RepoAccessCache, lockdownMode bool) {
+	if enrichment == nil {
+		return
+	}
+
+	minimalIssue.FieldValues = enrichment.FieldValues
+	minimalIssue.HasParent = new(enrichment.Parent != nil)
+	minimalIssue.HasChildren = new(enrichment.SubIssuesSummary.Total > 0)
+
+	if parent := enrichment.Parent; parent != nil {
+		// Surface the parent reference only when it is safe to expose. Under lockdown an
+		// unverified (possibly cross-repo) parent is omitted entirely, mirroring how unsafe
+		// comments and sub-issues are filtered out. has_parent still routes an agent to
+		// get_parent if it needs to follow up.
+		if !lockdownMode || isSafeParentContent(ctx, cache, parent) {
+			ref := parent.Ref
+			minimalIssue.Parent = &ref
+		}
+	}
+
+	if enrichment.SubIssuesSummary.Total > 0 {
+		summary := enrichment.SubIssuesSummary
+		minimalIssue.SubIssuesSummary = &summary
+	}
+}
+
+// isSafeParentContent reports whether the parent issue reference can be exposed under lockdown mode.
+// It fails closed: any inability to positively verify safe content (missing cache, missing author,
+// unparseable repository, or a lookup error) results in the parent reference being omitted.
+func isSafeParentContent(ctx context.Context, cache *lockdown.RepoAccessCache, parent *issueReadParent) bool {
+	if cache == nil || parent.AuthorLogin == "" {
+		return false
+	}
+	owner, repo, ok := strings.Cut(parent.Ref.Repository, "/")
+	if !ok || owner == "" || repo == "" {
+		return false
+	}
+	safe, err := cache.IsSafeContent(ctx, parent.AuthorLogin, owner, repo)
+	if err != nil {
+		return false
+	}
+	return safe
 }
 
 func GetIssueComments(ctx context.Context, client *github.Client, deps ToolDependencies, owner string, repo string, issueNumber int, pagination PaginationParams) (*mcp.CallToolResult, error) {
@@ -449,11 +893,9 @@ func GetSubIssues(ctx context.Context, client *github.Client, deps ToolDependenc
 	}
 	featureFlags := deps.GetFlags(ctx)
 
-	opts := &github.IssueListOptions{
-		ListOptions: github.ListOptions{
-			Page:    pagination.Page,
-			PerPage: pagination.PerPage,
-		},
+	opts := &github.ListOptions{
+		Page:    pagination.Page,
+		PerPage: pagination.PerPage,
 	}
 
 	subIssues, resp, err := client.SubIssue.ListByIssue(ctx, owner, repo, int64(issueNumber), opts)
@@ -508,6 +950,82 @@ func GetSubIssues(ctx context.Context, client *github.Client, deps ToolDependenc
 	return utils.NewToolResultText(string(r)), nil
 }
 
+// GetIssueParent returns the parent issue of the given issue, or a null
+// parent when the issue is not a sub-issue. It reads the GraphQL
+// Issue.parent field, the upward counterpart to get_sub_issues.
+//
+// The parent title is always sanitized (it may be cross-repo). Under
+// lockdown mode the parent is only returned when its author has push
+// access to the parent repo (mirroring GetIssue); otherwise it is omitted.
+func GetIssueParent(ctx context.Context, client *githubv4.Client, deps ToolDependencies, owner string, repo string, issueNumber int) (*mcp.CallToolResult, error) {
+	cache, err := deps.GetRepoAccessCache(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get repo access cache: %w", err)
+	}
+	flags := deps.GetFlags(ctx)
+
+	var query struct {
+		Repository struct {
+			Issue struct {
+				Parent *struct {
+					Number githubv4.Int
+					Title  githubv4.String
+					State  githubv4.String
+					URL    githubv4.String
+					Author struct {
+						Login githubv4.String
+					}
+					Repository struct {
+						NameWithOwner githubv4.String
+					}
+				}
+			} `graphql:"issue(number: $issueNumber)"`
+		} `graphql:"repository(owner: $owner, name: $repo)"`
+	}
+
+	vars := map[string]any{
+		"owner":       githubv4.String(owner),
+		"repo":        githubv4.String(repo),
+		"issueNumber": githubv4.Int(issueNumber), // #nosec G115 - issue numbers are always small positive integers
+	}
+
+	if err := client.Query(ctx, &query, vars); err != nil {
+		return ghErrors.NewGitHubGraphQLErrorResponse(ctx, "failed to get issue parent", err), nil
+	}
+
+	parent := query.Repository.Issue.Parent
+	if parent == nil {
+		return MarshalledTextResult(map[string]any{"parent": nil}), nil
+	}
+
+	if flags.LockdownMode {
+		if cache == nil {
+			return nil, fmt.Errorf("lockdown cache is not configured")
+		}
+		// Fail closed: omit the parent if anything needed for the safe-content
+		// check is missing or unverifiable.
+		parentAuthorLogin := string(parent.Author.Login)
+		parentOwner, parentRepo, ok := strings.Cut(string(parent.Repository.NameWithOwner), "/")
+		if parentAuthorLogin == "" || !ok || parentOwner == "" || parentRepo == "" {
+			return MarshalledTextResult(map[string]any{"parent": nil}), nil
+		}
+		isSafeContent, err := cache.IsSafeContent(ctx, parentAuthorLogin, parentOwner, parentRepo)
+		if err != nil || !isSafeContent {
+			return MarshalledTextResult(map[string]any{"parent": nil}), nil
+		}
+	}
+
+	return MarshalledTextResult(map[string]any{
+		"parent": map[string]any{
+			"number":     int(parent.Number),
+			"title":      sanitize.Sanitize(string(parent.Title)),
+			"state":      string(parent.State),
+			"url":        string(parent.URL),
+			"repository": string(parent.Repository.NameWithOwner),
+		},
+	}), nil
+}
+
 func GetIssueLabels(ctx context.Context, client *githubv4.Client, owner string, repo string, issueNumber int) (*mcp.CallToolResult, error) {
 	// Get current labels on the issue using GraphQL
 	var query struct {
@@ -558,16 +1076,16 @@ func GetIssueLabels(ctx context.Context, client *githubv4.Client, owner string, 
 	}
 
 	return utils.NewToolResultText(string(out)), nil
-
 }
 
-// ListIssueTypes creates a tool to list defined issue types for an organization. This can be used to understand supported issue type values for creating or updating issues.
+// ListIssueTypes creates a tool to list defined issue types for an organization or repository.
+// This can be used to understand supported issue type values for creating or updating issues.
 func ListIssueTypes(t translations.TranslationHelperFunc) inventory.ServerTool {
 	return NewTool(
 		ToolsetMetadataIssues,
 		mcp.Tool{
 			Name:        "list_issue_types",
-			Description: t("TOOL_LIST_ISSUE_TYPES_FOR_ORG", "List supported issue types for repository owner (organization)."),
+			Description: t("TOOL_LIST_ISSUE_TYPES_FOR_ORG", "List supported issue types for a repository or its owner organization. When repo is omitted, returns org-level issue types directly."),
 			Annotations: &mcp.ToolAnnotations{
 				Title:        t("TOOL_LIST_ISSUE_TYPES_USER_TITLE", "List available issue types"),
 				ReadOnlyHint: true,
@@ -577,15 +1095,23 @@ func ListIssueTypes(t translations.TranslationHelperFunc) inventory.ServerTool {
 				Properties: map[string]*jsonschema.Schema{
 					"owner": {
 						Type:        "string",
-						Description: "The organization owner of the repository",
+						Description: "The account owner of the repository or organization.",
+					},
+					"repo": {
+						Type:        "string",
+						Description: "The name of the repository. When provided, returns issue types for this specific repository. When omitted, returns org-level issue types directly.",
 					},
 				},
 				Required: []string{"owner"},
 			},
 		},
-		[]scopes.Scope{scopes.ReadOrg},
+		[]scopes.Scope{scopes.Repo, scopes.ReadOrg},
 		func(ctx context.Context, deps ToolDependencies, _ *mcp.CallToolRequest, args map[string]any) (*mcp.CallToolResult, any, error) {
 			owner, err := RequiredParam[string](args, "owner")
+			if err != nil {
+				return utils.NewToolResultError(err.Error()), nil, nil
+			}
+			repo, err := OptionalParam[string](args, "repo")
 			if err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			}
@@ -594,6 +1120,38 @@ func ListIssueTypes(t translations.TranslationHelperFunc) inventory.ServerTool {
 			if err != nil {
 				return utils.NewToolResultErrorFromErr("failed to get GitHub client", err), nil, nil
 			}
+
+			if repo != "" {
+				apiURL := fmt.Sprintf("repos/%s/%s/issue-types", owner, repo)
+				req, err := client.NewRequest(ctx, "GET", apiURL, nil)
+				if err != nil {
+					return utils.NewToolResultErrorFromErr("failed to create request", err), nil, nil
+				}
+				var issueTypes []*github.IssueType
+				resp, err := client.Do(req, &issueTypes)
+				if err != nil {
+					return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to list issue types", resp, err), nil, nil
+				}
+				defer func() { _ = resp.Body.Close() }()
+
+				if resp.StatusCode != http.StatusOK {
+					body, err := io.ReadAll(resp.Body)
+					if err != nil {
+						return utils.NewToolResultErrorFromErr("failed to read response body", err), nil, nil
+					}
+					return ghErrors.NewGitHubAPIStatusErrorResponse(ctx, "failed to list issue types", resp, body), nil, nil
+				}
+
+				r, err := json.Marshal(issueTypes)
+				if err != nil {
+					return utils.NewToolResultErrorFromErr("failed to marshal issue types", err), nil, nil
+				}
+
+				result := utils.NewToolResultText(string(r))
+				result = attachRepoVisibilityIFCLabelLazy(ctx, deps, owner, repo, result, ifc.LabelRepoMetadata)
+				return result, nil, nil
+			}
+
 			issueTypes, resp, err := client.Organizations.ListIssueTypes(ctx, owner)
 			if err != nil {
 				return utils.NewToolResultErrorFromErr("failed to list issue types", err), nil, nil
@@ -613,19 +1171,25 @@ func ListIssueTypes(t translations.TranslationHelperFunc) inventory.ServerTool {
 				return utils.NewToolResultErrorFromErr("failed to marshal issue types", err), nil, nil
 			}
 
-			return utils.NewToolResultText(string(r)), nil, nil
+			result := utils.NewToolResultText(string(r))
+			// Issue types are org-defined structural metadata (trusted, not
+			// attacker-authored). They are scoped to an organization rather
+			// than a single repo, so confidentiality is conservatively treated
+			// as private (restricted to org members).
+			result = attachStaticIFCLabel(ctx, deps, result, ifc.LabelRepoMetadata(true))
+			return result, nil, nil
 		})
 }
 
-// AddIssueComment creates a tool to add a comment to an issue.
+// AddIssueComment creates a tool to add a comment or reaction to an issue.
 func AddIssueComment(t translations.TranslationHelperFunc) inventory.ServerTool {
 	return NewTool(
 		ToolsetMetadataIssues,
 		mcp.Tool{
 			Name:        "add_issue_comment",
-			Description: t("TOOL_ADD_ISSUE_COMMENT_DESCRIPTION", "Add a comment to a specific issue in a GitHub repository. Use this tool to add comments to pull requests as well (in this case pass pull request number as issue_number), but only if user is not asking specifically to add review comments."),
+			Description: t("TOOL_ADD_ISSUE_COMMENT_DESCRIPTION", "Add a comment and/or reaction to a specific issue or issue comment in a GitHub repository. Use this tool with pull requests as well (in this case pass pull request number as issue_number), but only if user is not asking specifically to add or react to review comments. At least one of body or reaction is required."),
 			Annotations: &mcp.ToolAnnotations{
-				Title:        t("TOOL_ADD_ISSUE_COMMENT_USER_TITLE", "Add comment to issue"),
+				Title:        t("TOOL_ADD_ISSUE_COMMENT_USER_TITLE", "Add comment to issue or pull request"),
 				ReadOnlyHint: false,
 			},
 			InputSchema: &jsonschema.Schema{
@@ -641,14 +1205,24 @@ func AddIssueComment(t translations.TranslationHelperFunc) inventory.ServerTool 
 					},
 					"issue_number": {
 						Type:        "number",
-						Description: "Issue number to comment on",
+						Description: "Issue or pull request number to comment on or react to.",
+					},
+					"comment_id": {
+						Type:        "number",
+						Description: "The numeric ID of the issue or pull request comment to react to. Use this for reactions to comments; omit it to react to the issue or pull request itself. Cannot be combined with body.",
+						Minimum:     new(1.0),
 					},
 					"body": {
 						Type:        "string",
-						Description: "Comment content",
+						Description: "Comment content. Required unless reaction is provided.",
+					},
+					"reaction": {
+						Type:        "string",
+						Description: "Emoji reaction to add. Required unless body is provided.",
+						Enum:        []any{"+1", "-1", "laugh", "confused", "heart", "hooray", "rocket", "eyes"},
 					},
 				},
-				Required: []string{"owner", "repo", "issue_number", "body"},
+				Required: []string{"owner", "repo", "issue_number"},
 			},
 		},
 		[]scopes.Scope{scopes.Repo},
@@ -665,40 +1239,142 @@ func AddIssueComment(t translations.TranslationHelperFunc) inventory.ServerTool 
 			if err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			}
-			body, err := RequiredParam[string](args, "body")
+			var commentID int64
+			hasCommentID := false
+			if _, ok := args["comment_id"]; ok {
+				commentID, err = RequiredBigInt(args, "comment_id")
+				if err != nil {
+					return utils.NewToolResultError(err.Error()), nil, nil
+				}
+				if commentID < 1 {
+					return utils.NewToolResultError("comment_id must be greater than 0"), nil, nil
+				}
+				hasCommentID = true
+			}
+			body, hasBody, err := OptionalParamOK[string](args, "body")
 			if err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			}
-
-			comment := &github.IssueComment{
-				Body: new(body),
+			reactionContent, hasReaction, err := OptionalParamOK[string](args, "reaction")
+			if err != nil {
+				return utils.NewToolResultError(err.Error()), nil, nil
+			}
+			if hasCommentID && hasBody {
+				return utils.NewToolResultError("comment_id cannot be combined with body"), nil, nil
+			}
+			if hasCommentID && !hasReaction {
+				return utils.NewToolResultError("comment_id can only be provided when reaction is provided"), nil, nil
+			}
+			if !hasBody && !hasReaction {
+				return utils.NewToolResultError("at least one of body or reaction is required"), nil, nil
+			}
+			if hasBody && body == "" {
+				return utils.NewToolResultError("body cannot be empty when provided"), nil, nil
+			}
+			if hasReaction && reactionContent == "" {
+				return utils.NewToolResultError("reaction cannot be empty when provided"), nil, nil
 			}
 
 			client, err := deps.GetClient(ctx)
 			if err != nil {
 				return utils.NewToolResultErrorFromErr("failed to get GitHub client", err), nil, nil
 			}
-			createdComment, resp, err := client.Issues.CreateComment(ctx, owner, repo, issueNumber, comment)
-			if err != nil {
-				return utils.NewToolResultErrorFromErr("failed to create comment", err), nil, nil
-			}
-			defer func() { _ = resp.Body.Close() }()
 
-			if resp.StatusCode != http.StatusCreated {
-				body, err := io.ReadAll(resp.Body)
-				if err != nil {
-					return utils.NewToolResultErrorFromErr("failed to read response body", err), nil, nil
+			var reactionResponse *MinimalResponse
+			if hasReaction {
+				if hasCommentID {
+					comment, resp, err := client.Issues.GetComment(ctx, owner, repo, commentID)
+					if err != nil {
+						return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to get issue comment", resp, err), nil, nil
+					}
+					defer func() { _ = resp.Body.Close() }()
+
+					commentIssueNumber, err := issueNumberFromIssueURL(comment.GetIssueURL())
+					if err != nil {
+						return utils.NewToolResultErrorFromErr("failed to determine issue number for comment", err), nil, nil
+					}
+					if commentIssueNumber != issueNumber {
+						return utils.NewToolResultError(fmt.Sprintf("comment_id does not belong to issue_number %d", issueNumber)), nil, nil
+					}
+
+					reaction, resp, err := client.Reactions.CreateIssueCommentReaction(ctx, owner, repo, commentID, reactionContent)
+					if err != nil {
+						return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to add reaction to issue comment", resp, err), nil, nil
+					}
+					defer func() { _ = resp.Body.Close() }()
+
+					reactionResponse = &MinimalResponse{
+						ID:  fmt.Sprintf("%d", reaction.GetID()),
+						URL: fmt.Sprintf("%srepos/%s/%s/issues/comments/%d/reactions/%d", client.BaseURL(), owner, repo, commentID, reaction.GetID()),
+					}
+				} else {
+					reaction, resp, err := client.Reactions.CreateIssueReaction(ctx, owner, repo, issueNumber, reactionContent)
+					if err != nil {
+						return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to add reaction to issue", resp, err), nil, nil
+					}
+					defer func() { _ = resp.Body.Close() }()
+
+					reactionResponse = &MinimalResponse{
+						ID:  fmt.Sprintf("%d", reaction.GetID()),
+						URL: fmt.Sprintf("%srepos/%s/%s/issues/%d/reactions/%d", client.BaseURL(), owner, repo, issueNumber, reaction.GetID()),
+					}
 				}
-				return ghErrors.NewGitHubAPIStatusErrorResponse(ctx, "failed to create comment", resp, body), nil, nil
 			}
 
-			r, err := json.Marshal(createdComment)
+			var commentResponse *MinimalResponse
+			if hasBody {
+				comment := &github.IssueComment{
+					Body: new(body),
+				}
+				createdComment, resp, err := client.Issues.CreateComment(ctx, owner, repo, issueNumber, comment)
+				if err != nil {
+					return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to create comment", resp, err), nil, nil
+				}
+				defer func() { _ = resp.Body.Close() }()
+
+				if resp.StatusCode != http.StatusCreated {
+					bodyBytes, err := io.ReadAll(resp.Body)
+					if err != nil {
+						return utils.NewToolResultErrorFromErr("failed to read response body", err), nil, nil
+					}
+					return ghErrors.NewGitHubAPIStatusErrorResponse(ctx, "failed to create comment", resp, bodyBytes), nil, nil
+				}
+
+				commentResponse = &MinimalResponse{
+					ID:  fmt.Sprintf("%d", createdComment.GetID()),
+					URL: createdComment.GetHTMLURL(),
+				}
+			}
+
+			var result any
+			switch {
+			case hasBody && hasReaction:
+				result = map[string]MinimalResponse{
+					"comment":  *commentResponse,
+					"reaction": *reactionResponse,
+				}
+			case hasReaction:
+				result = reactionResponse
+			default:
+				result = commentResponse
+			}
+
+			r, err := json.Marshal(result)
 			if err != nil {
 				return utils.NewToolResultErrorFromErr("failed to marshal response", err), nil, nil
 			}
 
 			return utils.NewToolResultText(string(r)), nil, nil
 		})
+}
+
+func issueNumberFromIssueURL(issueURL string) (int, error) {
+	issueNumberString := issueURL[strings.LastIndex(issueURL, "/")+1:]
+	issueNumber, err := strconv.Atoi(issueNumberString)
+	if err != nil {
+		return 0, fmt.Errorf("invalid issue URL %q: %w", issueURL, err)
+	}
+	return issueNumber, nil
 }
 
 // IssueCommentWrite creates a tool to update or delete an issue comment.
@@ -724,22 +1400,10 @@ Options are:
 `,
 						Enum: []any{"update", "delete"},
 					},
-					"owner": {
-						Type:        "string",
-						Description: "Repository owner",
-					},
-					"repo": {
-						Type:        "string",
-						Description: "Repository name",
-					},
-					"comment_id": {
-						Type:        "number",
-						Description: "Comment ID to update or delete",
-					},
-					"body": {
-						Type:        "string",
-						Description: "New comment content (required for update method)",
-					},
+					"owner":      {Type: "string", Description: "Repository owner"},
+					"repo":       {Type: "string", Description: "Repository name"},
+					"comment_id": {Type: "number", Description: "Comment ID to update or delete"},
+					"body":       {Type: "string", Description: "New comment content (required for update method)"},
 				},
 				Required: []string{"method", "owner", "repo", "comment_id"},
 			},
@@ -774,21 +1438,12 @@ Options are:
 				if err != nil {
 					return utils.NewToolResultError(err.Error()), nil, nil
 				}
-
-				comment := &github.IssueComment{
-					Body: new(body),
-				}
-
+				comment := &github.IssueComment{Body: new(body)}
 				updatedComment, resp, err := client.Issues.EditComment(ctx, owner, repo, commentID, comment)
 				if err != nil {
-					return ghErrors.NewGitHubAPIErrorResponse(ctx,
-						"failed to update comment",
-						resp,
-						err,
-					), nil, nil
+					return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to update comment", resp, err), nil, nil
 				}
 				defer func() { _ = resp.Body.Close() }()
-
 				if resp.StatusCode != http.StatusOK {
 					body, err := io.ReadAll(resp.Body)
 					if err != nil {
@@ -796,25 +1451,17 @@ Options are:
 					}
 					return ghErrors.NewGitHubAPIStatusErrorResponse(ctx, "failed to update comment", resp, body), nil, nil
 				}
-
 				r, err := json.Marshal(updatedComment)
 				if err != nil {
 					return utils.NewToolResultErrorFromErr("failed to marshal response", err), nil, nil
 				}
-
 				return utils.NewToolResultText(string(r)), nil, nil
-
 			case "delete":
 				resp, err := client.Issues.DeleteComment(ctx, owner, repo, commentID)
 				if err != nil {
-					return ghErrors.NewGitHubAPIErrorResponse(ctx,
-						"failed to delete comment",
-						resp,
-						err,
-					), nil, nil
+					return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to delete comment", resp, err), nil, nil
 				}
 				defer func() { _ = resp.Body.Close() }()
-
 				if resp.StatusCode != http.StatusNoContent {
 					body, err := io.ReadAll(resp.Body)
 					if err != nil {
@@ -822,9 +1469,7 @@ Options are:
 					}
 					return ghErrors.NewGitHubAPIStatusErrorResponse(ctx, "failed to delete comment", resp, body), nil, nil
 				}
-
 				return utils.NewToolResultText("comment deleted successfully"), nil, nil
-
 			default:
 				return utils.NewToolResultError("invalid method, must be either 'update' or 'delete'"), nil, nil
 			}
@@ -833,7 +1478,7 @@ Options are:
 
 // SubIssueWrite creates a tool to add a sub-issue to a parent issue.
 func SubIssueWrite(t translations.TranslationHelperFunc) inventory.ServerTool {
-	return NewTool(
+	st := NewTool(
 		ToolsetMetadataIssues,
 		mcp.Tool{
 			Name:        "sub_issue_write",
@@ -847,12 +1492,12 @@ func SubIssueWrite(t translations.TranslationHelperFunc) inventory.ServerTool {
 				Properties: map[string]*jsonschema.Schema{
 					"method": {
 						Type: "string",
-						Description: `The action to perform on a single sub-issue
-Options are:
-- 'add' - add a sub-issue to a parent issue in a GitHub repository.
-- 'remove' - remove a sub-issue from a parent issue in a GitHub repository.
-- 'reprioritize' - change the order of sub-issues within a parent issue in a GitHub repository. Use either 'after_id' or 'before_id' to specify the new position.
-				`,
+						Description: "The action to perform on a single sub-issue\n" +
+							"Options are:\n" +
+							"- 'add' - add a sub-issue to a parent issue in a GitHub repository.\n" +
+							"- 'remove' - remove a sub-issue from a parent issue in a GitHub repository.\n" +
+							"- 'reprioritize' - change the order of sub-issues within a parent issue in a GitHub repository. Use either 'after_id' or 'before_id' to specify the new position.\n" +
+							"Writes issue hierarchy. To move a sub-issue to a new parent, use `add` with `replace_parent=true`; there is no writable parent field.\n",
 					},
 					"owner": {
 						Type:        "string",
@@ -943,6 +1588,8 @@ Options are:
 				return utils.NewToolResultError(fmt.Sprintf("unknown method: %s", method)), nil, nil
 			}
 		})
+	st.FeatureFlagDisable = []string{FeatureFlagIssuesGranular}
+	return st
 }
 
 func AddSubIssue(ctx context.Context, client *github.Client, owner string, repo string, issueNumber int, subIssueID int, replaceParent bool) (*mcp.CallToolResult, error) {
@@ -976,7 +1623,6 @@ func AddSubIssue(ctx context.Context, client *github.Client, owner string, repo 
 	}
 
 	return utils.NewToolResultText(string(r)), nil
-
 }
 
 func RemoveSubIssue(ctx context.Context, client *github.Client, owner string, repo string, issueNumber int, subIssueID int) (*mcp.CallToolResult, error) {
@@ -1059,8 +1705,34 @@ func ReprioritizeSubIssue(ctx context.Context, client *github.Client, owner stri
 	return utils.NewToolResultText(string(r)), nil
 }
 
-// SearchIssues creates a tool to search for issues.
+// SearchIssues creates a tool to search for issues. It is the
+// FeatureFlagFieldsParam-enabled variant: it advertises the optional `fields`
+// parameter and filters each result to the requested subset. Both this and
+// LegacySearchIssues register under the tool name "search_issues"; exactly one is
+// active for any given request thanks to mutually exclusive FeatureFlagEnable /
+// FeatureFlagDisable annotations.
 func SearchIssues(t translations.TranslationHelperFunc) inventory.ServerTool {
+	st := searchIssuesTool(t, true)
+	st.FeatureFlagEnable = FeatureFlagFieldsParam
+	return st
+}
+
+// LegacySearchIssues is the FeatureFlagFieldsParam-disabled variant of
+// search_issues. It exposes the original schema (no `fields` parameter) and never
+// filters results, so it acts as the kill switch when the flag is off. It owns
+// the canonical search_issues.snap; the flag-enabled variant owns
+// search_issues_ff_<flag>.snap. Delete this function when the flag is removed.
+func LegacySearchIssues(t translations.TranslationHelperFunc) inventory.ServerTool {
+	st := searchIssuesTool(t, false)
+	st.FeatureFlagDisable = []string{FeatureFlagFieldsParam}
+	return st
+}
+
+// searchIssuesTool builds the search_issues tool. When includeFields is true the
+// tool advertises the optional `fields` parameter, filters each result to the
+// requested subset, and emits fields telemetry. When false it is the original
+// tool with no fields parameter and no filtering.
+func searchIssuesTool(t translations.TranslationHelperFunc, includeFields bool) inventory.ServerTool {
 	schema := &jsonschema.Schema{
 		Type: "object",
 		Properties: map[string]*jsonschema.Schema{
@@ -1101,6 +1773,12 @@ func SearchIssues(t translations.TranslationHelperFunc) inventory.ServerTool {
 		},
 		Required: []string{"query"},
 	}
+	if includeFields {
+		schema.Properties["fields"] = fieldsSchemaProperty(
+			"Subset of fields to return for each issue result. If omitted, all fields are returned. Use this to reduce response size when you only need specific fields; omitting 'body', 'reactions', and 'labels' in particular drops the largest per-result data.",
+			searchIssuesItemFieldEnum,
+		)
+	}
 	WithPagination(schema)
 
 	return NewTool(
@@ -1116,23 +1794,443 @@ func SearchIssues(t translations.TranslationHelperFunc) inventory.ServerTool {
 		},
 		[]scopes.Scope{scopes.Repo},
 		func(ctx context.Context, deps ToolDependencies, _ *mcp.CallToolRequest, args map[string]any) (*mcp.CallToolResult, any, error) {
-			result, err := searchHandler(ctx, deps.GetClient, args, "issue", "failed to search issues")
+			options := []searchOption{ifcSearchPostProcessOption(ctx, deps)}
+			if includeFields {
+				fields, err := OptionalStringArrayParam(args, "fields")
+				if err != nil {
+					return utils.NewToolResultError(err.Error()), nil, nil
+				}
+				options = append(options, withFieldsFiltering(deps, "search_issues", fields))
+			}
+			result, err := searchIssuesHandler(ctx, deps, args, options...)
 			return result, nil, err
 		})
 }
 
-// IssueWrite creates a tool to create a new or update an existing issue in a GitHub repository.
+// searchIssuesIFCPostProcess returns a searchPostProcessFn that attaches the
+// IFC label for a search_issues result. It looks up the visibility (and, for
+// private repos, collaborators) of every repository represented in the search
+// payload and joins the labels via ifc.LabelSearchIssues. If any per-repo
+// lookup fails the label is omitted to avoid misclassifying the result.
+func searchIssuesIFCPostProcess(deps ToolDependencies) searchPostProcessFn {
+	return func(ctx context.Context, result *github.IssuesSearchResult, callResult *mcp.CallToolResult) {
+		if callResult == nil || callResult.IsError || result == nil {
+			return
+		}
+
+		client, err := deps.GetClient(ctx)
+		if err != nil {
+			return
+		}
+
+		uniqueRepos := uniqueSearchIssuesRepos(result)
+		visibilities := make([]bool, 0, len(uniqueRepos))
+		for _, r := range uniqueRepos {
+			isPrivate, err := FetchRepoIsPrivate(ctx, client, r.owner, r.repo)
+			if err != nil {
+				return
+			}
+			visibilities = append(visibilities, isPrivate)
+		}
+
+		if callResult.Meta == nil {
+			callResult.Meta = mcp.Meta{}
+		}
+		callResult.Meta["ifc"] = ifc.LabelSearchIssues(visibilities)
+	}
+}
+
+type searchIssuesRepoRef struct {
+	owner string
+	repo  string
+}
+
+// uniqueSearchIssuesRepos extracts the owner/repo pairs of every issue in the
+// search result, preserving order of first appearance and deduplicating.
+func uniqueSearchIssuesRepos(result *github.IssuesSearchResult) []searchIssuesRepoRef {
+	if result == nil {
+		return nil
+	}
+	seen := make(map[string]struct{})
+	var out []searchIssuesRepoRef
+	for _, issue := range result.Issues {
+		if issue == nil {
+			continue
+		}
+		owner, repo, ok := parseRepositoryURL(issue.GetRepositoryURL())
+		if !ok {
+			continue
+		}
+		key := owner + "/" + repo
+		if _, dup := seen[key]; dup {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, searchIssuesRepoRef{owner: owner, repo: repo})
+	}
+	return out
+}
+
+// parseRepositoryURL extracts the owner and repo from a GitHub API repository
+// URL of the form https://api.github.com/repos/{owner}/{repo}.
+func parseRepositoryURL(repoURL string) (string, string, bool) {
+	if repoURL == "" {
+		return "", "", false
+	}
+	const marker = "/repos/"
+	idx := strings.LastIndex(repoURL, marker)
+	if idx < 0 {
+		return "", "", false
+	}
+	parts := strings.Split(strings.Trim(repoURL[idx+len(marker):], "/"), "/")
+	if len(parts) < 2 || parts[0] == "" || parts[1] == "" {
+		return "", "", false
+	}
+	return parts[0], parts[1], true
+}
+
+// SearchIssueResult wraps a REST search hit with its custom issue field values, fetched in a follow-up GraphQL nodes() query.
+type SearchIssueResult struct {
+	*github.Issue
+	FieldValues []MinimalFieldValue `json:"field_values,omitempty"`
+}
+
+// MarshalJSON serializes SearchIssueResult, suppressing the raw issue_field_values from the
+// embedded REST response in favour of the normalized field_values populated via GraphQL enrichment.
+func (r SearchIssueResult) MarshalJSON() ([]byte, error) {
+	issueBytes, err := json.Marshal(r.Issue)
+	if err != nil {
+		return nil, err
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(issueBytes, &m); err != nil {
+		return nil, err
+	}
+	delete(m, "issue_field_values")
+	if r.FieldValues != nil {
+		fv, err := json.Marshal(r.FieldValues)
+		if err != nil {
+			return nil, err
+		}
+		m["field_values"] = fv
+	}
+	return json.Marshal(m)
+}
+
+// SearchIssuesResponse mirrors the REST IssuesSearchResult JSON shape and adds field_values
+// per item, sourced from a single GraphQL nodes() round-trip.
+type SearchIssuesResponse struct {
+	Total             *int                `json:"total_count,omitempty"`
+	IncompleteResults *bool               `json:"incomplete_results,omitempty"`
+	Items             []SearchIssueResult `json:"items"`
+}
+
+// searchIssuesNodesQuery batches a nodes(ids:) lookup over the REST search results to retrieve
+// each issue's custom field values in a single GraphQL request.
+type searchIssuesNodesQuery struct {
+	Nodes []struct {
+		Issue struct {
+			ID               githubv4.ID
+			IssueFieldValues struct {
+				Nodes []IssueFieldValueFragment
+			} `graphql:"issueFieldValues(first: 25)"`
+		} `graphql:"... on Issue"`
+	} `graphql:"nodes(ids: $ids)"`
+}
+
+// fetchIssueFieldValuesByNodeID runs one GraphQL nodes() query for the given REST issues and
+// returns a map of node_id -> flattened field values. Issues without a node_id are skipped, and
+// an empty result set short-circuits the round-trip.
+func fetchIssueFieldValuesByNodeID(ctx context.Context, gqlClient *githubv4.Client, issues []*github.Issue) (map[string][]MinimalFieldValue, error) {
+	ids := make([]githubv4.ID, 0, len(issues))
+	for _, iss := range issues {
+		if iss == nil || iss.NodeID == nil || *iss.NodeID == "" {
+			continue
+		}
+		ids = append(ids, githubv4.ID(*iss.NodeID))
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	var q searchIssuesNodesQuery
+	if err := gqlClient.Query(ctx, &q, map[string]any{"ids": ids}); err != nil {
+		return nil, err
+	}
+
+	result := make(map[string][]MinimalFieldValue, len(q.Nodes))
+	for _, n := range q.Nodes {
+		idStr, ok := n.Issue.ID.(string)
+		if !ok || idStr == "" {
+			continue
+		}
+		vals := make([]MinimalFieldValue, 0, len(n.Issue.IssueFieldValues.Nodes))
+		for _, fv := range n.Issue.IssueFieldValues.Nodes {
+			if m, ok := fragmentToMinimalFieldValue(fv); ok {
+				vals = append(vals, m)
+			}
+		}
+		result[idStr] = vals
+	}
+	return result, nil
+}
+
+// issueReadEnrichmentQuery fetches, in a single GraphQL round-trip, the custom field values,
+// parent reference, and sub-issue summary counts for the issues identified by their node IDs.
+// It powers the issue_read `get` relationship signals without adding extra round-trips.
+type issueReadEnrichmentQuery struct {
+	Nodes []struct {
+		Issue struct {
+			ID               githubv4.ID
+			IssueFieldValues struct {
+				Nodes []IssueFieldValueFragment
+			} `graphql:"issueFieldValues(first: 25)"`
+			Parent *struct {
+				Number githubv4.Int
+				Title  githubv4.String
+				State  githubv4.String
+				URL    githubv4.String
+				Author struct {
+					Login githubv4.String
+				}
+				Repository struct {
+					NameWithOwner githubv4.String
+				}
+			}
+			SubIssuesSummary struct {
+				Total            githubv4.Int
+				Completed        githubv4.Int
+				PercentCompleted githubv4.Int
+			}
+		} `graphql:"... on Issue"`
+	} `graphql:"nodes(ids: $ids)"`
+}
+
+// issueReadParent is the parent reference plus the metadata needed to make a lockdown
+// safe-content decision about whether the (possibly cross-repo) parent title may be exposed.
+type issueReadParent struct {
+	Ref         MinimalIssueRef
+	AuthorLogin string
+}
+
+// issueReadEnrichment is the flattened result of the issue_read `get` enrichment query.
+type issueReadEnrichment struct {
+	FieldValues      []MinimalFieldValue
+	Parent           *issueReadParent
+	SubIssuesSummary MinimalSubIssuesSummary
+}
+
+// fetchIssueReadEnrichment runs one GraphQL nodes() query for the given issue node ID and returns
+// its field values, parent reference, and sub-issue summary counts. The parent title is sanitized
+// here because it may originate from a different repository.
+func fetchIssueReadEnrichment(ctx context.Context, gqlClient *githubv4.Client, nodeID string) (*issueReadEnrichment, error) {
+	var q issueReadEnrichmentQuery
+	if err := gqlClient.Query(ctx, &q, map[string]any{"ids": []githubv4.ID{githubv4.ID(nodeID)}}); err != nil {
+		return nil, err
+	}
+
+	enrichment := &issueReadEnrichment{}
+	for _, n := range q.Nodes {
+		idStr, ok := n.Issue.ID.(string)
+		if !ok || idStr != nodeID {
+			continue
+		}
+
+		vals := make([]MinimalFieldValue, 0, len(n.Issue.IssueFieldValues.Nodes))
+		for _, fv := range n.Issue.IssueFieldValues.Nodes {
+			if m, ok := fragmentToMinimalFieldValue(fv); ok {
+				vals = append(vals, m)
+			}
+		}
+		enrichment.FieldValues = vals
+
+		if p := n.Issue.Parent; p != nil {
+			enrichment.Parent = &issueReadParent{
+				Ref: MinimalIssueRef{
+					Number:     int(p.Number),
+					Title:      sanitize.Sanitize(string(p.Title)),
+					State:      string(p.State),
+					URL:        string(p.URL),
+					Repository: string(p.Repository.NameWithOwner),
+				},
+				AuthorLogin: string(p.Author.Login),
+			}
+		}
+
+		enrichment.SubIssuesSummary = MinimalSubIssuesSummary{
+			Total:            int(n.Issue.SubIssuesSummary.Total),
+			Completed:        int(n.Issue.SubIssuesSummary.Completed),
+			PercentCompleted: int(n.Issue.SubIssuesSummary.PercentCompleted),
+		}
+		break
+	}
+	return enrichment, nil
+}
+
+// searchIssuesHandler runs the REST issues search, enriches each hit with custom field values
+// fetched via a single follow-up GraphQL nodes() query, and applies any post-process options
+// (e.g. IFC labelling).
+func searchIssuesHandler(ctx context.Context, deps ToolDependencies, args map[string]any, options ...searchOption) (*mcp.CallToolResult, error) {
+	const errorPrefix = "failed to search issues"
+
+	query, opts, err := prepareSearchArgs(args, "issue")
+	if err != nil {
+		return utils.NewToolResultError(err.Error()), nil
+	}
+
+	client, err := deps.GetClient(ctx)
+	if err != nil {
+		return utils.NewToolResultErrorFromErr(errorPrefix+": failed to get GitHub client", err), nil
+	}
+	result, resp, err := client.Search.Issues(ctx, query, opts)
+	if err != nil {
+		return utils.NewToolResultErrorFromErr(errorPrefix, err), nil
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return utils.NewToolResultErrorFromErr(errorPrefix+": failed to read response body", err), nil
+		}
+		return ghErrors.NewGitHubAPIStatusErrorResponse(ctx, errorPrefix, resp, body), nil
+	}
+
+	var fieldValuesByID map[string][]MinimalFieldValue
+	if len(result.Issues) > 0 {
+		gqlClient, err := deps.GetGQLClient(ctx)
+		if err != nil {
+			return utils.NewToolResultErrorFromErr(errorPrefix+": failed to get GitHub GraphQL client", err), nil
+		}
+		fieldValuesByID, err = fetchIssueFieldValuesByNodeID(ctx, gqlClient, result.Issues)
+		if err != nil {
+			return ghErrors.NewGitHubGraphQLErrorResponse(ctx, errorPrefix+": failed to fetch issue field values", err), nil
+		}
+	}
+
+	items := make([]SearchIssueResult, 0, len(result.Issues))
+	for _, iss := range result.Issues {
+		hit := SearchIssueResult{Issue: iss}
+		if iss != nil && iss.NodeID != nil {
+			hit.FieldValues = fieldValuesByID[*iss.NodeID]
+		}
+		items = append(items, hit)
+	}
+
+	response := SearchIssuesResponse{
+		Total:             result.Total,
+		IncompleteResults: result.IncompleteResults,
+		Items:             items,
+	}
+
+	cfg := searchConfig{}
+	for _, opt := range options {
+		opt(&cfg)
+	}
+
+	filtered := false
+	var payload any = response
+	if len(cfg.fields) > 0 {
+		filteredItems, err := filterEachField(response.Items, cfg.fields)
+		if err != nil {
+			return utils.NewToolResultErrorFromErr(errorPrefix+": failed to filter results", err), nil
+		}
+		payload = map[string]any{
+			"total_count":        response.Total,
+			"incomplete_results": response.IncompleteResults,
+			"items":              filteredItems,
+		}
+		filtered = true
+	}
+
+	r, err := json.Marshal(payload)
+	if err != nil {
+		return utils.NewToolResultErrorFromErr(errorPrefix+": failed to marshal response", err), nil
+	}
+
+	if cfg.fieldsTool != "" {
+		recordFieldsUsageFor(ctx, cfg.fieldsDeps, cfg.fieldsTool, response, filtered, len(r))
+	}
+
+	callResult := utils.NewToolResultText(string(r))
+	if cfg.postProcess != nil {
+		cfg.postProcess(ctx, result, callResult)
+	}
+	return callResult, nil
+}
+
 // IssueWriteUIResourceURI is the URI for the issue_write tool's MCP App UI resource.
 const IssueWriteUIResourceURI = "ui://omnigit-mcp/issue-write"
 
+// issueWriteFormParams are the parameters the issue_write MCP App form collects
+// and re-sends on submit. Any other parameter present on a call cannot be
+// represented by the form. The form collects (and prefills) every parameter in
+// the tool's current input schema, so hasNonFormParams against this set is a
+// forward-compatibility safety net: a parameter added to the schema in the
+// future but not yet wired into the form trips the check and bypasses the form
+// so the supplied value isn't silently dropped.
+var issueWriteFormParams = map[string]struct{}{
+	"method":        {},
+	"owner":         {},
+	"repo":          {},
+	"title":         {},
+	"body":          {},
+	"issue_number":  {},
+	"issue_fields":  {},
+	"labels":        {},
+	"assignees":     {},
+	"milestone":     {},
+	"type":          {},
+	"state":         {},
+	"state_reason":  {},
+	"duplicate_of":  {},
+	"_ui_submitted": {},
+}
+
+// issueWriteAwaitingFormResult builds the "awaiting form submission" stub
+// returned when issue_write hands off to the MCP App form. The body is shared
+// by IssueWrite and LegacyIssueWrite. The result is marked IsError=true so
+// agents that bail on error don't claim success or chain dependent tool calls
+// while the user is still interacting with the form; the host renders the UI
+// regardless because rendering is keyed off the tool's _meta.ui resourceUri.
+func issueWriteAwaitingFormResult(method, owner, repo string, issueNumber int) *mcp.CallToolResult {
+	var msg string
+	if method == "update" {
+		msg = fmt.Sprintf(
+			"An interactive form has been shown to the user for editing issue #%d in %s/%s. "+
+				"STOP — do not call any other tools, do not respond as if the issue was updated, "+
+				"and do not claim the operation succeeded. The issue has NOT been updated yet; "+
+				"only the form was rendered. Wait silently for the user to review and click Submit. "+
+				"When they do, the real result will be delivered to your context automatically.",
+			issueNumber, owner, repo,
+		)
+	} else {
+		msg = fmt.Sprintf(
+			"An interactive form has been shown to the user for creating a new issue in %s/%s. "+
+				"STOP — do not call any other tools, do not respond as if the issue was created, "+
+				"and do not claim the operation succeeded. The issue has NOT been created yet; "+
+				"only the form was rendered. Wait silently for the user to review and click Submit. "+
+				"When they do, the real result will be delivered to your context automatically.",
+			owner, repo,
+		)
+	}
+	return utils.NewToolResultAwaitingFormSubmission(msg)
+}
+
+// IssueWrite is the FeatureFlagIssueFields-enabled variant of issue_write
+// (with the issue_fields parameter). LegacyIssueWrite is served when the flag
+// is off. Both register under the tool name "issue_write"; exactly one is
+// active at a time via mutually exclusive feature-flag annotations. When the
+// flag is removed, delete LegacyIssueWrite outright and drop the feature-flag
+// fields on IssueWrite.
 func IssueWrite(t translations.TranslationHelperFunc) inventory.ServerTool {
-	return NewTool(
+	st := NewTool(
 		ToolsetMetadataIssues,
 		mcp.Tool{
 			Name:        "issue_write",
 			Description: t("TOOL_ISSUE_WRITE_DESCRIPTION", "Create a new or update an existing issue in a GitHub repository."),
 			Annotations: &mcp.ToolAnnotations{
-				Title:        t("TOOL_ISSUE_WRITE_USER_TITLE", "Create or update issue."),
+				Title:        t("TOOL_ISSUE_WRITE_USER_TITLE", "Create or update issue/pull request"),
 				ReadOnlyHint: false,
 			},
 			Meta: mcp.Meta{
@@ -1193,7 +2291,7 @@ Options are:
 					},
 					"type": {
 						Type:        "string",
-						Description: "Type of this issue. Only use if the repository has issue types configured. Use list_issue_types tool to get valid type values for the organization. If the repository doesn't support issue types, omit this parameter.",
+						Description: "Type of this issue. Only use if issue types are enabled for this repository. Use list_issue_types tool to get valid type values for this repository or its owner organization. If the repository doesn't support issue types, omit this parameter.",
 					},
 					"state": {
 						Type:        "string",
@@ -1208,6 +2306,41 @@ Options are:
 					"duplicate_of": {
 						Type:        "number",
 						Description: "Issue number that this issue is a duplicate of. Only used when state_reason is 'duplicate'.",
+					},
+					"issue_fields": {
+						Type:        "array",
+						Description: "Issue field values to set or clear. Each item requires 'field_name' and exactly one of 'value', 'field_option_name', or 'delete: true'.",
+						Items: &jsonschema.Schema{
+							Type:                 "object",
+							AdditionalProperties: &jsonschema.Schema{Not: &jsonschema.Schema{}},
+							Properties: map[string]*jsonschema.Schema{
+								"field_name": {
+									Type: "string",
+									Description: "Issue field name (case-insensitive). Must match a field " +
+										"returned by list_issue_fields for this repository or its organization.",
+								},
+								"value": {
+									Types: []string{"string", "number", "boolean"},
+									Description: "Value to set. Use for text, number, and date fields " +
+										"(date as YYYY-MM-DD). For single-select fields, prefer " +
+										"'field_option_name' so the option is validated before the API " +
+										"call. Cannot be combined with 'field_option_name' or 'delete'.",
+								},
+								"field_option_name": {
+									Type: "string",
+									Description: "Option name for single-select fields. Validated against " +
+										"the field's options before the API call. Cannot be combined with " +
+										"'value' or 'delete'.",
+								},
+								"delete": {
+									Type: "boolean",
+									Enum: []any{true},
+									Description: "Set to true to clear this field's current value on the " +
+										"issue. Cannot be combined with 'value' or 'field_option_name'.",
+								},
+							},
+							Required: []string{"field_name"},
+						},
 					},
 				},
 				Required: []string{"method", "owner", "repo"},
@@ -1229,20 +2362,18 @@ Options are:
 				return utils.NewToolResultError(err.Error()), nil, nil
 			}
 
-			// When insiders mode is enabled and the client supports MCP Apps UI,
-			// check if this is a UI form submission. The UI sends _ui_submitted=true
-			// to distinguish form submissions from LLM calls.
-			uiSubmitted, _ := OptionalParam[bool](args, "_ui_submitted")
-
-			if deps.GetFlags(ctx).InsidersMode && clientSupportsUI(req) && !uiSubmitted {
+			// Hand off to the interactive MCP App form unless this call must
+			// execute now (see shouldDeferToForm).
+			if shouldDeferToForm(ctx, deps, req, args, issueWriteFormParams) {
+				issueNumber := 0
 				if method == "update" {
-					issueNumber, numErr := RequiredInt(args, "issue_number")
+					n, numErr := RequiredInt(args, "issue_number")
 					if numErr != nil {
 						return utils.NewToolResultError("issue_number is required for update method"), nil, nil
 					}
-					return utils.NewToolResultText(fmt.Sprintf("Ready to update issue #%d in %s/%s. The user will review and confirm via the interactive form.", issueNumber, owner, repo)), nil, nil
+					issueNumber = n
 				}
-				return utils.NewToolResultText(fmt.Sprintf("Ready to create an issue in %s/%s. The user will review and confirm via the interactive form.", owner, repo)), nil, nil
+				return issueWriteAwaitingFormResult(method, owner, repo, issueNumber), nil, nil
 			}
 
 			title, err := OptionalParam[string](args, "title")
@@ -1261,12 +2392,16 @@ Options are:
 			if err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			}
+			assigneesValue, assigneesProvided := args["assignees"]
+			assigneesProvided = assigneesProvided && assigneesValue != nil
 
 			// Get labels
 			labels, err := OptionalStringArrayParam(args, "labels")
 			if err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			}
+			labelsValue, labelsProvided := args["labels"]
+			labelsProvided = labelsProvided && labelsValue != nil
 
 			// Get optional milestone
 			milestone, err := OptionalIntParam(args, "milestone")
@@ -1304,6 +2439,12 @@ Options are:
 				return utils.NewToolResultError("duplicate_of can only be used when state_reason is 'duplicate'"), nil, nil
 			}
 
+			var issueFields []issueWriteFieldInput
+			issueFields, err = optionalIssueWriteFields(args)
+			if err != nil {
+				return utils.NewToolResultError(err.Error()), nil, nil
+			}
+
 			client, err := deps.GetClient(ctx)
 			if err != nil {
 				return utils.NewToolResultErrorFromErr("failed to get GitHub client", err), nil, nil
@@ -1314,37 +2455,51 @@ Options are:
 				return utils.NewToolResultErrorFromErr("failed to get GraphQL client", err), nil, nil
 			}
 
+			var issueFieldValues []*github.IssueRequestFieldValue
+			var fieldIDsToDelete []int64
+			if len(issueFields) > 0 {
+				issueFieldValues, fieldIDsToDelete, err = resolveIssueRequestFieldValues(ctx, gqlClient, owner, repo, issueFields)
+				if err != nil {
+					return utils.NewToolResultError(fmt.Sprintf("failed to resolve issue_fields: %v", err)), nil, nil
+				}
+			}
+
 			switch method {
 			case "create":
-				result, err := CreateIssue(ctx, client, owner, repo, title, body, assignees, labels, milestoneNum, issueType)
+				result, err := CreateIssue(ctx, client, owner, repo, title, body, assignees, labels, milestoneNum, issueType, issueFieldValues)
 				return result, nil, err
 			case "update":
 				issueNumber, err := RequiredInt(args, "issue_number")
 				if err != nil {
 					return utils.NewToolResultError(err.Error()), nil, nil
 				}
-				result, err := UpdateIssue(ctx, client, gqlClient, owner, repo, issueNumber, title, body, assignees, labels, milestoneNum, issueType, state, stateReason, duplicateOf)
+				result, err := UpdateIssue(ctx, client, gqlClient, owner, repo, issueNumber, title, body, assignees, labels, milestoneNum, issueType, issueFieldValues, fieldIDsToDelete, state, stateReason, duplicateOf, UpdateIssueOptions{
+					AssigneesProvided: assigneesProvided,
+					LabelsProvided:    labelsProvided,
+				})
 				return result, nil, err
 			default:
 				return utils.NewToolResultError("invalid method, must be either 'create' or 'update'"), nil, nil
 			}
 		})
+	st.FeatureFlagDisable = []string{FeatureFlagIssuesGranular}
+	return st
 }
 
-func CreateIssue(ctx context.Context, client *github.Client, owner string, repo string, title string, body string, assignees []string, labels []string, milestoneNum int, issueType string) (*mcp.CallToolResult, error) {
+func CreateIssue(ctx context.Context, client *github.Client, owner string, repo string, title string, body string, assignees []string, labels []string, milestoneNum int, issueType string, issueFieldValues []*github.IssueRequestFieldValue) (*mcp.CallToolResult, error) {
 	if title == "" {
 		return utils.NewToolResultError("missing required parameter: title"), nil
 	}
 
-	// Filter out unwanted patterns from the body before creating the issue
 	filteredBody := bodyfilter.FilterBody(body)
 
 	// Create the issue request
 	issueRequest := &github.IssueRequest{
-		Title:     new(title),
-		Body:      new(filteredBody),
-		Assignees: &assignees,
-		Labels:    &labels,
+		Title:            new(title),
+		Body:             new(filteredBody),
+		Assignees:        &assignees,
+		Labels:           &labels,
+		IssueFieldValues: issueFieldValues,
 	}
 
 	if milestoneNum != 0 {
@@ -1387,7 +2542,24 @@ func CreateIssue(ctx context.Context, client *github.Client, owner string, repo 
 	return utils.NewToolResultText(string(r)), nil
 }
 
-func UpdateIssue(ctx context.Context, client *github.Client, gqlClient *githubv4.Client, owner string, repo string, issueNumber int, title string, body string, assignees []string, labels []string, milestoneNum int, issueType string, state string, stateReason string, duplicateOf int) (*mcp.CallToolResult, error) {
+// UpdateIssueOptions controls which optional fields are included in an issue update request.
+type UpdateIssueOptions struct {
+	// AssigneesProvided sends the assignees field even when the slice is empty.
+	AssigneesProvided bool
+	// LabelsProvided sends the labels field even when the slice is empty.
+	LabelsProvided bool
+}
+
+func UpdateIssue(ctx context.Context, client *github.Client, gqlClient *githubv4.Client, owner string, repo string, issueNumber int, title string, body string, assignees []string, labels []string, milestoneNum int, issueType string, issueFieldValues []*github.IssueRequestFieldValue, fieldIDsToDelete []int64, state string, stateReason string, duplicateOf int, opts ...UpdateIssueOptions) (*mcp.CallToolResult, error) {
+	updateOptions := UpdateIssueOptions{
+		AssigneesProvided: len(assignees) > 0,
+		LabelsProvided:    len(labels) > 0,
+	}
+	for _, opt := range opts {
+		updateOptions.AssigneesProvided = updateOptions.AssigneesProvided || opt.AssigneesProvided
+		updateOptions.LabelsProvided = updateOptions.LabelsProvided || opt.LabelsProvided
+	}
+
 	// Create the issue request with only provided fields
 	issueRequest := &github.IssueRequest{}
 
@@ -1397,16 +2569,15 @@ func UpdateIssue(ctx context.Context, client *github.Client, gqlClient *githubv4
 	}
 
 	if body != "" {
-		// Filter out unwanted patterns from the body before updating the issue
 		filteredBody := bodyfilter.FilterBody(body)
 		issueRequest.Body = new(filteredBody)
 	}
 
-	if len(labels) > 0 {
+	if updateOptions.LabelsProvided {
 		issueRequest.Labels = &labels
 	}
 
-	if len(assignees) > 0 {
+	if updateOptions.AssigneesProvided {
 		issueRequest.Assignees = &assignees
 	}
 
@@ -1416,6 +2587,49 @@ func UpdateIssue(ctx context.Context, client *github.Client, gqlClient *githubv4
 
 	if issueType != "" {
 		issueRequest.Type = new(issueType)
+	}
+
+	// Field IDs to clear via DELETE after the PATCH. See the post-PATCH loop
+	// for why we can't just rely on REST set semantics.
+	var fallbackDeleteFieldIDs []int64
+
+	if len(issueFieldValues) > 0 || len(fieldIDsToDelete) > 0 {
+		// REST PATCH uses set semantics, so fetch existing values, merge in
+		// the new ones, then drop anything explicitly deleted.
+		existing, err := fetchExistingIssueFieldValues(ctx, gqlClient, owner, repo, issueNumber)
+		if err != nil {
+			return ghErrors.NewGitHubGraphQLErrorResponse(ctx, "failed to fetch existing issue field values", err), nil
+		}
+		merged := mergeIssueFieldValues(existing, issueFieldValues)
+		if len(fieldIDsToDelete) > 0 {
+			deleteSet := make(map[int64]bool, len(fieldIDsToDelete))
+			for _, id := range fieldIDsToDelete {
+				deleteSet[id] = true
+			}
+			kept := make([]*github.IssueRequestFieldValue, 0, len(merged))
+			for _, v := range merged {
+				if !deleteSet[v.FieldID] {
+					kept = append(kept, v)
+				}
+			}
+			merged = kept
+		}
+		if len(merged) == 0 && len(fieldIDsToDelete) > 0 {
+			// Only queue DELETEs for fields actually present — the endpoint
+			// returns 404 otherwise, and "delete a field that isn't set" should
+			// stay a no-op (callers often invoke delete:true idempotently).
+			existingIDs := make(map[int64]bool, len(existing))
+			for _, e := range existing {
+				existingIDs[e.FieldID] = true
+			}
+			for _, id := range fieldIDsToDelete {
+				if existingIDs[id] {
+					fallbackDeleteFieldIDs = append(fallbackDeleteFieldIDs, id)
+				}
+			}
+		} else {
+			issueRequest.IssueFieldValues = merged
+		}
 	}
 
 	updatedIssue, resp, err := client.Issues.Edit(ctx, owner, repo, issueNumber, issueRequest)
@@ -1434,6 +2648,43 @@ func UpdateIssue(ctx context.Context, client *github.Client, gqlClient *githubv4
 			return nil, fmt.Errorf("failed to read response body: %w", err)
 		}
 		return ghErrors.NewGitHubAPIStatusErrorResponse(ctx, "failed to update issue", resp, body), nil
+	}
+
+	// Per-field DELETE fallback. The PATCH can't clear field values when the
+	// merged set is empty — go-github's `omitempty` strips the empty slice
+	// and the dotcom REST handler skips its issue_field_values block when the
+	// key is absent. Errors are aggregated (not short-circuited) so callers
+	// can see which fields succeeded and which need retry.
+	if len(fallbackDeleteFieldIDs) > 0 {
+		var failedIDs, succeededIDs []int64
+		var firstFailureErr error
+		var firstFailureResp *github.Response
+		for _, fieldID := range fallbackDeleteFieldIDs {
+			path := fmt.Sprintf("repos/%s/%s/issues/%d/issue-field-values/%d", owner, repo, issueNumber, fieldID)
+			req, err := client.NewRequest(ctx, http.MethodDelete, path, nil)
+			if err != nil {
+				failedIDs = append(failedIDs, fieldID)
+				if firstFailureErr == nil {
+					firstFailureErr = err
+				}
+				continue
+			}
+			delResp, err := client.Do(req, nil)
+			if err != nil {
+				failedIDs = append(failedIDs, fieldID)
+				if firstFailureErr == nil {
+					firstFailureErr = err
+					firstFailureResp = delResp
+				}
+				continue
+			}
+			succeededIDs = append(succeededIDs, fieldID)
+			_ = delResp.Body.Close()
+		}
+		if len(failedIDs) > 0 {
+			msg := fmt.Sprintf("failed to clear issue field values: failed=%v, cleared=%v", failedIDs, succeededIDs)
+			return ghErrors.NewGitHubAPIErrorResponse(ctx, msg, firstFailureResp, firstFailureErr), nil
+		}
 	}
 
 	// Use GraphQL API for state updates
@@ -1514,8 +2765,34 @@ func UpdateIssue(ctx context.Context, client *github.Client, gqlClient *githubv4
 	return utils.NewToolResultText(string(r)), nil
 }
 
-// ListIssues creates a tool to list and filter repository issues
+// ListIssues creates a tool to list issues in a GitHub repository. It is the
+// FeatureFlagFieldsParam-enabled variant: it advertises the optional `fields`
+// parameter and filters each issue to the requested subset. Both this and
+// LegacyListIssues register under the tool name "list_issues"; exactly one is
+// active for any given request thanks to mutually exclusive FeatureFlagEnable /
+// FeatureFlagDisable annotations.
 func ListIssues(t translations.TranslationHelperFunc) inventory.ServerTool {
+	st := listIssuesTool(t, true)
+	st.FeatureFlagEnable = FeatureFlagFieldsParam
+	return st
+}
+
+// LegacyListIssues is the FeatureFlagFieldsParam-disabled variant of list_issues.
+// It exposes the original schema (no `fields` parameter) and never filters
+// results, so it acts as the kill switch when the flag is off. It owns the
+// canonical list_issues.snap; the flag-enabled variant owns
+// list_issues_ff_<flag>.snap. Delete this function when the flag is removed.
+func LegacyListIssues(t translations.TranslationHelperFunc) inventory.ServerTool {
+	st := listIssuesTool(t, false)
+	st.FeatureFlagDisable = []string{FeatureFlagFieldsParam}
+	return st
+}
+
+// listIssuesTool builds the list_issues tool. When includeFields is true the
+// tool advertises the optional `fields` parameter, filters each issue to the
+// requested subset, and emits fields telemetry. When false it is the original
+// tool with no fields parameter and no filtering.
+func listIssuesTool(t translations.TranslationHelperFunc, includeFields bool) inventory.ServerTool {
 	schema := &jsonschema.Schema{
 		Type: "object",
 		Properties: map[string]*jsonschema.Schema{
@@ -1553,12 +2830,36 @@ func ListIssues(t translations.TranslationHelperFunc) inventory.ServerTool {
 				Type:        "string",
 				Description: "Filter by date (ISO 8601 timestamp)",
 			},
+			"field_filters": {
+				Type:        "array",
+				Description: "Filter by custom issue field values. Each entry takes a field_name and a value; the server looks up the field and coerces the value to its type (single-select option name, text, number, or YYYY-MM-DD date).",
+				Items: &jsonschema.Schema{
+					Type: "object",
+					Properties: map[string]*jsonschema.Schema{
+						"field_name": {
+							Type:        "string",
+							Description: "Name of the custom field (e.g. \"Priority\"). Case-insensitive.",
+						},
+						"value": {
+							Type:        "string",
+							Description: "Value to filter on. For single-select fields, the option name (e.g. \"P1\"). For dates, YYYY-MM-DD. For numbers, the numeric value as a string. For text, the text value.",
+						},
+					},
+					Required: []string{"field_name", "value"},
+				},
+			},
 		},
 		Required: []string{"owner", "repo"},
 	}
+	if includeFields {
+		schema.Properties["fields"] = fieldsSchemaProperty(
+			"Subset of fields to return for each issue. If omitted, all fields are returned. Use this to reduce response size when you only need specific fields; omitting 'body' and 'field_values' in particular drops the largest per-result data.",
+			listIssuesItemFieldEnum,
+		)
+	}
 	WithCursorPagination(schema)
 
-	return NewTool(
+	st := NewTool(
 		ToolsetMetadataIssues,
 		mcp.Tool{
 			Name:        "list_issues",
@@ -1578,6 +2879,14 @@ func ListIssues(t translations.TranslationHelperFunc) inventory.ServerTool {
 			repo, err := RequiredParam[string](args, "repo")
 			if err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
+			}
+
+			var fields []string
+			if includeFields {
+				fields, err = OptionalStringArrayParam(args, "fields")
+				if err != nil {
+					return utils.NewToolResultError(err.Error()), nil, nil
+				}
 			}
 
 			// Set optional parameters if provided
@@ -1648,6 +2957,11 @@ func ListIssues(t translations.TranslationHelperFunc) inventory.ServerTool {
 			}
 			hasLabels := len(labels) > 0
 
+			rawFilters, err := parseRawFieldFilters(args)
+			if err != nil {
+				return utils.NewToolResultError(err.Error()), nil, nil
+			}
+
 			// Get pagination parameters and convert to GraphQL format
 			pagination, err := OptionalCursorPaginationParams(args)
 			if err != nil {
@@ -1679,13 +2993,28 @@ func ListIssues(t translations.TranslationHelperFunc) inventory.ServerTool {
 				return utils.NewToolResultError(fmt.Sprintf("failed to get GitHub GQL client: %v", err)), nil, nil
 			}
 
+			// Resolve field filters by looking up the repo's issue fields so we can
+			// coerce each value into the right typed slot on IssueFieldValueFilter.
+			fieldFilters := []IssueFieldValueFilter{}
+			if len(rawFilters) > 0 {
+				fields, err := fetchIssueFields(ctx, client, owner, repo)
+				if err != nil {
+					return ghErrors.NewGitHubGraphQLErrorResponse(ctx, "failed to look up issue fields for field_filters", err), nil, nil
+				}
+				fieldFilters, err = resolveFieldFilters(rawFilters, fields)
+				if err != nil {
+					return utils.NewToolResultError(err.Error()), nil, nil
+				}
+			}
+
 			vars := map[string]any{
-				"owner":     githubv4.String(owner),
-				"repo":      githubv4.String(repo),
-				"states":    states,
-				"orderBy":   githubv4.IssueOrderField(orderBy),
-				"direction": githubv4.OrderDirection(direction),
-				"first":     githubv4.Int(*paginationParams.First),
+				"owner":            githubv4.String(owner),
+				"repo":             githubv4.String(repo),
+				"states":           states,
+				"orderBy":          githubv4.IssueOrderField(orderBy),
+				"direction":        githubv4.OrderDirection(direction),
+				"first":            githubv4.Int(*paginationParams.First),
+				"issueFieldValues": fieldFilters,
 			}
 
 			if paginationParams.After != nil {
@@ -1710,7 +3039,11 @@ func ListIssues(t translations.TranslationHelperFunc) inventory.ServerTool {
 			}
 
 			issueQuery := getIssueQueryType(hasLabels, hasSince)
-			if err := client.Query(ctx, issueQuery, vars); err != nil {
+			// The list_issues query references the issue_fields-gated IssueFieldValueFilter
+			// input type unconditionally, so we always opt into the feature via header. This
+			// is a no-op once the flags are globally rolled out.
+			ctxWithFeatures := ghcontext.WithGraphQLFeatures(ctx, "issue_fields", "repo_issue_fields")
+			if err := client.Query(ctxWithFeatures, issueQuery, vars); err != nil {
 				return ghErrors.NewGitHubGraphQLErrorResponse(
 					ctx,
 					"failed to list issues",
@@ -1718,474 +3051,152 @@ func ListIssues(t translations.TranslationHelperFunc) inventory.ServerTool {
 				), nil, nil
 			}
 
-			// Extract and convert all issue nodes using the common interface
-			var issues []*github.Issue
-			var pageInfo struct {
-				HasNextPage     githubv4.Boolean
-				HasPreviousPage githubv4.Boolean
-				StartCursor     githubv4.String
-				EndCursor       githubv4.String
-			}
-			var totalCount int
-
+			var resp MinimalIssuesResponse
+			var isPrivate bool
 			if queryResult, ok := issueQuery.(IssueQueryResult); ok {
-				fragment := queryResult.GetIssueFragment()
-				for _, issue := range fragment.Nodes {
-					issues = append(issues, fragmentToIssue(issue))
-				}
-				pageInfo = fragment.PageInfo
-				totalCount = fragment.TotalCount
+				resp = convertToMinimalIssuesResponse(queryResult.GetIssueFragment())
+				isPrivate = queryResult.GetIsPrivate()
 			}
 
-			// Create response with issues
-			response := map[string]any{
-				"issues": issues,
-				"pageInfo": map[string]any{
-					"hasNextPage":     pageInfo.HasNextPage,
-					"hasPreviousPage": pageInfo.HasPreviousPage,
-					"startCursor":     string(pageInfo.StartCursor),
-					"endCursor":       string(pageInfo.EndCursor),
-				},
-				"totalCount": totalCount,
+			filtered := false
+			var payload any = resp
+			if includeFields && len(fields) > 0 {
+				filteredIssues, err := filterEachField(resp.Issues, fields)
+				if err != nil {
+					return utils.NewToolResultErrorFromErr("failed to filter issues", err), nil, nil
+				}
+				payload = map[string]any{
+					"issues":     filteredIssues,
+					"totalCount": resp.TotalCount,
+					"pageInfo":   resp.PageInfo,
+				}
+				filtered = true
 			}
-			out, err := json.Marshal(response)
+
+			r, err := json.Marshal(payload)
 			if err != nil {
-				return nil, nil, fmt.Errorf("failed to marshal issues: %w", err)
+				return utils.NewToolResultErrorFromErr("failed to marshal response", err), nil, nil
 			}
-			return utils.NewToolResultText(string(out)), nil, nil
+
+			if includeFields {
+				recordFieldsUsageFor(ctx, deps, "list_issues", resp, filtered, len(r))
+			}
+
+			result := utils.NewToolResultText(string(r))
+			result = attachStaticIFCLabel(ctx, deps, result, ifc.LabelListIssues(isPrivate))
+			return result, nil, nil
 		})
+	return st
 }
 
-// mvpDescription is an MVP idea for generating tool descriptions from structured data in a shared format.
-// It is not intended for widespread usage and is not a complete implementation.
-type mvpDescription struct {
-	summary        string
-	outcomes       []string
-	referenceLinks []string
+// rawFieldFilter is the user-supplied {field_name, value} pair before type resolution.
+type rawFieldFilter struct {
+	Name  string
+	Value string
 }
 
-func (d *mvpDescription) String() string {
-	var sb strings.Builder
-	sb.WriteString(d.summary)
-	if len(d.outcomes) > 0 {
-		sb.WriteString("\n\n")
-		sb.WriteString("This tool can help with the following outcomes:\n")
-		for _, outcome := range d.outcomes {
-			fmt.Fprintf(&sb, "- %s\n", outcome)
+// parseRawFieldFilters extracts the optional field_filters parameter into a list of
+// {name, value} pairs. The value is always a string here; type-aware coercion happens
+// later in resolveFieldFilters once we know each field's data_type.
+func parseRawFieldFilters(args map[string]any) ([]rawFieldFilter, error) {
+	raw, ok := args["field_filters"]
+	if !ok {
+		return nil, nil
+	}
+
+	var entries []map[string]any
+	switch v := raw.(type) {
+	case []any:
+		for _, f := range v {
+			entry, ok := f.(map[string]any)
+			if !ok {
+				return nil, fmt.Errorf("each field_filters entry must be an object")
+			}
+			entries = append(entries, entry)
 		}
+	case []map[string]any:
+		entries = v
+	default:
+		return nil, fmt.Errorf("field_filters must be an array")
 	}
 
-	if len(d.referenceLinks) > 0 {
-		sb.WriteString("\n\n")
-		sb.WriteString("More information can be found at:\n")
-		for _, link := range d.referenceLinks {
-			fmt.Fprintf(&sb, "- %s\n", link)
+	filters := make([]rawFieldFilter, 0, len(entries))
+	for _, entry := range entries {
+		fieldName, err := RequiredParam[string](entry, "field_name")
+		if err != nil {
+			return nil, fmt.Errorf("field_filters entry: %s", err.Error())
 		}
-	}
-
-	return sb.String()
-}
-
-// linkedPullRequest represents a PR linked to an issue by Copilot.
-type linkedPullRequest struct {
-	Number    int
-	URL       string
-	Title     string
-	State     string
-	CreatedAt time.Time
-}
-
-// pollConfigKey is a context key for polling configuration.
-type pollConfigKey struct{}
-
-// PollConfig configures the PR polling behavior.
-type PollConfig struct {
-	MaxAttempts int
-	Delay       time.Duration
-}
-
-// ContextWithPollConfig returns a context with polling configuration.
-// Use this in tests to reduce or disable polling.
-func ContextWithPollConfig(ctx context.Context, config PollConfig) context.Context {
-	return context.WithValue(ctx, pollConfigKey{}, config)
-}
-
-// getPollConfig returns the polling configuration from context, or defaults.
-func getPollConfig(ctx context.Context) PollConfig {
-	if config, ok := ctx.Value(pollConfigKey{}).(PollConfig); ok {
-		return config
-	}
-	// Default: 9 attempts with 1s delay = 8s max wait
-	// Based on observed latency in remote server: p50 ~5s, p90 ~7s
-	return PollConfig{MaxAttempts: 9, Delay: 1 * time.Second}
-}
-
-// findLinkedCopilotPR searches for a PR created by the copilot-swe-agent bot that references the given issue.
-// It queries the issue's timeline for CrossReferencedEvent items from PRs authored by copilot-swe-agent.
-// The createdAfter parameter filters to only return PRs created after the specified time.
-func findLinkedCopilotPR(ctx context.Context, client *githubv4.Client, owner, repo string, issueNumber int, createdAfter time.Time) (*linkedPullRequest, error) {
-	// Query timeline items looking for CrossReferencedEvent from PRs by copilot-swe-agent
-	var query struct {
-		Repository struct {
-			Issue struct {
-				TimelineItems struct {
-					Nodes []struct {
-						TypeName             string `graphql:"__typename"`
-						CrossReferencedEvent struct {
-							Source struct {
-								PullRequest struct {
-									Number    int
-									URL       string
-									Title     string
-									State     string
-									CreatedAt githubv4.DateTime
-									Author    struct {
-										Login string
-									}
-								} `graphql:"... on PullRequest"`
-							}
-						} `graphql:"... on CrossReferencedEvent"`
-					}
-				} `graphql:"timelineItems(first: 20, itemTypes: [CROSS_REFERENCED_EVENT])"`
-			} `graphql:"issue(number: $number)"`
-		} `graphql:"repository(owner: $owner, name: $name)"`
-	}
-
-	variables := map[string]any{
-		"owner":  githubv4.String(owner),
-		"name":   githubv4.String(repo),
-		"number": githubv4.Int(issueNumber), //nolint:gosec // Issue numbers are always small positive integers
-	}
-
-	if err := client.Query(ctx, &query, variables); err != nil {
-		return nil, err
-	}
-
-	// Look for a PR from copilot-swe-agent created after the assignment time
-	for _, node := range query.Repository.Issue.TimelineItems.Nodes {
-		if node.TypeName != "CrossReferencedEvent" {
-			continue
+		value, err := RequiredParam[string](entry, "value")
+		if err != nil {
+			return nil, fmt.Errorf("field_filters entry %q: %s", fieldName, err.Error())
 		}
-		pr := node.CrossReferencedEvent.Source.PullRequest
-		if pr.Number > 0 && pr.Author.Login == "copilot-swe-agent" {
-			// Only return PRs created after the assignment time
-			if pr.CreatedAt.Time.After(createdAfter) {
-				return &linkedPullRequest{
-					Number:    pr.Number,
-					URL:       pr.URL,
-					Title:     pr.Title,
-					State:     pr.State,
-					CreatedAt: pr.CreatedAt.Time,
-				}, nil
-			}
-		}
+		filters = append(filters, rawFieldFilter{Name: fieldName, Value: value})
 	}
-
-	return nil, nil
+	return filters, nil
 }
 
-func AssignCopilotToIssue(t translations.TranslationHelperFunc) inventory.ServerTool {
-	description := mvpDescription{
-		summary: "Assign Copilot to a specific issue in a GitHub repository.",
-		outcomes: []string{
-			"a Pull Request created with source code changes to resolve the issue",
-		},
-		referenceLinks: []string{
-			"https://docs.github.com/en/copilot/using-github-copilot/using-copilot-coding-agent-to-work-on-tasks/about-assigning-tasks-to-copilot",
-		},
+// resolveFieldFilters matches each raw filter against a known field definition and
+// coerces the value into the right typed slot on IssueFieldValueFilter. Matching is
+// case-insensitive on field name; option names are also matched case-insensitively for
+// single-select fields.
+func resolveFieldFilters(rawFilters []rawFieldFilter, fields []IssueField) ([]IssueFieldValueFilter, error) {
+	byName := make(map[string]IssueField, len(fields))
+	knownNames := make([]string, 0, len(fields))
+	for _, f := range fields {
+		byName[strings.ToLower(f.Name)] = f
+		knownNames = append(knownNames, f.Name)
 	}
 
-	return NewTool(
-		ToolsetMetadataIssues,
-		mcp.Tool{
-			Name:        "assign_copilot_to_issue",
-			Description: t("TOOL_ASSIGN_COPILOT_TO_ISSUE_DESCRIPTION", description.String()),
-			Icons:       octicons.Icons("copilot"),
-			Annotations: &mcp.ToolAnnotations{
-				Title:          t("TOOL_ASSIGN_COPILOT_TO_ISSUE_USER_TITLE", "Assign Copilot to issue"),
-				ReadOnlyHint:   false,
-				IdempotentHint: true,
-			},
-			InputSchema: &jsonschema.Schema{
-				Type: "object",
-				Properties: map[string]*jsonschema.Schema{
-					"owner": {
-						Type:        "string",
-						Description: "Repository owner",
-					},
-					"repo": {
-						Type:        "string",
-						Description: "Repository name",
-					},
-					"issue_number": {
-						Type:        "number",
-						Description: "Issue number",
-					},
-					"base_ref": {
-						Type:        "string",
-						Description: "Git reference (e.g., branch) that the agent will start its work from. If not specified, defaults to the repository's default branch",
-					},
-					"custom_instructions": {
-						Type:        "string",
-						Description: "Optional custom instructions to guide the agent beyond the issue body. Use this to provide additional context, constraints, or guidance that is not captured in the issue description",
-					},
-				},
-				Required: []string{"owner", "repo", "issue_number"},
-			},
-		},
-		[]scopes.Scope{scopes.Repo},
-		func(ctx context.Context, deps ToolDependencies, request *mcp.CallToolRequest, args map[string]any) (*mcp.CallToolResult, any, error) {
-			var params struct {
-				Owner              string `mapstructure:"owner"`
-				Repo               string `mapstructure:"repo"`
-				IssueNumber        int32  `mapstructure:"issue_number"`
-				BaseRef            string `mapstructure:"base_ref"`
-				CustomInstructions string `mapstructure:"custom_instructions"`
-			}
-			if err := mapstructure.Decode(args, &params); err != nil {
-				return utils.NewToolResultError(err.Error()), nil, nil
-			}
+	out := make([]IssueFieldValueFilter, 0, len(rawFilters))
+	for _, rf := range rawFilters {
+		field, ok := byName[strings.ToLower(rf.Name)]
+		if !ok {
+			return nil, fmt.Errorf("field_filters: unknown field %q. Known fields: %s", rf.Name, strings.Join(knownNames, ", "))
+		}
 
-			client, err := deps.GetGQLClient(ctx)
-			if err != nil {
-				return nil, nil, fmt.Errorf("failed to get GitHub client: %w", err)
-			}
-
-			// Firstly, we try to find the copilot bot in the suggested actors for the repository.
-			// Although as I write this, we would expect copilot to be at the top of the list, in future, maybe
-			// it will not be on the first page of responses, thus we will keep paginating until we find it.
-			type botAssignee struct {
-				ID       githubv4.ID
-				Login    string
-				TypeName string `graphql:"__typename"`
-			}
-
-			type suggestedActorsQuery struct {
-				Repository struct {
-					SuggestedActors struct {
-						Nodes []struct {
-							Bot botAssignee `graphql:"... on Bot"`
-						}
-						PageInfo struct {
-							HasNextPage bool
-							EndCursor   string
-						}
-					} `graphql:"suggestedActors(first: 100, after: $endCursor, capabilities: CAN_BE_ASSIGNED)"`
-				} `graphql:"repository(owner: $owner, name: $name)"`
-			}
-
-			variables := map[string]any{
-				"owner":     githubv4.String(params.Owner),
-				"name":      githubv4.String(params.Repo),
-				"endCursor": (*githubv4.String)(nil),
-			}
-
-			var copilotAssignee *botAssignee
-			for {
-				var query suggestedActorsQuery
-				err := client.Query(ctx, &query, variables)
-				if err != nil {
-					return ghErrors.NewGitHubGraphQLErrorResponse(ctx, "failed to get suggested actors", err), nil, nil
-				}
-
-				// Iterate all the returned nodes looking for the copilot bot, which is supposed to have the
-				// same name on each host. We need this in order to get the ID for later assignment.
-				for _, node := range query.Repository.SuggestedActors.Nodes {
-					if node.Bot.Login == "copilot-swe-agent" {
-						copilotAssignee = &node.Bot
-						break
-					}
-				}
-
-				if !query.Repository.SuggestedActors.PageInfo.HasNextPage {
-					break
-				}
-				variables["endCursor"] = githubv4.String(query.Repository.SuggestedActors.PageInfo.EndCursor)
-			}
-
-			// If we didn't find the copilot bot, we can't proceed any further.
-			if copilotAssignee == nil {
-				// The e2e tests depend upon this specific message to skip the test.
-				return utils.NewToolResultError("copilot isn't available as an assignee for this issue. Please inform the user to visit https://docs.github.com/en/copilot/using-github-copilot/using-copilot-coding-agent-to-work-on-tasks/about-assigning-tasks-to-copilot for more information."), nil, nil
-			}
-
-			// Next, get the issue ID and repository ID
-			var getIssueQuery struct {
-				Repository struct {
-					ID    githubv4.ID
-					Issue struct {
-						ID        githubv4.ID
-						Assignees struct {
-							Nodes []struct {
-								ID githubv4.ID
-							}
-						} `graphql:"assignees(first: 100)"`
-					} `graphql:"issue(number: $number)"`
-				} `graphql:"repository(owner: $owner, name: $name)"`
-			}
-
-			variables = map[string]any{
-				"owner":  githubv4.String(params.Owner),
-				"name":   githubv4.String(params.Repo),
-				"number": githubv4.Int(params.IssueNumber),
-			}
-
-			if err := client.Query(ctx, &getIssueQuery, variables); err != nil {
-				return ghErrors.NewGitHubGraphQLErrorResponse(ctx, "failed to get issue ID", err), nil, nil
-			}
-
-			// Build the assignee IDs list including copilot
-			actorIDs := make([]githubv4.ID, len(getIssueQuery.Repository.Issue.Assignees.Nodes)+1)
-			for i, node := range getIssueQuery.Repository.Issue.Assignees.Nodes {
-				actorIDs[i] = node.ID
-			}
-			actorIDs[len(getIssueQuery.Repository.Issue.Assignees.Nodes)] = copilotAssignee.ID
-
-			// Prepare agent assignment input
-			emptyString := githubv4.String("")
-			agentAssignment := &AgentAssignmentInput{
-				CustomAgent:        &emptyString,
-				CustomInstructions: &emptyString,
-				TargetRepositoryID: getIssueQuery.Repository.ID,
-			}
-
-			// Add base ref if provided
-			if params.BaseRef != "" {
-				baseRef := githubv4.String(params.BaseRef)
-				agentAssignment.BaseRef = &baseRef
-			}
-
-			// Add custom instructions if provided
-			if params.CustomInstructions != "" {
-				customInstructions := githubv4.String(params.CustomInstructions)
-				agentAssignment.CustomInstructions = &customInstructions
-			}
-
-			// Execute the updateIssue mutation with the GraphQL-Features header
-			// This header is required for the agent assignment API which is not GA yet
-			var updateIssueMutation struct {
-				UpdateIssue struct {
-					Issue struct {
-						ID     githubv4.ID
-						Number githubv4.Int
-						URL    githubv4.String
-					}
-				} `graphql:"updateIssue(input: $input)"`
-			}
-
-			// Add the GraphQL-Features header for the agent assignment API
-			// The header will be read by the HTTP transport if it's configured to do so
-			ctxWithFeatures := ghcontext.WithGraphQLFeatures(ctx, "issues_copilot_assignment_api_support")
-
-			// Capture the time before assignment to filter out older PRs during polling
-			assignmentTime := time.Now().UTC()
-
-			if err := client.Mutate(
-				ctxWithFeatures,
-				&updateIssueMutation,
-				UpdateIssueInput{
-					ID:              getIssueQuery.Repository.Issue.ID,
-					AssigneeIDs:     actorIDs,
-					AgentAssignment: agentAssignment,
-				},
-				nil,
-			); err != nil {
-				return nil, nil, fmt.Errorf("failed to update issue with agent assignment: %w", err)
-			}
-
-			// Poll for a linked PR created by Copilot after the assignment
-			pollConfig := getPollConfig(ctx)
-
-			// Get progress token from request for sending progress notifications
-			progressToken := request.Params.GetProgressToken()
-
-			// Send initial progress notification that assignment succeeded and polling is starting
-			if progressToken != nil && request.Session != nil && pollConfig.MaxAttempts > 0 {
-				_ = request.Session.NotifyProgress(ctx, &mcp.ProgressNotificationParams{
-					ProgressToken: progressToken,
-					Progress:      0,
-					Total:         float64(pollConfig.MaxAttempts),
-					Message:       "Copilot assigned to issue, waiting for PR creation...",
-				})
-			}
-
-			var linkedPR *linkedPullRequest
-			for attempt := range pollConfig.MaxAttempts {
-				if attempt > 0 {
-					time.Sleep(pollConfig.Delay)
-				}
-
-				// Send progress notification if progress token is available
-				if progressToken != nil && request.Session != nil {
-					_ = request.Session.NotifyProgress(ctx, &mcp.ProgressNotificationParams{
-						ProgressToken: progressToken,
-						Progress:      float64(attempt + 1),
-						Total:         float64(pollConfig.MaxAttempts),
-						Message:       fmt.Sprintf("Waiting for Copilot to create PR... (attempt %d/%d)", attempt+1, pollConfig.MaxAttempts),
-					})
-				}
-
-				pr, err := findLinkedCopilotPR(ctx, client, params.Owner, params.Repo, int(params.IssueNumber), assignmentTime)
-				if err != nil {
-					// Polling errors are non-fatal, continue to next attempt
-					continue
-				}
-				if pr != nil {
-					linkedPR = pr
+		filter := IssueFieldValueFilter{FieldName: githubv4.String(field.Name)}
+		switch field.DataType {
+		case "SINGLE_SELECT":
+			// Validate the option name against the field's options so we fail fast
+			// with a useful error instead of an opaque GraphQL one.
+			var matched string
+			for _, o := range field.Options {
+				if strings.EqualFold(o.Name, rf.Value) {
+					matched = o.Name
 					break
 				}
 			}
-
-			// Build the result
-			result := map[string]any{
-				"message":      "successfully assigned copilot to issue",
-				"issue_number": int(updateIssueMutation.UpdateIssue.Issue.Number),
-				"issue_url":    string(updateIssueMutation.UpdateIssue.Issue.URL),
-				"owner":        params.Owner,
-				"repo":         params.Repo,
-			}
-
-			// Add PR info if found during polling
-			if linkedPR != nil {
-				result["pull_request"] = map[string]any{
-					"number": linkedPR.Number,
-					"url":    linkedPR.URL,
-					"title":  linkedPR.Title,
-					"state":  linkedPR.State,
+			if matched == "" {
+				optionNames := make([]string, 0, len(field.Options))
+				for _, o := range field.Options {
+					optionNames = append(optionNames, o.Name)
 				}
-				result["message"] = "successfully assigned copilot to issue - pull request created"
-			} else {
-				result["message"] = "successfully assigned copilot to issue - pull request pending"
-				result["note"] = "The pull request may still be in progress. Once created, the PR number can be used to check job status, or check the issue timeline for updates."
+				return nil, fmt.Errorf("field_filters: %q is not a valid option for %q. Valid options: %s", rf.Value, field.Name, strings.Join(optionNames, ", "))
 			}
-
-			r, err := json.Marshal(result)
+			v := githubv4.String(matched)
+			filter.SingleSelectOptionValue = &v
+		case "TEXT":
+			v := githubv4.String(rf.Value)
+			filter.TextValue = &v
+		case "DATE":
+			if _, err := time.Parse("2006-01-02", rf.Value); err != nil {
+				return nil, fmt.Errorf("field_filters: %q is not a valid date for %q (expected YYYY-MM-DD): %s", rf.Value, field.Name, err.Error())
+			}
+			v := githubv4.String(rf.Value)
+			filter.DateValue = &v
+		case "NUMBER":
+			n, err := strconv.ParseFloat(rf.Value, 64)
 			if err != nil {
-				return utils.NewToolResultError(fmt.Sprintf("failed to marshal response: %s", err)), nil, nil
+				return nil, fmt.Errorf("field_filters: %q is not a valid number for %q: %s", rf.Value, field.Name, err.Error())
 			}
-
-			return utils.NewToolResultText(string(r)), result, nil
-		})
-}
-
-type ReplaceActorsForAssignableInput struct {
-	AssignableID githubv4.ID   `json:"assignableId"`
-	ActorIDs     []githubv4.ID `json:"actorIds"`
-}
-
-// AgentAssignmentInput represents the input for assigning an agent to an issue.
-type AgentAssignmentInput struct {
-	BaseRef            *githubv4.String `json:"baseRef,omitempty"`
-	CustomAgent        *githubv4.String `json:"customAgent,omitempty"`
-	CustomInstructions *githubv4.String `json:"customInstructions,omitempty"`
-	TargetRepositoryID githubv4.ID      `json:"targetRepositoryId"`
-}
-
-// UpdateIssueInput represents the input for updating an issue with agent assignment.
-type UpdateIssueInput struct {
-	ID              githubv4.ID           `json:"id"`
-	AssigneeIDs     []githubv4.ID         `json:"assigneeIds"`
-	AgentAssignment *AgentAssignmentInput `json:"agentAssignment,omitempty"`
+			v := githubv4.Float(n)
+			filter.NumberValue = &v
+		default:
+			return nil, fmt.Errorf("field_filters: field %q has unsupported data_type %q", field.Name, field.DataType)
+		}
+		out = append(out, filter)
+	}
+	return out, nil
 }
 
 // parseISOTimestamp parses an ISO 8601 timestamp string into a time.Time object.
@@ -2210,66 +3221,4 @@ func parseISOTimestamp(timestamp string) (time.Time, error) {
 
 	// Return error with supported formats
 	return time.Time{}, fmt.Errorf("invalid ISO 8601 timestamp: %s (supported formats: YYYY-MM-DDThh:mm:ssZ or YYYY-MM-DD)", timestamp)
-}
-
-func AssignCodingAgentPrompt(t translations.TranslationHelperFunc) inventory.ServerPrompt {
-	return inventory.NewServerPrompt(
-		ToolsetMetadataIssues,
-		mcp.Prompt{
-			Name:        "AssignCodingAgent",
-			Description: t("PROMPT_ASSIGN_CODING_AGENT_DESCRIPTION", "Assign GitHub Coding Agent to multiple tasks in a GitHub repository."),
-			Arguments: []*mcp.PromptArgument{
-				{
-					Name:        "repo",
-					Description: "The repository to assign tasks in (owner/repo).",
-					Required:    true,
-				},
-			},
-		},
-		func(_ context.Context, request *mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
-			repo := request.Params.Arguments["repo"]
-
-			messages := []*mcp.PromptMessage{
-				{
-					Role: "user",
-					Content: &mcp.TextContent{
-						Text: "You are a personal assistant for GitHub the Copilot GitHub Coding Agent. Your task is to help the user assign tasks to the Coding Agent based on their open GitHub issues. You can use `assign_copilot_to_issue` tool to assign the Coding Agent to issues that are suitable for autonomous work, and `search_issues` tool to find issues that match the user's criteria. You can also use `list_issues` to get a list of issues in the repository.",
-					},
-				},
-				{
-					Role: "user",
-					Content: &mcp.TextContent{
-						Text: fmt.Sprintf("Please go and get a list of the most recent 10 issues from the %s GitHub repository", repo),
-					},
-				},
-				{
-					Role: "assistant",
-					Content: &mcp.TextContent{
-						Text: fmt.Sprintf("Sure! I will get a list of the 10 most recent issues for the repo %s.", repo),
-					},
-				},
-				{
-					Role: "user",
-					Content: &mcp.TextContent{
-						Text: "For each issue, please check if it is a clearly defined coding task with acceptance criteria and a low to medium complexity to identify issues that are suitable for an AI Coding Agent to work on. Then assign each of the identified issues to Copilot.",
-					},
-				},
-				{
-					Role: "assistant",
-					Content: &mcp.TextContent{
-						Text: "Certainly! Let me carefully check which ones are clearly scoped issues that are good to assign to the coding agent, and I will summarize and assign them now.",
-					},
-				},
-				{
-					Role: "user",
-					Content: &mcp.TextContent{
-						Text: "Great, if you are unsure if an issue is good to assign, ask me first, rather than assigning copilot. If you are certain the issue is clear and suitable you can assign it to Copilot without asking.",
-					},
-				},
-			}
-			return &mcp.GetPromptResult{
-				Messages: messages,
-			}, nil
-		},
-	)
 }

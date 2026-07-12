@@ -1,7 +1,8 @@
 {
   "annotations": {
+    "idempotentHint": false,
     "readOnlyHint": true,
-    "title": "Get a specific label from a repository."
+    "title": "Get a specific label from a repository"
   },
   "description": "Get a specific label from a repository.",
   "inputSchema": {

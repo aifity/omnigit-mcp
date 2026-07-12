@@ -68,10 +68,16 @@ func newToolFromHandler(
 	tool mcp.Tool,
 	handler func(ctx context.Context, deps ToolDependencies, req *mcp.CallToolRequest) (*mcp.CallToolResult, error),
 ) inventory.ServerTool {
-	return inventory.NewServerToolWithRawContextHandler(tool, ToolsetMetadataLocalGit, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		deps := MustGitDepsFromContext(ctx)
-		return handler(ctx, deps, req)
-	})
+	return inventory.ServerTool{
+		Tool:    tool,
+		Toolset: ToolsetMetadataLocalGit,
+		HandlerFunc: func(deps any) mcp.ToolHandler {
+			gitDeps := deps.(ToolDependencies)
+			return func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+				return handler(ctx, gitDeps, req)
+			}
+		},
+	}
 }
 
 // validateRepoPath validates and normalizes a repository path

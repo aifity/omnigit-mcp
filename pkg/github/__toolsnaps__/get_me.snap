@@ -1,10 +1,15 @@
 {
   "_meta": {
     "ui": {
-      "resourceUri": "ui://omnigit-mcp/get-me"
+      "resourceUri": "ui://omnigit-mcp/get-me",
+      "visibility": [
+        "model",
+        "app"
+      ]
     }
   },
   "annotations": {
+    "idempotentHint": false,
     "readOnlyHint": true,
     "title": "Get my user profile"
   },

@@ -2,11 +2,14 @@ package errors
 
 import (
 	"context"
+	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/aifity/omnigit-mcp/pkg/utils"
-	"github.com/google/go-github/v82/github"
+	"github.com/google/go-github/v89/github"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -159,6 +162,35 @@ func NewGitHubAPIErrorResponse(ctx context.Context, message string, resp *github
 	if ctx != nil {
 		_, _ = addGitHubAPIErrorToContext(ctx, apiErr) // Explicitly ignore error for graceful handling
 	}
+
+	var rateLimitErr *github.RateLimitError
+	if stderrors.As(err, &rateLimitErr) {
+		resetTime := rateLimitErr.Rate.Reset.Time
+		if !resetTime.IsZero() {
+			retryIn := time.Until(resetTime).Round(time.Second)
+			if retryIn > 0 {
+				return utils.NewToolResultError(fmt.Sprintf(
+					"%s: GitHub API rate limit exceeded. Retry after %v.", message, retryIn))
+			}
+		}
+		return utils.NewToolResultError(fmt.Sprintf(
+			"%s: GitHub API rate limit exceeded. Wait before retrying.", message))
+	}
+
+	var abuseErr *github.AbuseRateLimitError
+	if stderrors.As(err, &abuseErr) {
+		if abuseErr.RetryAfter != nil {
+			retryAfter := abuseErr.RetryAfter.Round(time.Second)
+			if retryAfter > 0 {
+				return utils.NewToolResultError(fmt.Sprintf(
+					"%s: GitHub secondary rate limit exceeded. Retry after %v.",
+					message, retryAfter))
+			}
+		}
+		return utils.NewToolResultError(fmt.Sprintf(
+			"%s: GitHub secondary rate limit exceeded. Wait before retrying.", message))
+	}
+
 	return utils.NewToolResultErrorFromErr(message, err)
 }
 
@@ -186,4 +218,49 @@ func NewGitHubRawAPIErrorResponse(ctx context.Context, message string, resp *htt
 func NewGitHubAPIStatusErrorResponse(ctx context.Context, message string, resp *github.Response, body []byte) *mcp.CallToolResult {
 	err := fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(body))
 	return NewGitHubAPIErrorResponse(ctx, message, resp, err)
+}
+
+// StructuredResolutionError is a machine-readable error returned by name-resolution
+// helpers (e.g. resolving a project field or single-select option by name). Agents
+// can parse the JSON body to self-correct without re-prompting.
+//
+// Kind values:
+//   - "field_not_found"      — no project field matches the supplied name
+//   - "field_ambiguous"      — more than one project field shares the supplied name
+//   - "option_not_found"     — no option on the resolved single-select field matches
+//   - "option_ambiguous"     — duplicate option names on the resolved field
+//   - "item_not_in_project"  — the issue/PR exists but is not an item on the project
+//   - "wrong_field_type"     — the named field is not the data type the caller expected
+type StructuredResolutionError struct {
+	Kind       string `json:"error"`
+	Name       string `json:"name,omitempty"`
+	Field      string `json:"field,omitempty"`
+	Candidates []any  `json:"candidates,omitempty"`
+	Hint       string `json:"hint,omitempty"`
+}
+
+// Error implements the error interface; the message is the JSON body so that the
+// downstream tool result also carries the structured payload as plain text.
+func (e *StructuredResolutionError) Error() string {
+	b, err := json.Marshal(e)
+	if err != nil {
+		return fmt.Sprintf(`{"error":%q,"name":%q}`, e.Kind, e.Name)
+	}
+	return string(b)
+}
+
+// NewStructuredResolutionError constructs a StructuredResolutionError.
+func NewStructuredResolutionError(kind, name, hint string, candidates []any) *StructuredResolutionError {
+	return &StructuredResolutionError{
+		Kind:       kind,
+		Name:       name,
+		Hint:       hint,
+		Candidates: candidates,
+	}
+}
+
+// NewStructuredResolutionErrorResponse returns an mcp.CallToolResult whose text body
+// is the JSON-serialised StructuredResolutionError, suitable for agent self-correction.
+func NewStructuredResolutionErrorResponse(err *StructuredResolutionError) *mcp.CallToolResult {
+	return utils.NewToolResultError(err.Error())
 }
