@@ -58,6 +58,7 @@ func (v ReadOnlyHintViolation) String() string {
 //	violations, err := toolvalidation.ScanReadOnlyHint(dir)
 func ScanReadOnlyHint(dir string) ([]ReadOnlyHintViolation, error) {
 	fset := token.NewFileSet()
+	//nolint:staticcheck // ParseDir is sufficient for this source-level validator.
 	pkgs, err := parser.ParseDir(fset, dir, func(info os.FileInfo) bool {
 		// Skip test files: they are allowed to construct mcp.Tool literals
 		// for fixtures or mocks where ReadOnlyHint is not meaningful.

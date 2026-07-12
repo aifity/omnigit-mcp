@@ -189,10 +189,10 @@ func GetPullRequest(ctx context.Context, client *github.Client, deps ToolDepende
 	// sanitize title/body on response
 	if pr != nil {
 		if pr.Title != nil {
-			pr.Title = github.Ptr(sanitize.Sanitize(*pr.Title))
+			pr.Title = new(sanitize.Sanitize(*pr.Title))
 		}
 		if pr.Body != nil {
-			pr.Body = github.Ptr(sanitize.Sanitize(*pr.Body))
+			pr.Body = new(sanitize.Sanitize(*pr.Body))
 		}
 	}
 
@@ -753,18 +753,18 @@ func CreatePullRequest(t translations.TranslationHelperFunc) inventory.ServerToo
 			}
 
 			newPR := &github.NewPullRequest{
-				Title: github.Ptr(title),
-				Head:  github.Ptr(head),
-				Base:  github.Ptr(base),
+				Title: new(title),
+				Head:  new(head),
+				Base:  new(base),
 			}
 
 			if body != "" {
 				filteredBody := bodyfilter.FilterBody(body)
-				newPR.Body = github.Ptr(filteredBody)
+				newPR.Body = new(filteredBody)
 			}
 
-			newPR.Draft = github.Ptr(draft)
-			newPR.MaintainerCanModify = github.Ptr(maintainerCanModify)
+			newPR.Draft = new(draft)
+			newPR.MaintainerCanModify = new(maintainerCanModify)
 
 			client, err := deps.GetClient(ctx)
 			if err != nil {
@@ -946,7 +946,7 @@ func UpdatePullRequest(t translations.TranslationHelperFunc) inventory.ServerToo
 			if title, ok, err := OptionalParamOK[string](args, "title"); err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			} else if ok {
-				update.Title = github.Ptr(title)
+				update.Title = new(title)
 				restUpdateNeeded = true
 			}
 
@@ -954,28 +954,28 @@ func UpdatePullRequest(t translations.TranslationHelperFunc) inventory.ServerToo
 				return utils.NewToolResultError(err.Error()), nil, nil
 			} else if ok {
 				filteredBody := bodyfilter.FilterBody(body)
-				update.Body = github.Ptr(filteredBody)
+				update.Body = new(filteredBody)
 				restUpdateNeeded = true
 			}
 
 			if state, ok, err := OptionalParamOK[string](args, "state"); err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			} else if ok {
-				update.State = github.Ptr(state)
+				update.State = new(state)
 				restUpdateNeeded = true
 			}
 
 			if base, ok, err := OptionalParamOK[string](args, "base"); err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			} else if ok {
-				update.Base = &github.PullRequestBranch{Ref: github.Ptr(base)}
+				update.Base = &github.PullRequestBranch{Ref: new(base)}
 				restUpdateNeeded = true
 			}
 
 			if maintainerCanModify, ok, err := OptionalParamOK[bool](args, "maintainer_can_modify"); err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			} else if ok {
-				update.MaintainerCanModify = github.Ptr(maintainerCanModify)
+				update.MaintainerCanModify = new(maintainerCanModify)
 				restUpdateNeeded = true
 			}
 
@@ -1171,7 +1171,7 @@ func AddReplyToPullRequestComment(t translations.TranslationHelperFunc) inventor
 			"commentId": {
 				Type:        "number",
 				Description: "The numeric ID of the pull request review comment to reply or react to. Use the number from a #discussion_r... anchor, not the GraphQL thread node ID (PRRT_...).",
-				Minimum:     jsonschema.Ptr(1.0),
+				Minimum:     new(1.0),
 			},
 			"body": {
 				Type:        "string",
@@ -1359,7 +1359,7 @@ Options are:
 				if err != nil {
 					return utils.NewToolResultError(err.Error()), nil, nil
 				}
-				comment := &github.PullRequestComment{Body: github.Ptr(body)}
+				comment := &github.PullRequestComment{Body: new(body)}
 				updatedComment, resp, err := client.PullRequests.EditComment(ctx, owner, repo, commentID, comment)
 				if err != nil {
 					return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to update pull request comment", resp, err), nil, nil
@@ -1564,10 +1564,10 @@ func listPullRequestsTool(t translations.TranslationHelperFunc, includeFields bo
 					continue
 				}
 				if pr.Title != nil {
-					pr.Title = github.Ptr(sanitize.Sanitize(*pr.Title))
+					pr.Title = new(sanitize.Sanitize(*pr.Title))
 				}
 				if pr.Body != nil {
-					pr.Body = github.Ptr(sanitize.Sanitize(*pr.Body))
+					pr.Body = new(sanitize.Sanitize(*pr.Body))
 				}
 			}
 
@@ -1874,7 +1874,7 @@ func UpdatePullRequestBranch(t translations.TranslationHelperFunc) inventory.Ser
 			}
 			opts := &github.PullRequestBranchUpdateOptions{}
 			if expectedHeadSHA != "" {
-				opts.ExpectedHeadSHA = github.Ptr(expectedHeadSHA)
+				opts.ExpectedHeadSHA = new(expectedHeadSHA)
 			}
 
 			client, err := deps.GetClient(ctx)
@@ -2062,7 +2062,7 @@ func CreatePullRequestReview(ctx context.Context, client *githubv4.Client, param
 	// Event and Body are provided if we submit a review
 	if params.Event != "" {
 		addPullRequestReviewInput.Event = newGQLStringlike[githubv4.PullRequestReviewEvent](params.Event)
-		addPullRequestReviewInput.Body = githubv4.NewString(githubv4.String(params.Body))
+		addPullRequestReviewInput.Body = new(githubv4.String(params.Body))
 	}
 
 	if err := client.Mutate(

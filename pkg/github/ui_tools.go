@@ -161,7 +161,7 @@ func uiGetLabels(ctx context.Context, deps ToolDependencies, args map[string]any
 			hasMore = true
 			break
 		}
-		vars["cursor"] = githubv4.NewString(query.Repository.Labels.PageInfo.EndCursor)
+		vars["cursor"] = new(query.Repository.Labels.PageInfo.EndCursor)
 	}
 
 	response := map[string]any{

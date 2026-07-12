@@ -125,7 +125,7 @@ func prepareSearchArgs(args map[string]any, searchType string) (string, *github.
 
 	// field.<name>:<value> qualifiers require the advanced search API.
 	if strings.Contains(query, "field.") {
-		opts.AdvancedSearch = github.Ptr(true)
+		opts.AdvancedSearch = new(true)
 	}
 
 	return query, opts, nil

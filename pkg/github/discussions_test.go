@@ -1727,7 +1727,7 @@ func discussionCommentWriteReplyValidationQueryMatcher(commentNodeID string, res
 }
 
 func githubv4ptr(id githubv4.ID) *githubv4.ID {
-	return &id
+	return new(id)
 }
 
 func Test_GetDiscussionCommentsWithReplies(t *testing.T) {

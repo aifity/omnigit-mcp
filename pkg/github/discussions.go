@@ -98,16 +98,16 @@ type WithCategoryNoOrder struct {
 
 func fragmentToDiscussion(fragment NodeFragment) *github.Discussion {
 	return &github.Discussion{
-		Number:    github.Ptr(int(fragment.Number)),
-		Title:     github.Ptr(string(fragment.Title)),
-		HTMLURL:   github.Ptr(string(fragment.URL)),
+		Number:    new(int(fragment.Number)),
+		Title:     new(string(fragment.Title)),
+		HTMLURL:   new(string(fragment.URL)),
 		CreatedAt: &github.Timestamp{Time: fragment.CreatedAt.Time},
 		UpdatedAt: &github.Timestamp{Time: fragment.UpdatedAt.Time},
 		User: &github.User{
-			Login: github.Ptr(string(fragment.Author.Login)),
+			Login: new(string(fragment.Author.Login)),
 		},
 		DiscussionCategory: &github.DiscussionCategory{
-			Name: github.Ptr(string(fragment.Category.Name)),
+			Name: new(string(fragment.Category.Name)),
 		},
 	}
 }
@@ -608,7 +608,7 @@ Supports adding top-level comments, replying to existing comments, updating comm
 			Annotations: &mcp.ToolAnnotations{
 				Title:           t("TOOL_DISCUSSION_COMMENT_WRITE_USER_TITLE", "Manage discussion comments"),
 				ReadOnlyHint:    false,
-				DestructiveHint: jsonschema.Ptr(true),
+				DestructiveHint: new(true),
 			},
 			InputSchema: &jsonschema.Schema{
 				Type: "object",

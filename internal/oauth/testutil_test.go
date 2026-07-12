@@ -187,6 +187,7 @@ func browserGet(rawurl string) error {
 	if err != nil {
 		return err
 	}
+	// #nosec G704 -- test helper follows only local httptest callback URLs.
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err

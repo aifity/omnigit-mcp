@@ -23,7 +23,8 @@ import (
 
 // Config describes an OAuth client and the GitHub endpoints it talks to.
 type Config struct {
-	ClientID     string
+	ClientID string
+	// #nosec G117 -- OAuth clients need to carry the secret in memory while exchanging tokens.
 	ClientSecret string
 	// Scopes requested during authorization. GitHub Apps ignore these (their
 	// access is governed by installed permissions); OAuth Apps honor them.

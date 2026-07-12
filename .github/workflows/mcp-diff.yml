@@ -57,6 +57,8 @@ jobs:
         # go-sdk v1.6.1 -> v1.7.0-pre.1 bump an honest, signal-only diff. github/copilot-mcp-core#1709.
         uses: SamMorrowDrums/mcp-server-diff@40d992e0a220e5b63378758f9a40d6a8982898d2 # v3.0.0
         with:
+          setup_node: "true"
+          node_version: "22"
           setup_go: "false"
           install_command: |
             go mod download
@@ -122,6 +124,8 @@ jobs:
         # Pinned to mcp-server-diff v3.0.0 — see rationale on the stdio job above.
         uses: SamMorrowDrums/mcp-server-diff@40d992e0a220e5b63378758f9a40d6a8982898d2 # v3.0.0
         with:
+          setup_node: "true"
+          node_version: "22"
           setup_go: "false"
           install_command: |
             go mod download

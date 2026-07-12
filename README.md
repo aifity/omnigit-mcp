@@ -1,8 +1,8 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/aifity/omnigit-mcp)](https://goreportcard.com/report/github.com/aifity/omnigit-mcp)
 
-# GitHub MCP Server
+# Omnigit GitHub & Local Git MCP Server
 
-The GitHub MCP Server connects AI tools directly to GitHub's platform. This gives AI agents, assistants, and chatbots the ability to read repositories and code files, manage issues and PRs, analyze code, and automate workflows. All through natural language interactions.
+The Omnigit GitHub & Local Git MCP Server connects AI tools directly to GitHub's platform. This gives AI agents, assistants, and chatbots the ability to read repositories and code files, manage issues and PRs, analyze code, and automate workflows. All through natural language interactions.
 
 ### Use Cases
 
@@ -13,6 +13,32 @@ The GitHub MCP Server connects AI tools directly to GitHub's platform. This give
 - Team Collaboration: Access discussions, manage notifications, analyze team activity, and streamline processes for your team.
 
 Built for developers who want to connect their AI tools to GitHub context and capabilities, from simple natural language queries to complex multi-step agent workflows.
+
+---
+
+## Fork differences from upstream
+
+This is a fork of [github/github-mcp-server](https://github.com/github/github-mcp-server) with the following additions and improvements.
+
+### Improved review comment ID resolution
+
+`get_review_comments` now returns a `CommentID` field (which is the `databaseId` from GraphQL) alongside the GraphQL `NodeID` and `DatabaseID` for every comment node. This `CommentID` is the numeric ID that should be used when calling `add_reply_to_pull_request_comment` or `pull_request_comment_write`. Previously, only the opaque base64 GraphQL node ID was returned, forcing the model to decode it or scrape the numeric ID from comment URLs. The `commentId` / `comment_id` parameter descriptions in those tools now explicitly say to use the `CommentID` field.
+
+### Issue comment management (`issue_comment_write`)
+
+A new `issue_comment_write` tool lets AI agents update or delete existing issue comments. Previously only `add_issue_comment` (create) was available.
+
+### PR review comment management (`pull_request_comment_write`)
+
+A new `pull_request_comment_write` tool lets AI agents update or delete existing pull request review comments.
+
+### Body filtering (`filter_patterns`)
+
+Issue bodies, PR bodies, and local git commit messages are filtered before being sent to GitHub. By default, `Co-Authored-By:` trailers and generic AI-generated PR footers are stripped. The filter list is fully configurable via `filter_patterns` in `omnigit-mcp-config.json`. See [i18n / Overriding Descriptions](#i18n--overriding-descriptions) for details.
+
+### Local Git toolset (`local_git`)
+
+A full set of `git_*` tools for operating on local repositories without going through the GitHub API: `git_add`, `git_apply_patch_file`, `git_apply_patch_string`, `git_checkout`, `git_commit`, `git_create_branch`, `git_diff`, `git_diff_staged`, `git_diff_unstaged`, `git_init`, `git_list_repositories`, `git_log`, `git_pull`, `git_push`, `git_reset`, `git_show`, and `git_status`.
 
 ---
 

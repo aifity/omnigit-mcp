@@ -753,10 +753,10 @@ func GetIssue(ctx context.Context, client *github.Client, deps ToolDependencies,
 	// Sanitize title/body on response
 	if issue != nil {
 		if issue.Title != nil {
-			issue.Title = github.Ptr(sanitize.Sanitize(*issue.Title))
+			issue.Title = new(sanitize.Sanitize(*issue.Title))
 		}
 		if issue.Body != nil {
-			issue.Body = github.Ptr(sanitize.Sanitize(*issue.Body))
+			issue.Body = new(sanitize.Sanitize(*issue.Body))
 		}
 	}
 
@@ -788,8 +788,8 @@ func applyIssueReadEnrichment(ctx context.Context, minimalIssue *MinimalIssue, e
 	}
 
 	minimalIssue.FieldValues = enrichment.FieldValues
-	minimalIssue.HasParent = ToBoolPtr(enrichment.Parent != nil)
-	minimalIssue.HasChildren = ToBoolPtr(enrichment.SubIssuesSummary.Total > 0)
+	minimalIssue.HasParent = new(enrichment.Parent != nil)
+	minimalIssue.HasChildren = new(enrichment.SubIssuesSummary.Total > 0)
 
 	if parent := enrichment.Parent; parent != nil {
 		// Surface the parent reference only when it is safe to expose. Under lockdown an
@@ -1210,7 +1210,7 @@ func AddIssueComment(t translations.TranslationHelperFunc) inventory.ServerTool 
 					"comment_id": {
 						Type:        "number",
 						Description: "The numeric ID of the issue or pull request comment to react to. Use this for reactions to comments; omit it to react to the issue or pull request itself. Cannot be combined with body.",
-						Minimum:     jsonschema.Ptr(1.0),
+						Minimum:     new(1.0),
 					},
 					"body": {
 						Type:        "string",
@@ -1324,7 +1324,7 @@ func AddIssueComment(t translations.TranslationHelperFunc) inventory.ServerTool 
 			var commentResponse *MinimalResponse
 			if hasBody {
 				comment := &github.IssueComment{
-					Body: github.Ptr(body),
+					Body: new(body),
 				}
 				createdComment, resp, err := client.Issues.CreateComment(ctx, owner, repo, issueNumber, comment)
 				if err != nil {
@@ -1438,7 +1438,7 @@ Options are:
 				if err != nil {
 					return utils.NewToolResultError(err.Error()), nil, nil
 				}
-				comment := &github.IssueComment{Body: github.Ptr(body)}
+				comment := &github.IssueComment{Body: new(body)}
 				updatedComment, resp, err := client.Issues.EditComment(ctx, owner, repo, commentID, comment)
 				if err != nil {
 					return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to update comment", resp, err), nil, nil
@@ -1595,7 +1595,7 @@ func SubIssueWrite(t translations.TranslationHelperFunc) inventory.ServerTool {
 func AddSubIssue(ctx context.Context, client *github.Client, owner string, repo string, issueNumber int, subIssueID int, replaceParent bool) (*mcp.CallToolResult, error) {
 	subIssueRequest := github.SubIssueRequest{
 		SubIssueID:    int64(subIssueID),
-		ReplaceParent: github.Ptr(replaceParent),
+		ReplaceParent: new(replaceParent),
 	}
 
 	subIssue, resp, err := client.SubIssue.Add(ctx, owner, repo, int64(issueNumber), subIssueRequest)
@@ -2495,8 +2495,8 @@ func CreateIssue(ctx context.Context, client *github.Client, owner string, repo 
 
 	// Create the issue request
 	issueRequest := &github.IssueRequest{
-		Title:            github.Ptr(title),
-		Body:             github.Ptr(filteredBody),
+		Title:            new(title),
+		Body:             new(filteredBody),
 		Assignees:        &assignees,
 		Labels:           &labels,
 		IssueFieldValues: issueFieldValues,
@@ -2507,7 +2507,7 @@ func CreateIssue(ctx context.Context, client *github.Client, owner string, repo 
 	}
 
 	if issueType != "" {
-		issueRequest.Type = github.Ptr(issueType)
+		issueRequest.Type = new(issueType)
 	}
 
 	issue, resp, err := client.Issues.Create(ctx, owner, repo, issueRequest)
@@ -2565,12 +2565,12 @@ func UpdateIssue(ctx context.Context, client *github.Client, gqlClient *githubv4
 
 	// Set optional parameters if provided
 	if title != "" {
-		issueRequest.Title = github.Ptr(title)
+		issueRequest.Title = new(title)
 	}
 
 	if body != "" {
 		filteredBody := bodyfilter.FilterBody(body)
-		issueRequest.Body = github.Ptr(filteredBody)
+		issueRequest.Body = new(filteredBody)
 	}
 
 	if updateOptions.LabelsProvided {
@@ -2586,7 +2586,7 @@ func UpdateIssue(ctx context.Context, client *github.Client, gqlClient *githubv4
 	}
 
 	if issueType != "" {
-		issueRequest.Type = github.Ptr(issueType)
+		issueRequest.Type = new(issueType)
 	}
 
 	// Field IDs to clear via DELETE after the PATCH. See the post-PATCH loop

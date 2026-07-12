@@ -44,7 +44,7 @@ func issueUpdateTool(
 		"issue_number": {
 			Type:        "number",
 			Description: "The issue number to update",
-			Minimum:     jsonschema.Ptr(1.0),
+			Minimum:     new(1.0),
 		},
 	}
 	maps.Copy(props, extraProps)
@@ -59,8 +59,8 @@ func issueUpdateTool(
 			Annotations: &mcp.ToolAnnotations{
 				Title:           t("TOOL_"+strings.ToUpper(name)+"_USER_TITLE", title),
 				ReadOnlyHint:    false,
-				DestructiveHint: jsonschema.Ptr(false),
-				OpenWorldHint:   jsonschema.Ptr(true),
+				DestructiveHint: new(false),
+				OpenWorldHint:   new(true),
 			},
 			InputSchema: &jsonschema.Schema{
 				Type:       "object",
@@ -123,8 +123,8 @@ func GranularCreateIssue(t translations.TranslationHelperFunc) inventory.ServerT
 			Annotations: &mcp.ToolAnnotations{
 				Title:           t("TOOL_CREATE_ISSUE_USER_TITLE", "Create Issue"),
 				ReadOnlyHint:    false,
-				DestructiveHint: jsonschema.Ptr(false),
-				OpenWorldHint:   jsonschema.Ptr(true),
+				DestructiveHint: new(false),
+				OpenWorldHint:   new(true),
 			},
 			InputSchema: &jsonschema.Schema{
 				Type: "object",
@@ -249,8 +249,8 @@ func GranularUpdateIssueAssignees(t translations.TranslationHelperFunc) inventor
 			Annotations: &mcp.ToolAnnotations{
 				Title:           t("TOOL_UPDATE_ISSUE_ASSIGNEES_USER_TITLE", "Update Issue Assignees"),
 				ReadOnlyHint:    false,
-				DestructiveHint: jsonschema.Ptr(false),
-				OpenWorldHint:   jsonschema.Ptr(true),
+				DestructiveHint: new(false),
+				OpenWorldHint:   new(true),
 			},
 			InputSchema: &jsonschema.Schema{
 				Type: "object",
@@ -266,7 +266,7 @@ func GranularUpdateIssueAssignees(t translations.TranslationHelperFunc) inventor
 					"issue_number": {
 						Type:        "number",
 						Description: "The issue number to update",
-						Minimum:     jsonschema.Ptr(1.0),
+						Minimum:     new(1.0),
 					},
 					"assignees": {
 						Type:        "array",
@@ -285,7 +285,7 @@ func GranularUpdateIssueAssignees(t translations.TranslationHelperFunc) inventor
 											Type: "string",
 											Description: "One concise sentence explaining what specifically about the issue led you to choose this assignee. " +
 												"State the concrete signal (e.g. 'Authored the file the crash originates in').",
-											MaxLength: jsonschema.Ptr(280),
+											MaxLength: new(280),
 										},
 										"confidence": {
 											Type:        "string",
@@ -467,8 +467,8 @@ func GranularUpdateIssueLabels(t translations.TranslationHelperFunc) inventory.S
 			Annotations: &mcp.ToolAnnotations{
 				Title:           t("TOOL_UPDATE_ISSUE_LABELS_USER_TITLE", "Update Issue Labels"),
 				ReadOnlyHint:    false,
-				DestructiveHint: jsonschema.Ptr(false),
-				OpenWorldHint:   jsonschema.Ptr(true),
+				DestructiveHint: new(false),
+				OpenWorldHint:   new(true),
 			},
 			InputSchema: &jsonschema.Schema{
 				Type: "object",
@@ -484,7 +484,7 @@ func GranularUpdateIssueLabels(t translations.TranslationHelperFunc) inventory.S
 					"issue_number": {
 						Type:        "number",
 						Description: "The issue number to update",
-						Minimum:     jsonschema.Ptr(1.0),
+						Minimum:     new(1.0),
 					},
 					"labels": {
 						Type:        "array",
@@ -503,7 +503,7 @@ func GranularUpdateIssueLabels(t translations.TranslationHelperFunc) inventory.S
 											Type: "string",
 											Description: "One concise sentence explaining what specifically about the issue led you to choose this label. " +
 												"State the concrete signal (e.g. 'Reports a crash when saving' → bug).",
-											MaxLength: jsonschema.Ptr(280),
+											MaxLength: new(280),
 										},
 										"confidence": {
 											Type:        "string",
@@ -653,7 +653,7 @@ func GranularUpdateIssueMilestone(t translations.TranslationHelperFunc) inventor
 			"milestone": {
 				Type:        "integer",
 				Description: "The milestone number to set on the issue",
-				Minimum:     jsonschema.Ptr(1.0),
+				Minimum:     new(1.0),
 			},
 		},
 		[]string{"milestone"},
@@ -692,8 +692,8 @@ func GranularUpdateIssueType(t translations.TranslationHelperFunc) inventory.Ser
 			Annotations: &mcp.ToolAnnotations{
 				Title:           t("TOOL_UPDATE_ISSUE_TYPE_USER_TITLE", "Update Issue Type"),
 				ReadOnlyHint:    false,
-				DestructiveHint: jsonschema.Ptr(false),
-				OpenWorldHint:   jsonschema.Ptr(true),
+				DestructiveHint: new(false),
+				OpenWorldHint:   new(true),
 			},
 			InputSchema: &jsonschema.Schema{
 				Type: "object",
@@ -709,7 +709,7 @@ func GranularUpdateIssueType(t translations.TranslationHelperFunc) inventory.Ser
 					"issue_number": {
 						Type:        "number",
 						Description: "The issue number to update",
-						Minimum:     jsonschema.Ptr(1.0),
+						Minimum:     new(1.0),
 					},
 					"issue_type": {
 						Type:        "string",
@@ -719,7 +719,7 @@ func GranularUpdateIssueType(t translations.TranslationHelperFunc) inventory.Ser
 						Type: "string",
 						Description: "One concise sentence explaining what specifically about the issue led you to choose this type. " +
 							"State the concrete signal (e.g. 'Reports a crash when saving' → bug, 'Asks for dark mode support' → feature).",
-						MaxLength: jsonschema.Ptr(280),
+						MaxLength: new(280),
 					},
 					"confidence": {
 						Type:        "string",
@@ -847,8 +847,8 @@ func GranularUpdateIssueState(t translations.TranslationHelperFunc) inventory.Se
 			Annotations: &mcp.ToolAnnotations{
 				Title:           t("TOOL_UPDATE_ISSUE_STATE_USER_TITLE", "Update Issue State"),
 				ReadOnlyHint:    false,
-				DestructiveHint: jsonschema.Ptr(false),
-				OpenWorldHint:   jsonschema.Ptr(true),
+				DestructiveHint: new(false),
+				OpenWorldHint:   new(true),
 			},
 			InputSchema: &jsonschema.Schema{
 				Type: "object",
@@ -864,7 +864,7 @@ func GranularUpdateIssueState(t translations.TranslationHelperFunc) inventory.Se
 					"issue_number": {
 						Type:        "number",
 						Description: "The issue number to update",
-						Minimum:     jsonschema.Ptr(1.0),
+						Minimum:     new(1.0),
 					},
 					"state": {
 						Type:        "string",
@@ -880,7 +880,7 @@ func GranularUpdateIssueState(t translations.TranslationHelperFunc) inventory.Se
 						Type: "string",
 						Description: "One concise sentence explaining what specifically about the issue led you to choose this state. " +
 							"State the concrete signal (e.g. 'The reported crash is fixed in v2.1' → completed).",
-						MaxLength: jsonschema.Ptr(280),
+						MaxLength: new(280),
 					},
 					"confidence": {
 						Type:        "string",
@@ -895,7 +895,7 @@ func GranularUpdateIssueState(t translations.TranslationHelperFunc) inventory.Se
 					"duplicate_of": {
 						Type:        "number",
 						Description: "The issue number of the canonical issue this issue duplicates. Only valid when state_reason is 'duplicate'. Required when is_suggestion is true and state_reason is 'duplicate'. The issue number is resolved to a database ID before being sent to the API.",
-						Minimum:     jsonschema.Ptr(1.0),
+						Minimum:     new(1.0),
 					},
 				},
 				Required: []string{"owner", "repo", "issue_number", "state"},
@@ -1028,8 +1028,8 @@ func GranularAddSubIssue(t translations.TranslationHelperFunc) inventory.ServerT
 			Annotations: &mcp.ToolAnnotations{
 				Title:           t("TOOL_ADD_SUB_ISSUE_USER_TITLE", "Add Sub-Issue"),
 				ReadOnlyHint:    false,
-				DestructiveHint: jsonschema.Ptr(false),
-				OpenWorldHint:   jsonschema.Ptr(true),
+				DestructiveHint: new(false),
+				OpenWorldHint:   new(true),
 			},
 			InputSchema: &jsonschema.Schema{
 				Type: "object",
@@ -1045,7 +1045,7 @@ func GranularAddSubIssue(t translations.TranslationHelperFunc) inventory.ServerT
 					"issue_number": {
 						Type:        "number",
 						Description: "The parent issue number",
-						Minimum:     jsonschema.Ptr(1.0),
+						Minimum:     new(1.0),
 					},
 					"sub_issue_id": {
 						Type:        "number",
@@ -1102,8 +1102,8 @@ func GranularRemoveSubIssue(t translations.TranslationHelperFunc) inventory.Serv
 			Annotations: &mcp.ToolAnnotations{
 				Title:           t("TOOL_REMOVE_SUB_ISSUE_USER_TITLE", "Remove Sub-Issue"),
 				ReadOnlyHint:    false,
-				DestructiveHint: jsonschema.Ptr(true),
-				OpenWorldHint:   jsonschema.Ptr(true),
+				DestructiveHint: new(true),
+				OpenWorldHint:   new(true),
 			},
 			InputSchema: &jsonschema.Schema{
 				Type: "object",
@@ -1119,7 +1119,7 @@ func GranularRemoveSubIssue(t translations.TranslationHelperFunc) inventory.Serv
 					"issue_number": {
 						Type:        "number",
 						Description: "The parent issue number",
-						Minimum:     jsonschema.Ptr(1.0),
+						Minimum:     new(1.0),
 					},
 					"sub_issue_id": {
 						Type:        "number",
@@ -1171,8 +1171,8 @@ func GranularReprioritizeSubIssue(t translations.TranslationHelperFunc) inventor
 			Annotations: &mcp.ToolAnnotations{
 				Title:           t("TOOL_REPRIORITIZE_SUB_ISSUE_USER_TITLE", "Reprioritize Sub-Issue"),
 				ReadOnlyHint:    false,
-				DestructiveHint: jsonschema.Ptr(false),
-				OpenWorldHint:   jsonschema.Ptr(true),
+				DestructiveHint: new(false),
+				OpenWorldHint:   new(true),
 			},
 			InputSchema: &jsonschema.Schema{
 				Type: "object",
@@ -1188,7 +1188,7 @@ func GranularReprioritizeSubIssue(t translations.TranslationHelperFunc) inventor
 					"issue_number": {
 						Type:        "number",
 						Description: "The parent issue number",
-						Minimum:     jsonschema.Ptr(1.0),
+						Minimum:     new(1.0),
 					},
 					"sub_issue_id": {
 						Type:        "number",
@@ -1276,8 +1276,8 @@ func GranularSetIssueFields(t translations.TranslationHelperFunc) inventory.Serv
 			Annotations: &mcp.ToolAnnotations{
 				Title:           t("TOOL_SET_ISSUE_FIELDS_USER_TITLE", "Set Issue Fields"),
 				ReadOnlyHint:    false,
-				DestructiveHint: jsonschema.Ptr(false),
-				OpenWorldHint:   jsonschema.Ptr(true),
+				DestructiveHint: new(false),
+				OpenWorldHint:   new(true),
 			},
 			InputSchema: &jsonschema.Schema{
 				Type: "object",
@@ -1293,12 +1293,12 @@ func GranularSetIssueFields(t translations.TranslationHelperFunc) inventory.Serv
 					"issue_number": {
 						Type:        "number",
 						Description: "The issue number to update",
-						Minimum:     jsonschema.Ptr(1.0),
+						Minimum:     new(1.0),
 					},
 					"fields": {
 						Type:        "array",
 						Description: "Array of issue field values to set. Each element must have a 'field_id' (string, the GraphQL node ID of the field) and exactly one value field: 'text_value' for text fields, 'number_value' for number fields, 'date_value' (ISO 8601 date string) for date fields, or 'single_select_option_id' (the GraphQL node ID of the option) for single select fields. Set 'delete' to true to remove a field value.",
-						MinItems:    jsonschema.Ptr(1),
+						MinItems:    new(1),
 						Items: &jsonschema.Schema{
 							Type: "object",
 							Properties: map[string]*jsonschema.Schema{
@@ -1330,7 +1330,7 @@ func GranularSetIssueFields(t translations.TranslationHelperFunc) inventory.Serv
 									Type: "string",
 									Description: "One concise sentence explaining what specifically about the issue led you to choose this field value. " +
 										"State the concrete signal (e.g. 'Reports a crash when saving' → high priority).",
-									MaxLength: jsonschema.Ptr(280),
+									MaxLength: new(280),
 								},
 								"confidence": {
 									Type:        "string",
@@ -1405,7 +1405,7 @@ func GranularSetIssueFields(t translations.TranslationHelperFunc) inventory.Serv
 				valueCount := 0
 
 				if v, err := OptionalParam[string](fieldMap, "text_value"); err == nil && v != "" {
-					input.TextValue = githubv4.NewString(githubv4.String(v))
+					input.TextValue = new(githubv4.String(v))
 					valueCount++
 				}
 				if v, err := OptionalParam[float64](fieldMap, "number_value"); err == nil {
@@ -1416,7 +1416,7 @@ func GranularSetIssueFields(t translations.TranslationHelperFunc) inventory.Serv
 					}
 				}
 				if v, err := OptionalParam[string](fieldMap, "date_value"); err == nil && v != "" {
-					input.DateValue = githubv4.NewString(githubv4.String(v))
+					input.DateValue = new(githubv4.String(v))
 					valueCount++
 				}
 				if v, err := OptionalParam[string](fieldMap, "single_select_option_id"); err == nil && v != "" {
@@ -1450,7 +1450,7 @@ func GranularSetIssueFields(t translations.TranslationHelperFunc) inventory.Serv
 						return utils.NewToolResultError("field rationale must be 280 characters or less"), nil, nil
 					}
 					if rationale != "" {
-						input.Rationale = githubv4.NewString(githubv4.String(rationale))
+						input.Rationale = new(githubv4.String(rationale))
 					}
 				}
 
@@ -1550,8 +1550,8 @@ func GranularAddIssueReaction(t translations.TranslationHelperFunc) inventory.Se
 			Annotations: &mcp.ToolAnnotations{
 				Title:           t("TOOL_ADD_ISSUE_REACTION_USER_TITLE", "Add Reaction to Issue or Pull Request"),
 				ReadOnlyHint:    false,
-				DestructiveHint: jsonschema.Ptr(false),
-				OpenWorldHint:   jsonschema.Ptr(true),
+				DestructiveHint: new(false),
+				OpenWorldHint:   new(true),
 			},
 			InputSchema: &jsonschema.Schema{
 				Type: "object",
@@ -1567,7 +1567,7 @@ func GranularAddIssueReaction(t translations.TranslationHelperFunc) inventory.Se
 					"issue_number": {
 						Type:        "number",
 						Description: "The issue number",
-						Minimum:     jsonschema.Ptr(1.0),
+						Minimum:     new(1.0),
 					},
 					"content": {
 						Type:        "string",
@@ -1632,8 +1632,8 @@ func GranularAddIssueCommentReaction(t translations.TranslationHelperFunc) inven
 			Annotations: &mcp.ToolAnnotations{
 				Title:           t("TOOL_ADD_ISSUE_COMMENT_REACTION_USER_TITLE", "Add Reaction to Issue or Pull Request Comment"),
 				ReadOnlyHint:    false,
-				DestructiveHint: jsonschema.Ptr(false),
-				OpenWorldHint:   jsonschema.Ptr(true),
+				DestructiveHint: new(false),
+				OpenWorldHint:   new(true),
 			},
 			InputSchema: &jsonschema.Schema{
 				Type: "object",
@@ -1649,7 +1649,7 @@ func GranularAddIssueCommentReaction(t translations.TranslationHelperFunc) inven
 					"comment_id": {
 						Type:        "number",
 						Description: "The issue or pull request comment ID",
-						Minimum:     jsonschema.Ptr(1.0),
+						Minimum:     new(1.0),
 					},
 					"content": {
 						Type:        "string",

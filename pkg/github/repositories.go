@@ -518,9 +518,9 @@ SHA MUST be provided for existing file updates.
 
 			// Create the file options
 			opts := &github.RepositoryContentFileOptions{
-				Message: github.Ptr(message),
+				Message: new(message),
 				Content: contentBytes,
-				Branch:  github.Ptr(branch),
+				Branch:  new(branch),
 			}
 
 			// If SHA is provided, set it (for updates)
@@ -529,7 +529,7 @@ SHA MUST be provided for existing file updates.
 				return utils.NewToolResultError(err.Error()), nil, nil
 			}
 			if sha != "" {
-				opts.SHA = github.Ptr(sha)
+				opts.SHA = new(sha)
 			}
 
 			// Create or update the file
@@ -692,10 +692,10 @@ func CreateRepository(t translations.TranslationHelperFunc) inventory.ServerTool
 			}
 
 			repo := &github.Repository{
-				Name:        github.Ptr(name),
-				Description: github.Ptr(description),
-				Private:     github.Ptr(private),
-				AutoInit:    github.Ptr(autoInit),
+				Name:        new(name),
+				Description: new(description),
+				Private:     new(private),
+				AutoInit:    new(autoInit),
 			}
 
 			client, err := deps.GetClient(ctx)
@@ -1123,7 +1123,7 @@ func DeleteFile(t translations.TranslationHelperFunc) inventory.ServerTool {
 			Annotations: &mcp.ToolAnnotations{
 				Title:           t("TOOL_DELETE_FILE_USER_TITLE", "Delete file"),
 				ReadOnlyHint:    false,
-				DestructiveHint: github.Ptr(true),
+				DestructiveHint: new(true),
 			},
 			InputSchema: &jsonschema.Schema{
 				Type: "object",
@@ -1209,9 +1209,9 @@ func DeleteFile(t translations.TranslationHelperFunc) inventory.ServerTool {
 			// Create a tree entry for the file deletion by setting SHA to nil
 			treeEntries := []*github.TreeEntry{
 				{
-					Path: github.Ptr(path),
-					Mode: github.Ptr("100644"), // Regular file mode
-					Type: github.Ptr("blob"),
+					Path: new(path),
+					Mode: new("100644"), // Regular file mode
+					Type: new("blob"),
 					SHA:  nil, // Setting SHA to nil deletes the file
 				},
 			}
@@ -1237,7 +1237,7 @@ func DeleteFile(t translations.TranslationHelperFunc) inventory.ServerTool {
 
 			// Create a new commit with the new tree
 			commit := github.Commit{
-				Message: github.Ptr(message),
+				Message: new(message),
 				Tree:    newTree,
 				Parents: []*github.Commit{{SHA: baseCommit.SHA}},
 			}
@@ -1263,7 +1263,7 @@ func DeleteFile(t translations.TranslationHelperFunc) inventory.ServerTool {
 			ref.Object.SHA = newCommit.SHA
 			_, resp, err = client.Git.UpdateRef(ctx, owner, repo, *ref.Ref, github.UpdateRef{
 				SHA:   *newCommit.SHA,
-				Force: github.Ptr(false),
+				Force: new(false),
 			})
 			if err != nil {
 				return ghErrors.NewGitHubAPIErrorResponse(ctx,
@@ -1583,10 +1583,10 @@ func PushFiles(t translations.TranslationHelperFunc) inventory.ServerTool {
 
 				// Create a tree entry for the file
 				entries = append(entries, &github.TreeEntry{
-					Path:    github.Ptr(path),
-					Mode:    github.Ptr("100644"), // Regular file mode
-					Type:    github.Ptr("blob"),
-					Content: github.Ptr(content),
+					Path:    new(path),
+					Mode:    new("100644"), // Regular file mode
+					Type:    new("blob"),
+					Content: new(content),
 				})
 			}
 
@@ -1605,7 +1605,7 @@ func PushFiles(t translations.TranslationHelperFunc) inventory.ServerTool {
 
 			// Create a new commit (baseCommit always has a value now)
 			commit := github.Commit{
-				Message: github.Ptr(message),
+				Message: new(message),
 				Tree:    newTree,
 				Parents: []*github.Commit{{SHA: baseCommit.SHA}},
 			}
@@ -1625,7 +1625,7 @@ func PushFiles(t translations.TranslationHelperFunc) inventory.ServerTool {
 			ref.Object.SHA = newCommit.SHA
 			updatedRef, resp, err := client.Git.UpdateRef(ctx, owner, repo, *ref.Ref, github.UpdateRef{
 				SHA:   *newCommit.SHA,
-				Force: github.Ptr(false),
+				Force: new(false),
 			})
 			if err != nil {
 				return ghErrors.NewGitHubAPIErrorResponse(ctx,
@@ -2599,12 +2599,12 @@ func GetFileBlame(t translations.TranslationHelperFunc) inventory.ServerTool {
 					"start_line": {
 						Type:        "number",
 						Description: "Optional 1-based starting line of the window of interest. Only ranges overlapping [start_line, end_line] are returned, clamped to the window.",
-						Minimum:     jsonschema.Ptr(1.0),
+						Minimum:     new(1.0),
 					},
 					"end_line": {
 						Type:        "number",
 						Description: "Optional 1-based ending line of the window of interest. Must be >= start_line when both are provided.",
-						Minimum:     jsonschema.Ptr(1.0),
+						Minimum:     new(1.0),
 					},
 				},
 				Required: []string{"owner", "repo", "path"},
