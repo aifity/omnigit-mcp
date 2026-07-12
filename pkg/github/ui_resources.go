@@ -10,14 +10,17 @@ import (
 // These are static resources (not templates) that serve HTML content for
 // MCP App-enabled tools. The HTML is built from React/Primer components
 // in the ui/ directory using `script/build-ui`.
-func RegisterUIResources(s *mcp.Server) {
+//
+// Resource metadata follows the stable 2026-01-26 MCP Apps spec:
+// https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx
+func RegisterUIResources(s *mcp.Server, readOnly bool) {
 	// Register the get_me UI resource
 	s.AddResource(
 		&mcp.Resource{
 			URI:         GetMeUIResourceURI,
 			Name:        "get_me_ui",
 			Description: "MCP App UI for the get_me tool",
-			MIMEType:    "text/html",
+			MIMEType:    MCPAppMIMEType,
 		},
 		func(_ context.Context, _ *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 			html := MustGetUIAsset("get-me.html")
@@ -25,16 +28,16 @@ func RegisterUIResources(s *mcp.Server) {
 				Contents: []*mcp.ResourceContents{
 					{
 						URI:      GetMeUIResourceURI,
-						MIMEType: "text/html",
+						MIMEType: MCPAppMIMEType,
 						Text:     html,
-						// MCP Apps UI metadata - CSP configuration to allow loading GitHub avatars
-						// See: https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/draft/apps.mdx
 						Meta: mcp.Meta{
 							"ui": map[string]any{
+								// Allow loading images from GitHub's avatar CDN.
 								"csp": map[string]any{
-									// Allow loading images from GitHub's avatar CDN
 									"resourceDomains": []string{"https://avatars.githubusercontent.com"},
 								},
+								// Profile card renders inline within chat without a host border.
+								"prefersBorder": false,
 							},
 						},
 					},
@@ -43,13 +46,17 @@ func RegisterUIResources(s *mcp.Server) {
 		},
 	)
 
+	if readOnly {
+		return
+	}
+
 	// Register the issue_write UI resource
 	s.AddResource(
 		&mcp.Resource{
 			URI:         IssueWriteUIResourceURI,
 			Name:        "issue_write_ui",
 			Description: "MCP App UI for creating and updating GitHub issues",
-			MIMEType:    "text/html",
+			MIMEType:    MCPAppMIMEType,
 		},
 		func(_ context.Context, _ *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 			html := MustGetUIAsset("issue-write.html")
@@ -57,8 +64,16 @@ func RegisterUIResources(s *mcp.Server) {
 				Contents: []*mcp.ResourceContents{
 					{
 						URI:      IssueWriteUIResourceURI,
-						MIMEType: "text/html",
+						MIMEType: MCPAppMIMEType,
 						Text:     html,
+						Meta: mcp.Meta{
+							"ui": map[string]any{
+								// No external origins required; documents the secure default.
+								"csp": map[string]any{},
+								// Form surface benefits from a host-provided border.
+								"prefersBorder": true,
+							},
+						},
 					},
 				},
 			}, nil
@@ -71,7 +86,7 @@ func RegisterUIResources(s *mcp.Server) {
 			URI:         PullRequestWriteUIResourceURI,
 			Name:        "pr_write_ui",
 			Description: "MCP App UI for creating GitHub pull requests",
-			MIMEType:    "text/html",
+			MIMEType:    MCPAppMIMEType,
 		},
 		func(_ context.Context, _ *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 			html := MustGetUIAsset("pr-write.html")
@@ -79,8 +94,41 @@ func RegisterUIResources(s *mcp.Server) {
 				Contents: []*mcp.ResourceContents{
 					{
 						URI:      PullRequestWriteUIResourceURI,
-						MIMEType: "text/html",
+						MIMEType: MCPAppMIMEType,
 						Text:     html,
+						Meta: mcp.Meta{
+							"ui": map[string]any{
+								"csp":           map[string]any{},
+								"prefersBorder": true,
+							},
+						},
+					},
+				},
+			}, nil
+		},
+	)
+
+	s.AddResource(
+		&mcp.Resource{
+			URI:         PullRequestEditUIResourceURI,
+			Name:        "pr_edit_ui",
+			Description: "MCP App UI for editing GitHub pull requests",
+			MIMEType:    MCPAppMIMEType,
+		},
+		func(_ context.Context, _ *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+			html := MustGetUIAsset("pr-edit.html")
+			return &mcp.ReadResourceResult{
+				Contents: []*mcp.ResourceContents{
+					{
+						URI:      PullRequestEditUIResourceURI,
+						MIMEType: MCPAppMIMEType,
+						Text:     html,
+						Meta: mcp.Meta{
+							"ui": map[string]any{
+								"csp":           map[string]any{},
+								"prefersBorder": true,
+							},
+						},
 					},
 				},
 			}, nil

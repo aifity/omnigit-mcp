@@ -12,29 +12,33 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aifity/omnigit-mcp/internal/oauth"
 	"github.com/aifity/omnigit-mcp/pkg/errors"
-	"github.com/aifity/omnigit-mcp/pkg/git/gitops/shell"
+	gitopshell "github.com/aifity/omnigit-mcp/pkg/git/gitops/shell"
 	"github.com/aifity/omnigit-mcp/pkg/github"
 	"github.com/aifity/omnigit-mcp/pkg/http/transport"
 	"github.com/aifity/omnigit-mcp/pkg/inventory"
 	"github.com/aifity/omnigit-mcp/pkg/lockdown"
 	mcplog "github.com/aifity/omnigit-mcp/pkg/log"
+	"github.com/aifity/omnigit-mcp/pkg/observability"
+	"github.com/aifity/omnigit-mcp/pkg/observability/metrics"
 	"github.com/aifity/omnigit-mcp/pkg/raw"
 	"github.com/aifity/omnigit-mcp/pkg/scopes"
 	"github.com/aifity/omnigit-mcp/pkg/translations"
 	"github.com/aifity/omnigit-mcp/pkg/utils"
-	gogithub "github.com/google/go-github/v82/github"
+	gogithub "github.com/google/go-github/v89/github"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/shurcooL/githubv4"
 )
 
 // githubClients holds all the GitHub API clients created for a server instance.
 type githubClients struct {
-	rest       *gogithub.Client
-	gql        *githubv4.Client
-	gqlHTTP    *http.Client // retained for middleware to modify transport
-	raw        *raw.Client
-	repoAccess *lockdown.RepoAccessCache
+	rest         *gogithub.Client
+	restUATransp *transport.UserAgentTransport
+	gql          *githubv4.Client
+	gqlHTTP      *http.Client // retained for middleware to modify transport
+	raw          *raw.Client
+	repoAccess   *lockdown.RepoAccessCache
 }
 
 // createGitHubClients creates all the GitHub API clients needed by the server.
@@ -59,11 +63,33 @@ func createGitHubClients(cfg github.MCPServerConfig, apiHost utils.APIHostResolv
 		return nil, fmt.Errorf("failed to get Raw URL: %w", err)
 	}
 
-	// Construct REST client
-	restClient := gogithub.NewClient(nil).WithAuthToken(cfg.Token)
-	restClient.UserAgent = fmt.Sprintf("omnigit-mcp/%s", cfg.Version)
-	restClient.BaseURL = restURL
-	restClient.UploadURL = uploadURL
+	// Construct REST client. When a TokenProvider is configured (OAuth), we
+	// authenticate via BearerAuthTransport and skip go-github's WithAuthToken:
+	// the latter installs its own round tripper that would pin the static token
+	// and shadow the dynamic one.
+	restUATransport := &transport.UserAgentTransport{
+		Transport: http.DefaultTransport,
+		Agent:     fmt.Sprintf("omnigit-mcp/%s", cfg.Version),
+	}
+	var restClient *gogithub.Client
+	if cfg.TokenProvider != nil {
+		restClient, err = gogithub.NewClient(
+			gogithub.WithHTTPClient(&http.Client{Transport: &transport.BearerAuthTransport{
+				Transport:     restUATransport,
+				TokenProvider: cfg.TokenProvider,
+			}}),
+			gogithub.WithEnterpriseURLs(restURL.String(), uploadURL.String()),
+		)
+	} else {
+		restClient, err = gogithub.NewClient(
+			gogithub.WithHTTPClient(&http.Client{Transport: restUATransport}),
+			gogithub.WithAuthToken(cfg.Token),
+			gogithub.WithEnterpriseURLs(restURL.String(), uploadURL.String()),
+		)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to create REST client: %w", err)
+	}
 
 	// Construct GraphQL client
 	// We use NewEnterpriseClient unconditionally since we already parsed the API host
@@ -72,14 +98,18 @@ func createGitHubClients(cfg github.MCPServerConfig, apiHost utils.APIHostResolv
 			Transport: &transport.GraphQLFeaturesTransport{
 				Transport: http.DefaultTransport,
 			},
-			Token: cfg.Token,
+			Token:         cfg.Token,
+			TokenProvider: cfg.TokenProvider,
 		},
 	}
 
 	gqlClient := githubv4.NewEnterpriseClient(graphQLURL.String(), gqlHTTPClient)
 
 	// Create raw content client (shares REST client's HTTP transport)
-	rawClient := raw.NewClient(restClient, rawURL)
+	rawClient, err := raw.NewClient(restClient, rawURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create raw client: %w", err)
+	}
 
 	// Set up repo access cache for lockdown mode
 	var repoAccessCache *lockdown.RepoAccessCache
@@ -90,15 +120,16 @@ func createGitHubClients(cfg github.MCPServerConfig, apiHost utils.APIHostResolv
 		if cfg.RepoAccessTTL != nil {
 			opts = append(opts, lockdown.WithTTL(*cfg.RepoAccessTTL))
 		}
-		repoAccessCache = lockdown.GetInstance(gqlClient, opts...)
+		repoAccessCache = lockdown.NewRepoAccessCache(gqlClient, restClient, opts...)
 	}
 
 	return &githubClients{
-		rest:       restClient,
-		gql:        gqlClient,
-		gqlHTTP:    gqlHTTPClient,
-		raw:        rawClient,
-		repoAccess: repoAccessCache,
+		rest:         restClient,
+		restUATransp: restUATransport,
+		gql:          gqlClient,
+		gqlHTTP:      gqlHTTPClient,
+		raw:          rawClient,
+		repoAccess:   repoAccessCache,
 	}, nil
 }
 
@@ -113,23 +144,23 @@ func NewStdioMCPServer(ctx context.Context, cfg github.MCPServerConfig) (*mcp.Se
 		return nil, fmt.Errorf("failed to create GitHub clients: %w", err)
 	}
 
-	// Create feature checker
-	featureChecker := createFeatureChecker(cfg.EnabledFeatures)
+	// Create feature checker — resolves explicit features + insiders expansion
+	featureChecker := createFeatureChecker(cfg.EnabledFeatures, cfg.InsidersMode)
 
-	// Create git operations for local git tools
-	gitOps := shell.NewGitOperations()
+	// Create dependencies for tool handlers
+	obs, err := observability.NewExporters(cfg.Logger, metrics.NewNoopMetrics())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create observability exporters: %w", err)
+	}
 
-	// TODO: Configure repository paths from environment or config
-	// For now, use current working directory as default if it's a git repo
+	gitOps := gitopshell.NewGitOperations()
 	var repoPaths []string
 	if cwd, err := os.Getwd(); err == nil {
-		// Check if current directory is a git repository
 		if _, err := os.Stat(cwd + "/.git"); err == nil {
 			repoPaths = []string{cwd}
 		}
 	}
 
-	// Create dependencies for tool handlers
 	deps := github.NewBaseDeps(
 		clients.rest,
 		clients.gql,
@@ -138,23 +169,23 @@ func NewStdioMCPServer(ctx context.Context, cfg github.MCPServerConfig) (*mcp.Se
 		cfg.Translator,
 		github.FeatureFlags{
 			LockdownMode: cfg.LockdownMode,
-			InsidersMode: cfg.InsidersMode,
 		},
 		cfg.ContentWindowSize,
 		featureChecker,
-		gitOps,
-		repoPaths,
+		obs,
 	)
+	deps.GitOps = gitOps
+	deps.RepoPaths = repoPaths
+
 	// Build and register the tool/resource/prompt inventory
 	inventoryBuilder := github.NewInventory(cfg.Translator).
 		WithDeprecatedAliases(github.DeprecatedToolAliases).
 		WithReadOnly(cfg.ReadOnly).
-		WithToolsets(github.ResolvedEnabledToolsets(cfg.DynamicToolsets, cfg.EnabledToolsets, cfg.EnabledTools)).
+		WithToolsets(github.ResolvedEnabledToolsets(cfg.EnabledToolsets, cfg.EnabledTools)).
 		WithTools(github.CleanTools(cfg.EnabledTools)).
 		WithExcludeTools(cfg.ExcludeTools).
 		WithServerInstructions().
-		WithFeatureChecker(featureChecker).
-		WithInsidersMode(cfg.InsidersMode)
+		WithFeatureChecker(featureChecker)
 
 	// Apply token scope filtering if scopes are known (for PAT filtering)
 	if cfg.TokenScopes != nil {
@@ -171,14 +202,7 @@ func NewStdioMCPServer(ctx context.Context, cfg github.MCPServerConfig) (*mcp.Se
 		return nil, fmt.Errorf("failed to create GitHub MCP server: %w", err)
 	}
 
-	// Register MCP App UI resources if available (requires running script/build-ui).
-	// We check availability to allow Insiders mode to work for non-UI features
-	// even when UI assets haven't been built.
-	if cfg.InsidersMode && github.UIAssetsAvailable() {
-		github.RegisterUIResources(ghServer)
-	}
-
-	ghServer.AddReceivingMiddleware(addUserAgentsMiddleware(cfg, clients.rest, clients.gqlHTTP))
+	ghServer.AddReceivingMiddleware(addUserAgentsMiddleware(cfg, clients.restUATransp, clients.gqlHTTP))
 
 	return ghServer, nil
 }
@@ -205,10 +229,6 @@ type StdioServerConfig struct {
 	// Items with FeatureFlagEnable matching an entry in this list will be available
 	EnabledFeatures []string
 
-	// Whether to enable dynamic toolsets
-	// See: https://github.com/aifity/omnigit-mcp?tab=readme-ov-file#dynamic-tool-discovery
-	DynamicToolsets bool
-
 	// ReadOnly indicates if we should only register read-only tools
 	ReadOnly bool
 
@@ -228,7 +248,7 @@ type StdioServerConfig struct {
 	// LockdownMode indicates if we should enable lockdown mode
 	LockdownMode bool
 
-	// InsidersMode indicates if we should enable experimental features
+	// InsidersMode expands to the curated set of feature flags enabled for insiders.
 	InsidersMode bool
 
 	// ExcludeTools is a list of tool names to disable regardless of other settings.
@@ -238,10 +258,29 @@ type StdioServerConfig struct {
 
 	// RepoAccessCacheTTL overrides the default TTL for repository access cache entries.
 	RepoAccessCacheTTL *time.Duration
+
+	// OAuthManager, when non-nil, enables OAuth 2.1 login for stdio mode. The
+	// server starts without a token and runs the authorization flow on the
+	// first tool call (see createOAuthMiddleware). It is mutually exclusive with
+	// a static Token.
+	OAuthManager *oauth.Manager
+
+	// OAuthScopes are the scopes requested during OAuth login. They double as
+	// the scope set for tool filtering: tools requiring a scope outside this set
+	// are hidden. The default set is the full supported list, which hides
+	// nothing; an explicit, narrower list filters accordingly.
+	OAuthScopes []string
 }
 
 // RunStdioServer is not concurrent safe.
 func RunStdioServer(cfg StdioServerConfig) error {
+	// OAuth login and a static token are mutually exclusive: they would
+	// disagree on how the token is sourced (lazy provider vs. static) and on
+	// scope filtering, so reject the ambiguous combination up front.
+	if cfg.OAuthManager != nil && cfg.Token != "" {
+		return fmt.Errorf("OAuthManager and a static Token are mutually exclusive: provide one or the other")
+	}
+
 	// Create app context
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -262,13 +301,15 @@ func RunStdioServer(cfg StdioServerConfig) error {
 		slogHandler = slog.NewTextHandler(logOutput, &slog.HandlerOptions{Level: slog.LevelInfo})
 	}
 	logger := slog.New(slogHandler)
-	logger.Info("starting server", "version", cfg.Version, "host", cfg.Host, "dynamicToolsets", cfg.DynamicToolsets, "readOnly", cfg.ReadOnly, "lockdownEnabled", cfg.LockdownMode)
+	logger.Info("starting server", "version", cfg.Version, "host", cfg.Host, "readOnly", cfg.ReadOnly, "lockdownEnabled", cfg.LockdownMode)
 
-	// Fetch token scopes for scope-based tool filtering (PAT tokens only)
-	// Only classic PATs (ghp_ prefix) return OAuth scopes via X-OAuth-Scopes header.
-	// Fine-grained PATs and other token types don't support this, so we skip filtering.
+	// Determine the scope set used to filter tools. Classic PATs expose their
+	// granted scopes via the API; OAuth uses the requested scopes (the default
+	// set hides nothing, a narrower explicit set filters accordingly). Other
+	// token types don't advertise scopes, so filtering is skipped.
 	var tokenScopes []string
-	if strings.HasPrefix(cfg.Token, "ghp_") {
+	switch {
+	case strings.HasPrefix(cfg.Token, "ghp_"):
 		fetchedScopes, err := fetchTokenScopesForHost(ctx, cfg.Token, cfg.Host)
 		if err != nil {
 			logger.Warn("failed to fetch token scopes, continuing without scope filtering", "error", err)
@@ -276,8 +317,18 @@ func RunStdioServer(cfg StdioServerConfig) error {
 			tokenScopes = fetchedScopes
 			logger.Info("token scopes fetched for filtering", "scopes", tokenScopes)
 		}
-	} else {
+	case cfg.OAuthManager != nil:
+		tokenScopes = cfg.OAuthScopes
+		logger.Info("using requested OAuth scopes for tool filtering", "scopes", tokenScopes)
+	default:
 		logger.Debug("skipping scope filtering for non-PAT token")
+	}
+
+	// For OAuth, the token is resolved lazily: empty until the user authorizes
+	// on the first tool call, then refreshed for the rest of the session.
+	var tokenProvider func() string
+	if cfg.OAuthManager != nil {
+		tokenProvider = cfg.OAuthManager.AccessToken
 	}
 
 	ghServer, err := NewStdioMCPServer(ctx, github.MCPServerConfig{
@@ -287,7 +338,6 @@ func RunStdioServer(cfg StdioServerConfig) error {
 		EnabledToolsets:   cfg.EnabledToolsets,
 		EnabledTools:      cfg.EnabledTools,
 		EnabledFeatures:   cfg.EnabledFeatures,
-		DynamicToolsets:   cfg.DynamicToolsets,
 		ReadOnly:          cfg.ReadOnly,
 		Translator:        t,
 		ContentWindowSize: cfg.ContentWindowSize,
@@ -297,9 +347,16 @@ func RunStdioServer(cfg StdioServerConfig) error {
 		Logger:            logger,
 		RepoAccessTTL:     cfg.RepoAccessCacheTTL,
 		TokenScopes:       tokenScopes,
+		TokenProvider:     tokenProvider,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create MCP server: %w", err)
+	}
+
+	// With OAuth, intercept tool calls to run the authorization flow on first
+	// use, before the handler tries to call GitHub with an empty token.
+	if cfg.OAuthManager != nil {
+		ghServer.AddReceivingMiddleware(createOAuthMiddleware(cfg.OAuthManager, logger))
 	}
 
 	if cfg.ExportTranslations {
@@ -343,21 +400,17 @@ func RunStdioServer(cfg StdioServerConfig) error {
 	return nil
 }
 
-// createFeatureChecker returns a FeatureFlagChecker that checks if a flag name
-// is present in the provided list of enabled features. For the local server,
-// this is populated from the --features CLI flag.
-func createFeatureChecker(enabledFeatures []string) inventory.FeatureFlagChecker {
-	// Build a set for O(1) lookup
-	featureSet := make(map[string]bool, len(enabledFeatures))
-	for _, f := range enabledFeatures {
-		featureSet[f] = true
-	}
+// createFeatureChecker returns a FeatureFlagChecker that resolves features
+// using the centralized ResolveFeatureFlags function. For the local server,
+// features are resolved once at startup from --features CLI flag and insiders mode.
+func createFeatureChecker(enabledFeatures []string, insidersMode bool) inventory.FeatureFlagChecker {
+	featureSet := github.ResolveFeatureFlags(enabledFeatures, insidersMode)
 	return func(_ context.Context, flagName string) (bool, error) {
 		return featureSet[flagName], nil
 	}
 }
 
-func addUserAgentsMiddleware(cfg github.MCPServerConfig, restClient *gogithub.Client, gqlHTTPClient *http.Client) func(next mcp.MethodHandler) mcp.MethodHandler {
+func addUserAgentsMiddleware(cfg github.MCPServerConfig, restUATransp *transport.UserAgentTransport, gqlHTTPClient *http.Client) func(next mcp.MethodHandler) mcp.MethodHandler {
 	return func(next mcp.MethodHandler) mcp.MethodHandler {
 		return func(ctx context.Context, method string, request mcp.Request) (result mcp.Result, err error) {
 			if method != "initialize" {
@@ -380,7 +433,7 @@ func addUserAgentsMiddleware(cfg github.MCPServerConfig, restClient *gogithub.Cl
 				userAgent += " (insiders)"
 			}
 
-			restClient.UserAgent = userAgent
+			restUATransp.Agent = userAgent
 
 			gqlHTTPClient.Transport = &transport.UserAgentTransport{
 				Transport: gqlHTTPClient.Transport,

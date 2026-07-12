@@ -9,7 +9,7 @@ import (
 
 	"github.com/aifity/omnigit-mcp/internal/toolsnaps"
 	"github.com/aifity/omnigit-mcp/pkg/translations"
-	"github.com/google/go-github/v82/github"
+	"github.com/google/go-github/v89/github"
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,27 +35,27 @@ func Test_GetRepositoryTree(t *testing.T) {
 
 	// Setup mock data
 	mockRepo := &github.Repository{
-		DefaultBranch: new("main"),
+		DefaultBranch: github.Ptr("main"),
 	}
 	mockTree := &github.Tree{
-		SHA:       new("abc123"),
-		Truncated: new(false),
+		SHA:       github.Ptr("abc123"),
+		Truncated: github.Ptr(false),
 		Entries: []*github.TreeEntry{
 			{
-				Path: new("README.md"),
-				Mode: new("100644"),
-				Type: new("blob"),
-				SHA:  new("file1sha"),
-				Size: new(123),
-				URL:  new("https://api.github.com/repos/owner/repo/git/blobs/file1sha"),
+				Path: github.Ptr("README.md"),
+				Mode: github.Ptr("100644"),
+				Type: github.Ptr("blob"),
+				SHA:  github.Ptr("file1sha"),
+				Size: github.Ptr(123),
+				URL:  github.Ptr("https://api.github.com/repos/owner/repo/git/blobs/file1sha"),
 			},
 			{
-				Path: new("src/main.go"),
-				Mode: new("100644"),
-				Type: new("blob"),
-				SHA:  new("file2sha"),
-				Size: new(456),
-				URL:  new("https://api.github.com/repos/owner/repo/git/blobs/file2sha"),
+				Path: github.Ptr("src/main.go"),
+				Mode: github.Ptr("100644"),
+				Type: github.Ptr("blob"),
+				SHA:  github.Ptr("file2sha"),
+				Size: github.Ptr(456),
+				URL:  github.Ptr("https://api.github.com/repos/owner/repo/git/blobs/file2sha"),
 			},
 		},
 	}
@@ -125,7 +125,7 @@ func Test_GetRepositoryTree(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			client := github.NewClient(tc.mockedClient)
+			client := mustNewGHClient(t, tc.mockedClient)
 			deps := BaseDeps{
 				Client: client,
 			}

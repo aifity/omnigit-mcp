@@ -8,11 +8,12 @@ import (
 	"net/http"
 
 	ghErrors "github.com/aifity/omnigit-mcp/pkg/errors"
+	"github.com/aifity/omnigit-mcp/pkg/ifc"
 	"github.com/aifity/omnigit-mcp/pkg/inventory"
 	"github.com/aifity/omnigit-mcp/pkg/scopes"
 	"github.com/aifity/omnigit-mcp/pkg/translations"
 	"github.com/aifity/omnigit-mcp/pkg/utils"
-	"github.com/google/go-github/v82/github"
+	"github.com/google/go-github/v89/github"
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -161,19 +162,69 @@ func SearchRepositories(t translations.TranslationHelperFunc) inventory.ServerTo
 				}
 			}
 
-			return utils.NewToolResultText(string(r)), nil, nil
+			callResult := utils.NewToolResultText(string(r))
+			attachSearchRepositoriesIFCLabel(ctx, deps, result.Repositories, callResult)
+			return callResult, nil, nil
 		},
 	)
 }
 
-// SearchCode creates a tool to search for code across GitHub repositories.
+// attachSearchRepositoriesIFCLabel joins per-repository IFC labels across
+// every matched repository and attaches the result to callResult when IFC
+// labels are enabled. Visibility is read directly from the search response —
+// no extra API call. The join math is shared with search_issues via
+// ifc.LabelSearchIssues: public-only results stay public-untrusted,
+// mixed-visibility results become private-untrusted, and all-private results
+// become private-trusted. The
+// feature-flag check is centralized here (mirroring the attach* helpers in
+// ifc_labels.go) so the handler can call this unconditionally.
+func attachSearchRepositoriesIFCLabel(ctx context.Context, deps ToolDependencies, repos []*github.Repository, callResult *mcp.CallToolResult) {
+	if callResult == nil || callResult.IsError || !deps.IsFeatureEnabled(ctx, FeatureFlagIFCLabels) {
+		return
+	}
+
+	visibilities := make([]bool, 0, len(repos))
+	for _, repo := range repos {
+		visibilities = append(visibilities, repo.GetPrivate())
+	}
+
+	setIFCLabel(callResult, ifc.LabelSearchIssues(visibilities))
+}
+
+// SearchCode creates a tool to search for code across GitHub repositories. It is
+// the FeatureFlagFieldsParam-enabled variant: it advertises the optional
+// `fields` parameter and filters each result to the requested subset. Both this
+// and LegacySearchCode register under the tool name "search_code"; exactly one
+// is active for any given request thanks to mutually exclusive
+// FeatureFlagEnable / FeatureFlagDisable annotations.
 func SearchCode(t translations.TranslationHelperFunc) inventory.ServerTool {
+	st := searchCodeTool(t, true)
+	st.FeatureFlagEnable = FeatureFlagFieldsParam
+	return st
+}
+
+// LegacySearchCode is the FeatureFlagFieldsParam-disabled variant of
+// search_code. It exposes the original schema (no `fields` parameter) and never
+// filters results, so it acts as the kill switch when the flag is off. It owns
+// the canonical search_code.snap; the flag-enabled variant owns
+// search_code_ff_<flag>.snap. Delete this function when the flag is removed.
+func LegacySearchCode(t translations.TranslationHelperFunc) inventory.ServerTool {
+	st := searchCodeTool(t, false)
+	st.FeatureFlagDisable = []string{FeatureFlagFieldsParam}
+	return st
+}
+
+// searchCodeTool builds the search_code tool. When includeFields is true the
+// tool advertises the optional `fields` parameter, filters each result to the
+// requested subset, and emits fields telemetry. When false it is the original
+// tool with no fields parameter and no filtering.
+func searchCodeTool(t translations.TranslationHelperFunc, includeFields bool) inventory.ServerTool {
 	schema := &jsonschema.Schema{
 		Type: "object",
 		Properties: map[string]*jsonschema.Schema{
 			"query": {
 				Type:        "string",
-				Description: "Search query using GitHub's powerful code search syntax. Examples: 'content:Skill language:Java org:github', 'NOT is:archived language:Python OR language:go', 'repo:aifity/omnigit-mcp'. Supports exact matching, language filters, path filters, and more.",
+				Description: "Search query (GitHub code search REST). Implicit AND between terms; supports `OR`, `NOT`, and `\"quoted phrase\"` for exact match. Qualifiers: `repo:owner/repo`, `org:`, `user:`, `language:`, `path:dir` (prefix match), `filename:exact.ext`, `extension:`, `in:file`, `in:path`, `size:`, `is:archived`, `is:fork`. Max 256 chars. Examples: `WithContext language:go org:github`; `\"package main\" repo:o/r`; `func extension:go path:cmd repo:o/r`; `NOT TODO language:go repo:o/r`.",
 			},
 			"sort": {
 				Type:        "string",
@@ -186,6 +237,12 @@ func SearchCode(t translations.TranslationHelperFunc) inventory.ServerTool {
 			},
 		},
 		Required: []string{"query"},
+	}
+	if includeFields {
+		schema.Properties["fields"] = fieldsSchemaProperty(
+			"Subset of fields to return for each code search result. If omitted, all fields are returned. Use this to reduce response size when you only need specific fields; omitting 'repository' and 'text_matches' in particular drops the largest per-result data.",
+			codeSearchItemFieldEnum,
+		)
 	}
 	WithPagination(schema)
 
@@ -214,14 +271,22 @@ func SearchCode(t translations.TranslationHelperFunc) inventory.ServerTool {
 			if err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			}
+			var fields []string
+			if includeFields {
+				fields, err = OptionalStringArrayParam(args, "fields")
+				if err != nil {
+					return utils.NewToolResultError(err.Error()), nil, nil
+				}
+			}
 			pagination, err := OptionalPaginationParams(args)
 			if err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			}
 
 			opts := &github.SearchOptions{
-				Sort:  sort,
-				Order: order,
+				Sort:      sort,
+				Order:     order,
+				TextMatch: true,
 				ListOptions: github.ListOptions{
 					PerPage: pagination.PerPage,
 					Page:    pagination.Page,
@@ -251,14 +316,70 @@ func SearchCode(t translations.TranslationHelperFunc) inventory.ServerTool {
 				return ghErrors.NewGitHubAPIStatusErrorResponse(ctx, "failed to search code", resp, body), nil, nil
 			}
 
-			r, err := json.Marshal(result)
+			minimalItems := make([]MinimalCodeResult, 0, len(result.CodeResults))
+			for _, code := range result.CodeResults {
+				item := MinimalCodeResult{
+					Name:        code.GetName(),
+					Path:        code.GetPath(),
+					SHA:         code.GetSHA(),
+					TextMatches: code.TextMatches,
+				}
+				if code.Repository != nil {
+					item.Repository = code.Repository.GetFullName()
+				}
+				minimalItems = append(minimalItems, item)
+			}
+
+			minimalResult := &MinimalCodeSearchResult{
+				TotalCount:        result.GetTotal(),
+				IncompleteResults: result.GetIncompleteResults(),
+				Items:             minimalItems,
+			}
+
+			filtered := false
+			var payload any = minimalResult
+			if includeFields && len(fields) > 0 {
+				filteredItems, err := filterEachField(minimalItems, fields)
+				if err != nil {
+					return utils.NewToolResultErrorFromErr("failed to filter code search results", err), nil, nil
+				}
+				payload = map[string]any{
+					"total_count":        minimalResult.TotalCount,
+					"incomplete_results": minimalResult.IncompleteResults,
+					"items":              filteredItems,
+				}
+				filtered = true
+			}
+
+			r, err := json.Marshal(payload)
 			if err != nil {
 				return utils.NewToolResultErrorFromErr("failed to marshal response", err), nil, nil
 			}
 
-			return utils.NewToolResultText(string(r)), nil, nil
+			if includeFields {
+				recordSearchCodeFieldsUsage(ctx, deps, minimalResult, filtered, len(r))
+			}
+
+			callResult := utils.NewToolResultText(string(r))
+			// Code search spans repositories; the IFC label is the conservative
+			// join across every matched repository's visibility, read directly
+			// from the search response.
+			visibilities := make([]bool, 0, len(result.CodeResults))
+			for _, code := range result.CodeResults {
+				if code.Repository != nil {
+					visibilities = append(visibilities, code.Repository.GetPrivate())
+				}
+			}
+			callResult = attachJoinedIFCLabel(ctx, deps, callResult, visibilities, ifc.LabelSearchIssues)
+			return callResult, nil, nil
 		},
 	)
+}
+
+// recordSearchCodeFieldsUsage emits fields telemetry for a search_code call.
+// sentBytes is the size of the payload actually returned.
+func recordSearchCodeFieldsUsage(ctx context.Context, deps ToolDependencies, full *MinimalCodeSearchResult, filtered bool, sentBytes int) {
+	recordFieldsUsageFor(ctx, deps, "search_code", full, filtered, sentBytes)
 }
 
 func userOrOrgHandler(ctx context.Context, accountType string, deps ToolDependencies, args map[string]any) (*mcp.CallToolResult, any, error) {
@@ -344,7 +465,11 @@ func userOrOrgHandler(ctx context.Context, accountType string, deps ToolDependen
 	if err != nil {
 		return utils.NewToolResultErrorFromErr("failed to marshal response", err), nil, nil
 	}
-	return utils.NewToolResultText(string(r)), nil, nil
+	callResult := utils.NewToolResultText(string(r))
+	// User and organization search returns public profile information that is
+	// authored by the account holders themselves, so it is public-untrusted.
+	callResult = attachStaticIFCLabel(ctx, deps, callResult, ifc.PublicUntrusted())
+	return callResult, nil, nil
 }
 
 // SearchUsers creates a tool to search for GitHub users.
@@ -427,6 +552,123 @@ func SearchOrgs(t translations.TranslationHelperFunc) inventory.ServerTool {
 		[]scopes.Scope{scopes.ReadOrg},
 		func(ctx context.Context, deps ToolDependencies, _ *mcp.CallToolRequest, args map[string]any) (*mcp.CallToolResult, any, error) {
 			return userOrOrgHandler(ctx, "org", deps, args)
+		},
+	)
+}
+
+// SearchCommits creates a tool to search for commits across GitHub repositories.
+func SearchCommits(t translations.TranslationHelperFunc) inventory.ServerTool {
+	schema := &jsonschema.Schema{
+		Type: "object",
+		Properties: map[string]*jsonschema.Schema{
+			"query": {
+				Type:        "string",
+				Description: "Commit search query (GitHub commit search REST). Searches commit messages on the default branch only. Scope the search with `repo:owner/repo`, `org:`, or `user:` (queries without a scope qualifier match across all of GitHub and are usually not what you want). Other qualifiers: `author:`, `committer:`, `author-name:`, `committer-name:`, `author-email:`, `committer-email:`, `author-date:`, `committer-date:` (supports `>`, `<`, `>=`, `<=`, and `YYYY-MM-DD..YYYY-MM-DD` ranges), `merge:true|false`, `hash:`, `tree:`, `parent:`, `is:public`. Examples: `repo:owner/repo fix panic`; `org:github author:defunkt committer-date:>=2024-01-01`; `\"refactor cache\" repo:o/r`; `hash:abc1234 repo:o/r`.",
+			},
+			"sort": {
+				Type:        "string",
+				Description: "Sort by author or committer date (defaults to best match)",
+				Enum:        []any{"author-date", "committer-date"},
+			},
+			"order": {
+				Type:        "string",
+				Description: "Sort order",
+				Enum:        []any{"asc", "desc"},
+			},
+		},
+		Required: []string{"query"},
+	}
+	WithPagination(schema)
+
+	return NewTool(
+		ToolsetMetadataRepos,
+		mcp.Tool{
+			Name:        "search_commits",
+			Description: t("TOOL_SEARCH_COMMITS_DESCRIPTION", "Search for commits across GitHub repositories using GitHub's commit search syntax. Useful for finding specific changes, authors, or messages across one or many repositories. Searches the default branch only."),
+			Annotations: &mcp.ToolAnnotations{
+				Title:        t("TOOL_SEARCH_COMMITS_USER_TITLE", "Search commits"),
+				ReadOnlyHint: true,
+			},
+			InputSchema: schema,
+		},
+		[]scopes.Scope{scopes.Repo},
+		func(ctx context.Context, deps ToolDependencies, _ *mcp.CallToolRequest, args map[string]any) (*mcp.CallToolResult, any, error) {
+			query, err := RequiredParam[string](args, "query")
+			if err != nil {
+				return utils.NewToolResultError(err.Error()), nil, nil
+			}
+			sort, err := OptionalParam[string](args, "sort")
+			if err != nil {
+				return utils.NewToolResultError(err.Error()), nil, nil
+			}
+			order, err := OptionalParam[string](args, "order")
+			if err != nil {
+				return utils.NewToolResultError(err.Error()), nil, nil
+			}
+			pagination, err := OptionalPaginationParams(args)
+			if err != nil {
+				return utils.NewToolResultError(err.Error()), nil, nil
+			}
+
+			opts := &github.SearchOptions{
+				Sort:  sort,
+				Order: order,
+				ListOptions: github.ListOptions{
+					Page:    pagination.Page,
+					PerPage: pagination.PerPage,
+				},
+			}
+
+			client, err := deps.GetClient(ctx)
+			if err != nil {
+				return utils.NewToolResultErrorFromErr("failed to get GitHub client", err), nil, nil
+			}
+			result, resp, err := client.Search.Commits(ctx, query, opts)
+			if err != nil {
+				return ghErrors.NewGitHubAPIErrorResponse(ctx,
+					fmt.Sprintf("failed to search commits with query '%s'", query),
+					resp,
+					err,
+				), nil, nil
+			}
+			defer func() { _ = resp.Body.Close() }()
+
+			if resp.StatusCode != http.StatusOK {
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					return utils.NewToolResultErrorFromErr("failed to read response body", err), nil, nil
+				}
+				return ghErrors.NewGitHubAPIStatusErrorResponse(ctx, "failed to search commits", resp, body), nil, nil
+			}
+
+			minimalCommits := make([]MinimalCommitSearchItem, 0, len(result.Commits))
+			for _, commit := range result.Commits {
+				minimalCommits = append(minimalCommits, convertCommitResultToMinimalCommit(commit))
+			}
+
+			minimalResult := &MinimalSearchCommitsResult{
+				TotalCount:        result.GetTotal(),
+				IncompleteResults: result.GetIncompleteResults(),
+				Items:             minimalCommits,
+			}
+
+			r, err := json.Marshal(minimalResult)
+			if err != nil {
+				return utils.NewToolResultErrorFromErr("failed to marshal response", err), nil, nil
+			}
+
+			callResult := utils.NewToolResultText(string(r))
+			// Commit search spans repositories; the IFC label is the conservative
+			// join across every matched repository's visibility, read directly
+			// from the search response.
+			visibilities := make([]bool, 0, len(result.Commits))
+			for _, commit := range result.Commits {
+				if commit.Repository != nil {
+					visibilities = append(visibilities, commit.Repository.GetPrivate())
+				}
+			}
+			callResult = attachJoinedIFCLabel(ctx, deps, callResult, visibilities, ifc.LabelSearchIssues)
+			return callResult, nil, nil
 		},
 	)
 }

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	gherrors "github.com/aifity/omnigit-mcp/pkg/errors"
-	"github.com/aifity/omnigit-mcp/pkg/git"
 	"github.com/aifity/omnigit-mcp/pkg/inventory"
 	"github.com/aifity/omnigit-mcp/pkg/octicons"
 	"github.com/aifity/omnigit-mcp/pkg/translations"
@@ -39,10 +38,6 @@ type MCPServerConfig struct {
 	// Items with FeatureFlagEnable matching an entry in this list will be available
 	EnabledFeatures []string
 
-	// Whether to enable dynamic toolsets
-	// See: https://github.com/aifity/omnigit-mcp?tab=readme-ov-file#dynamic-tool-discovery
-	DynamicToolsets bool
-
 	// ReadOnly indicates if we should only offer read-only tools
 	ReadOnly bool
 
@@ -55,7 +50,7 @@ type MCPServerConfig struct {
 	// LockdownMode indicates if we should enable lockdown mode
 	LockdownMode bool
 
-	// InsidersMode indicates if we should enable experimental features
+	// InsidersMode expands to the curated set of feature flags enabled for insiders.
 	InsidersMode bool
 
 	// Logger is used for logging within the server
@@ -72,6 +67,11 @@ type MCPServerConfig struct {
 	// When non-nil, tools requiring scopes not in this list will be hidden.
 	// This is used for PAT scope filtering where we can't issue scope challenges.
 	TokenScopes []string
+
+	// TokenProvider, when non-nil, supplies the GitHub token for each API
+	// request instead of the static Token. It backs OAuth login, where the
+	// token is obtained lazily on first use and refreshed thereafter.
+	TokenProvider func() string
 
 	// Additional server options to apply
 	ServerOptions []MCPServerOption
@@ -92,72 +92,41 @@ func NewMCPServer(ctx context.Context, cfg *MCPServerConfig, deps ToolDependenci
 		o(serverOpts)
 	}
 
-	// In dynamic mode, explicitly advertise capabilities since tools/resources/prompts
-	// may be enabled at runtime even if none are registered initially.
-	if cfg.DynamicToolsets {
-		serverOpts.Capabilities = &mcp.ServerCapabilities{
-			Tools:     &mcp.ToolCapabilities{},
-			Resources: &mcp.ResourceCapabilities{},
-			Prompts:   &mcp.PromptCapabilities{},
-		}
-	}
-
-	ghServer := NewServer(cfg.Version, serverOpts)
+	ghServer := NewServer(cfg.Version, cfg.Translator("SERVER_NAME", "omnigit-mcp"), cfg.Translator("SERVER_TITLE", "GitHub MCP Server"), serverOpts)
 
 	// Add middlewares. Order matters - for example, the error context middleware should be applied last so that it runs FIRST (closest to the handler) to ensure all errors are captured,
 	// and any middleware that needs to read or modify the context should be before it.
 	ghServer.AddReceivingMiddleware(middleware...)
 	ghServer.AddReceivingMiddleware(InjectDepsMiddleware(deps))
 	ghServer.AddReceivingMiddleware(addGitHubAPIErrorToContext)
-	ghServer.AddReceivingMiddleware(InjectGitDepsMiddleware(deps))
 
 	if unrecognized := inv.UnrecognizedToolsets(); len(unrecognized) > 0 {
 		cfg.Logger.Warn("Warning: unrecognized toolsets ignored", "toolsets", strings.Join(unrecognized, ", "))
 	}
 
 	// Register GitHub tools/resources/prompts from the inventory.
-	// In dynamic mode with no explicit toolsets, this is a no-op since enabledToolsets
-	// is empty - users enable toolsets at runtime via the dynamic tools below (but can
-	// enable toolsets or tools explicitly that do need registration).
 	inv.RegisterAll(ctx, ghServer, deps)
 
-	// Register dynamic toolset management tools (enable/disable) - these are separate
-	// meta-tools that control the inventory, not part of the inventory itself
-	if cfg.DynamicToolsets {
-		registerDynamicTools(ghServer, inv, deps, cfg.Translator)
+	// Register MCP App UI resources whenever the embedded UI assets are
+	// available. The resources are static HTML and are only referenced by
+	// tools when the remote_mcp_ui_apps feature flag is enabled for the
+	// request (the inventory strips the _meta.ui block otherwise via
+	// stripMCPAppsMetadata), so registering them unconditionally is safe.
+	// Registering here — rather than in the stdio bootstrap — ensures the
+	// remote/HTTP server also serves them, fixing the "-32002 Resource not
+	// found" error clients hit after the tool returns a ui:// URI.
+	if UIAssetsAvailable() {
+		RegisterUIResources(ghServer, cfg.ReadOnly)
 	}
 
 	return ghServer, nil
 }
 
-// registerDynamicTools adds the dynamic toolset enable/disable tools to the server.
-func registerDynamicTools(server *mcp.Server, inventory *inventory.Inventory, deps ToolDependencies, t translations.TranslationHelperFunc) {
-	dynamicDeps := DynamicToolDependencies{
-		Server:    server,
-		Inventory: inventory,
-		ToolDeps:  deps,
-		T:         t,
-	}
-	for _, tool := range DynamicTools(inventory) {
-		tool.RegisterFunc(server, dynamicDeps)
-	}
-}
-
 // ResolvedEnabledToolsets determines which toolsets should be enabled based on config.
 // Returns nil for "use defaults", empty slice for "none", or explicit list.
-func ResolvedEnabledToolsets(dynamicToolsets bool, enabledToolsets []string, enabledTools []string) []string {
-	// In dynamic mode, remove "all" and "default" since users enable toolsets on demand
-	if dynamicToolsets && enabledToolsets != nil {
-		enabledToolsets = RemoveToolset(enabledToolsets, string(ToolsetMetadataAll.ID))
-		enabledToolsets = RemoveToolset(enabledToolsets, string(ToolsetMetadataDefault.ID))
-	}
-
+func ResolvedEnabledToolsets(enabledToolsets []string, enabledTools []string) []string {
 	if enabledToolsets != nil {
 		return enabledToolsets
-	}
-	if dynamicToolsets {
-		// Dynamic mode with no toolsets specified: start empty so users enable on demand
-		return []string{}
 	}
 	if len(enabledTools) > 0 {
 		// When specific tools are requested but no toolsets, don't use default toolsets
@@ -178,28 +147,25 @@ func addGitHubAPIErrorToContext(next mcp.MethodHandler) mcp.MethodHandler {
 	}
 }
 
-// InjectGitDepsMiddleware creates a middleware that injects git.ToolDependencies into the context.
-// This allows git tools to retrieve their dependencies from context at call time.
-func InjectGitDepsMiddleware(deps ToolDependencies) mcp.Middleware {
-	return func(next mcp.MethodHandler) mcp.MethodHandler {
-		return func(ctx context.Context, method string, req mcp.Request) (result mcp.Result, err error) {
-			// Inject git dependencies into context
-			ctx = git.ContextWithGitDeps(ctx, deps)
-			return next(ctx, method, req)
-		}
-	}
-}
-
-// NewServer creates a new GitHub MCP server with the specified GH client and logger.
-func NewServer(version string, opts *mcp.ServerOptions) *mcp.Server {
+// NewServer creates a new GitHub MCP server with the given version, server
+// name, display title, and options. If name or title are empty the defaults
+// "omnigit-mcp" and "GitHub MCP Server" are used.
+func NewServer(version, name, title string, opts *mcp.ServerOptions) *mcp.Server {
 	if opts == nil {
 		opts = &mcp.ServerOptions{}
 	}
 
+	if name == "" {
+		name = "omnigit-mcp"
+	}
+	if title == "" {
+		title = "GitHub MCP Server"
+	}
+
 	// Create a new MCP server
 	s := mcp.NewServer(&mcp.Implementation{
-		Name:    "omnigit-mcp",
-		Title:   "GitHub MCP Server",
+		Name:    name,
+		Title:   title,
 		Version: version,
 		Icons:   octicons.Icons("mark-github"),
 	}, opts)
@@ -209,6 +175,9 @@ func NewServer(version string, opts *mcp.ServerOptions) *mcp.Server {
 
 func CompletionsHandler(getClient GetClientFn) func(ctx context.Context, req *mcp.CompleteRequest) (*mcp.CompleteResult, error) {
 	return func(ctx context.Context, req *mcp.CompleteRequest) (*mcp.CompleteResult, error) {
+		if req == nil || req.Params == nil || req.Params.Ref == nil {
+			return nil, fmt.Errorf("missing required parameter: ref")
+		}
 		switch req.Params.Ref.Type {
 		case "ref/resource":
 			if strings.HasPrefix(req.Params.Ref.URI, "repo://") {

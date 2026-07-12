@@ -10,7 +10,7 @@ import (
 	"github.com/aifity/omnigit-mcp/internal/githubv4mock"
 	"github.com/aifity/omnigit-mcp/internal/toolsnaps"
 	"github.com/aifity/omnigit-mcp/pkg/translations"
-	"github.com/google/go-github/v82/github"
+	"github.com/google/go-github/v89/github"
 	"github.com/shurcooL/githubv4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,19 +29,19 @@ func Test_GetMe(t *testing.T) {
 
 	// Setup mock user response
 	mockUser := &github.User{
-		Login:           new("testuser"),
-		Name:            new("Test User"),
-		Email:           new("test@example.com"),
-		Bio:             new("GitHub user for testing"),
-		Company:         new("Test Company"),
-		Location:        new("Test Location"),
-		HTMLURL:         new("https://github.com/testuser"),
+		Login:           github.Ptr("testuser"),
+		Name:            github.Ptr("Test User"),
+		Email:           github.Ptr("test@example.com"),
+		Bio:             github.Ptr("GitHub user for testing"),
+		Company:         github.Ptr("Test Company"),
+		Location:        github.Ptr("Test Location"),
+		HTMLURL:         github.Ptr("https://github.com/testuser"),
 		CreatedAt:       &github.Timestamp{Time: time.Now().Add(-365 * 24 * time.Hour)},
-		Type:            new("User"),
-		Hireable:        new(true),
-		TwitterUsername: new("testuser_twitter"),
+		Type:            github.Ptr("User"),
+		Hireable:        github.Ptr(true),
+		TwitterUsername: github.Ptr("testuser_twitter"),
 		Plan: &github.Plan{
-			Name: new("pro"),
+			Name: github.Ptr("pro"),
 		},
 	}
 
@@ -96,9 +96,10 @@ func Test_GetMe(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var deps ToolDependencies
 			if tc.clientErr != "" {
-				deps = stubDeps{clientFn: stubClientFnErr(tc.clientErr)}
+				deps = stubDeps{clientFn: stubClientFnErr(tc.clientErr), obsv: stubExporters()}
 			} else {
-				deps = BaseDeps{Client: github.NewClient(tc.mockedClient)}
+				obs := stubExporters()
+				deps = BaseDeps{Client: mustNewGHClient(t, tc.mockedClient), Obsv: obs}
 			}
 			handler := serverTool.Handler(deps)
 
@@ -138,6 +139,72 @@ func Test_GetMe(t *testing.T) {
 	}
 }
 
+func Test_GetMe_IFC_FeatureFlag(t *testing.T) {
+	t.Parallel()
+
+	serverTool := GetMe(translations.NullTranslationHelper)
+
+	mockUser := &github.User{
+		Login:     github.Ptr("testuser"),
+		HTMLURL:   github.Ptr("https://github.com/testuser"),
+		CreatedAt: &github.Timestamp{Time: time.Now()},
+	}
+	mockedHTTPClient := MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
+		GetUser: mockResponse(t, http.StatusOK, mockUser),
+	})
+
+	depsWithIFCFeature := func(enabled bool) *BaseDeps {
+		return NewBaseDeps(
+			mustNewGHClient(t, mockedHTTPClient), nil, nil, nil,
+			translations.NullTranslationHelper,
+			FeatureFlags{},
+			0,
+			func(_ context.Context, flagName string) (bool, error) {
+				return flagName == FeatureFlagIFCLabels && enabled, nil
+			},
+			stubExporters(),
+		)
+	}
+
+	t.Run("feature disabled omits ifc label from result meta", func(t *testing.T) {
+		deps := depsWithIFCFeature(false)
+		handler := serverTool.Handler(deps)
+
+		request := createMCPRequest(map[string]any{})
+		result, err := handler(ContextWithDeps(context.Background(), deps), &request)
+		require.NoError(t, err)
+		require.False(t, result.IsError)
+
+		assert.Nil(t, result.Meta, "result meta should be nil when IFC labels are disabled")
+	})
+
+	t.Run("feature enabled includes ifc label in result meta", func(t *testing.T) {
+		deps := depsWithIFCFeature(true)
+		handler := serverTool.Handler(deps)
+
+		request := createMCPRequest(map[string]any{})
+		result, err := handler(ContextWithDeps(context.Background(), deps), &request)
+		require.NoError(t, err)
+		require.False(t, result.IsError)
+
+		require.NotNil(t, result.Meta, "result meta should be set when IFC labels are enabled")
+		ifcLabel, ok := result.Meta["ifc"]
+		require.True(t, ok, "result meta should contain ifc key")
+
+		ifcJSON, err := json.Marshal(ifcLabel)
+		require.NoError(t, err)
+
+		var ifcMap map[string]any
+		err = json.Unmarshal(ifcJSON, &ifcMap)
+		require.NoError(t, err)
+
+		assert.Equal(t, "trusted", ifcMap["integrity"])
+		// get_me returns the caller's private repo/gist counts, which are not
+		// part of the public profile, so confidentiality is private.
+		assert.Equal(t, "private", ifcMap["confidentiality"])
+	})
+}
+
 func Test_GetTeams(t *testing.T) {
 	t.Parallel()
 
@@ -149,19 +216,19 @@ func Test_GetTeams(t *testing.T) {
 	assert.True(t, tool.Annotations.ReadOnlyHint, "get_teams tool should be read-only")
 
 	mockUser := &github.User{
-		Login:           new("testuser"),
-		Name:            new("Test User"),
-		Email:           new("test@example.com"),
-		Bio:             new("GitHub user for testing"),
-		Company:         new("Test Company"),
-		Location:        new("Test Location"),
-		HTMLURL:         new("https://github.com/testuser"),
+		Login:           github.Ptr("testuser"),
+		Name:            github.Ptr("Test User"),
+		Email:           github.Ptr("test@example.com"),
+		Bio:             github.Ptr("GitHub user for testing"),
+		Company:         github.Ptr("Test Company"),
+		Location:        github.Ptr("Test Location"),
+		HTMLURL:         github.Ptr("https://github.com/testuser"),
 		CreatedAt:       &github.Timestamp{Time: time.Now().Add(-365 * 24 * time.Hour)},
-		Type:            new("User"),
-		Hireable:        new(true),
-		TwitterUsername: new("testuser_twitter"),
+		Type:            github.Ptr("User"),
+		Hireable:        github.Ptr(true),
+		TwitterUsername: github.Ptr("testuser_twitter"),
 		Plan: &github.Plan{
-			Name: new("pro"),
+			Name: github.Ptr("pro"),
 		},
 	}
 
@@ -268,7 +335,7 @@ func Test_GetTeams(t *testing.T) {
 			name: "successful get teams",
 			makeDeps: func() ToolDependencies {
 				return BaseDeps{
-					Client:    github.NewClient(httpClientWithUser()),
+					Client:    mustNewGHClient(t, httpClientWithUser()),
 					GQLClient: gqlClientForTestuser(),
 				}
 			},
@@ -293,7 +360,7 @@ func Test_GetTeams(t *testing.T) {
 			name: "no teams found",
 			makeDeps: func() ToolDependencies {
 				return BaseDeps{
-					Client:    github.NewClient(httpClientWithUser()),
+					Client:    mustNewGHClient(t, httpClientWithUser()),
 					GQLClient: gqlClientNoTeams(),
 				}
 			},
@@ -304,7 +371,7 @@ func Test_GetTeams(t *testing.T) {
 		{
 			name: "getting client fails",
 			makeDeps: func() ToolDependencies {
-				return stubDeps{clientFn: stubClientFnErr("expected test error")}
+				return stubDeps{clientFn: stubClientFnErr("expected test error"), obsv: stubExporters()}
 			},
 			requestArgs:        map[string]any{},
 			expectToolError:    true,
@@ -314,7 +381,8 @@ func Test_GetTeams(t *testing.T) {
 			name: "get user fails",
 			makeDeps: func() ToolDependencies {
 				return BaseDeps{
-					Client: github.NewClient(httpClientUserFails()),
+					Client: mustNewGHClient(t, httpClientUserFails()),
+					Obsv:   stubExporters(),
 				}
 			},
 			requestArgs:        map[string]any{},
@@ -325,8 +393,9 @@ func Test_GetTeams(t *testing.T) {
 			name: "getting GraphQL client fails",
 			makeDeps: func() ToolDependencies {
 				return stubDeps{
-					clientFn:    stubClientFnFromHTTP(httpClientWithUser()),
+					clientFn:    stubClientFnFromHTTP(t, httpClientWithUser()),
 					gqlClientFn: stubGQLClientFnErr("GraphQL client error"),
+					obsv:        stubExporters(),
 				}
 			},
 			requestArgs:        map[string]any{},
@@ -469,7 +538,7 @@ func Test_GetTeamMembers(t *testing.T) {
 		},
 		{
 			name: "getting GraphQL client fails",
-			deps: stubDeps{gqlClientFn: stubGQLClientFnErr("GraphQL client error")},
+			deps: stubDeps{gqlClientFn: stubGQLClientFnErr("GraphQL client error"), obsv: stubExporters()},
 			requestArgs: map[string]any{
 				"org":       "testorg",
 				"team_slug": "testteam",

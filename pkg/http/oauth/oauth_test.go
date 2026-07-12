@@ -8,13 +8,21 @@ import (
 	"testing"
 
 	"github.com/aifity/omnigit-mcp/pkg/http/headers"
+	"github.com/aifity/omnigit-mcp/pkg/utils"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+var (
+	defaultAuthorizationServer = "https://github.com/login/oauth"
+)
+
 func TestNewAuthHandler(t *testing.T) {
 	t.Parallel()
+
+	dotcomHost, err := utils.NewAPIHost("https://api.github.com")
+	require.NoError(t, err)
 
 	tests := []struct {
 		name                 string
@@ -22,18 +30,6 @@ func TestNewAuthHandler(t *testing.T) {
 		expectedAuthServer   string
 		expectedResourcePath string
 	}{
-		{
-			name:                 "nil config uses defaults",
-			cfg:                  nil,
-			expectedAuthServer:   DefaultAuthorizationServer,
-			expectedResourcePath: "",
-		},
-		{
-			name:                 "empty config uses defaults",
-			cfg:                  &Config{},
-			expectedAuthServer:   DefaultAuthorizationServer,
-			expectedResourcePath: "",
-		},
 		{
 			name: "custom authorization server",
 			cfg: &Config{
@@ -48,7 +44,7 @@ func TestNewAuthHandler(t *testing.T) {
 				BaseURL:      "https://example.com",
 				ResourcePath: "/mcp",
 			},
-			expectedAuthServer:   DefaultAuthorizationServer,
+			expectedAuthServer:   "",
 			expectedResourcePath: "/mcp",
 		},
 	}
@@ -57,11 +53,12 @@ func TestNewAuthHandler(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			handler, err := NewAuthHandler(tc.cfg)
+			handler, err := NewAuthHandler(tc.cfg, dotcomHost)
 			require.NoError(t, err)
 			require.NotNil(t, handler)
 
 			assert.Equal(t, tc.expectedAuthServer, handler.cfg.AuthorizationServer)
+			assert.Equal(t, tc.expectedResourcePath, handler.cfg.ResourcePath)
 		})
 	}
 }
@@ -88,6 +85,19 @@ func TestGetEffectiveHostAndScheme(t *testing.T) {
 			expectedScheme: "http", // defaults to http
 		},
 		{
+			name: "X-Forwarded-Host ignored by default",
+			setupRequest: func() *http.Request {
+				req := httptest.NewRequest(http.MethodGet, "/test", nil)
+				req.Host = "internal.example.com"
+				req.Header.Set(headers.ForwardedHostHeader, "attacker.example.com")
+				req.Header.Set(headers.ForwardedProtoHeader, "https")
+				return req
+			},
+			cfg:            &Config{},
+			expectedHost:   "internal.example.com",
+			expectedScheme: "http",
+		},
+		{
 			name: "request with X-Forwarded-Host header",
 			setupRequest: func() *http.Request {
 				req := httptest.NewRequest(http.MethodGet, "/test", nil)
@@ -95,7 +105,7 @@ func TestGetEffectiveHostAndScheme(t *testing.T) {
 				req.Header.Set(headers.ForwardedHostHeader, "public.example.com")
 				return req
 			},
-			cfg:            &Config{},
+			cfg:            &Config{TrustProxyHeaders: true},
 			expectedHost:   "public.example.com",
 			expectedScheme: "http",
 		},
@@ -107,7 +117,7 @@ func TestGetEffectiveHostAndScheme(t *testing.T) {
 				req.Header.Set(headers.ForwardedProtoHeader, "http")
 				return req
 			},
-			cfg:            &Config{},
+			cfg:            &Config{TrustProxyHeaders: true},
 			expectedHost:   "example.com",
 			expectedScheme: "http",
 		},
@@ -120,7 +130,7 @@ func TestGetEffectiveHostAndScheme(t *testing.T) {
 				req.Header.Set(headers.ForwardedProtoHeader, "https")
 				return req
 			},
-			cfg:            &Config{},
+			cfg:            &Config{TrustProxyHeaders: true},
 			expectedHost:   "public.example.com",
 			expectedScheme: "https",
 		},
@@ -145,7 +155,7 @@ func TestGetEffectiveHostAndScheme(t *testing.T) {
 				req.Header.Set(headers.ForwardedProtoHeader, "http")
 				return req
 			},
-			cfg:            &Config{},
+			cfg:            &Config{TrustProxyHeaders: true},
 			expectedHost:   "example.com",
 			expectedScheme: "http",
 		},
@@ -157,7 +167,7 @@ func TestGetEffectiveHostAndScheme(t *testing.T) {
 				req.Header.Set(headers.ForwardedProtoHeader, "HTTPS")
 				return req
 			},
-			cfg:            &Config{},
+			cfg:            &Config{TrustProxyHeaders: true},
 			expectedHost:   "example.com",
 			expectedScheme: "https",
 		},
@@ -304,8 +314,21 @@ func TestBuildResourceMetadataURL(t *testing.T) {
 			expectedURL:  "https://custom.example.com/.well-known/oauth-protected-resource/mcp",
 		},
 		{
-			name: "with forwarded headers",
+			name: "with forwarded headers ignored by default",
 			cfg:  &Config{},
+			setupRequest: func() *http.Request {
+				req := httptest.NewRequest(http.MethodGet, "/mcp", nil)
+				req.Host = "internal.example.com"
+				req.Header.Set(headers.ForwardedHostHeader, "attacker.example.com")
+				req.Header.Set(headers.ForwardedProtoHeader, "https")
+				return req
+			},
+			resourcePath: "/mcp",
+			expectedURL:  "http://internal.example.com/.well-known/oauth-protected-resource/mcp",
+		},
+		{
+			name: "with forwarded headers",
+			cfg:  &Config{TrustProxyHeaders: true},
 			setupRequest: func() *http.Request {
 				req := httptest.NewRequest(http.MethodGet, "/mcp", nil)
 				req.Host = "internal.example.com"
@@ -372,7 +395,7 @@ func TestHandleProtectedResource(t *testing.T) {
 				authServers, ok := body["authorization_servers"].([]any)
 				require.True(t, ok)
 				require.Len(t, authServers, 1)
-				assert.Equal(t, DefaultAuthorizationServer, authServers[0])
+				assert.Equal(t, defaultAuthorizationServer, authServers[0])
 			},
 		},
 		{
@@ -451,7 +474,10 @@ func TestHandleProtectedResource(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			handler, err := NewAuthHandler(tc.cfg)
+			dotcomHost, err := utils.NewAPIHost("https://api.github.com")
+			require.NoError(t, err)
+
+			handler, err := NewAuthHandler(tc.cfg, dotcomHost)
 			require.NoError(t, err)
 
 			router := chi.NewRouter()
@@ -493,9 +519,12 @@ func TestHandleProtectedResource(t *testing.T) {
 func TestRegisterRoutes(t *testing.T) {
 	t.Parallel()
 
+	dotcomHost, err := utils.NewAPIHost("https://api.github.com")
+	require.NoError(t, err)
+
 	handler, err := NewAuthHandler(&Config{
 		BaseURL: "https://api.example.com",
-	})
+	}, dotcomHost)
 	require.NoError(t, err)
 
 	router := chi.NewRouter()
@@ -559,9 +588,12 @@ func TestSupportedScopes(t *testing.T) {
 func TestProtectedResourceResponseFormat(t *testing.T) {
 	t.Parallel()
 
+	dotcomHost, err := utils.NewAPIHost("https://api.github.com")
+	require.NoError(t, err)
+
 	handler, err := NewAuthHandler(&Config{
 		BaseURL: "https://api.example.com",
-	})
+	}, dotcomHost)
 	require.NoError(t, err)
 
 	router := chi.NewRouter()
@@ -598,7 +630,7 @@ func TestProtectedResourceResponseFormat(t *testing.T) {
 	authServers, ok := response["authorization_servers"].([]any)
 	require.True(t, ok)
 	assert.Len(t, authServers, 1)
-	assert.Equal(t, DefaultAuthorizationServer, authServers[0])
+	assert.Equal(t, defaultAuthorizationServer, authServers[0])
 }
 
 func TestOAuthProtectedResourcePrefix(t *testing.T) {
@@ -611,5 +643,121 @@ func TestOAuthProtectedResourcePrefix(t *testing.T) {
 func TestDefaultAuthorizationServer(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, "https://github.com/login/oauth", DefaultAuthorizationServer)
+	assert.Equal(t, "https://github.com/login/oauth", defaultAuthorizationServer)
+}
+
+func TestAPIHostResolver_AuthorizationServerURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name               string
+		host               string
+		oauthConfig        *Config
+		expectedURL        string
+		expectedError      bool
+		expectedStatusCode int
+		errorContains      string
+	}{
+		{
+			name:               "valid host returns authorization server URL",
+			host:               "https://github.com",
+			expectedURL:        "https://github.com/login/oauth",
+			expectedStatusCode: http.StatusOK,
+		},
+		{
+			name:          "invalid host returns error",
+			host:          "://invalid-url",
+			expectedURL:   "",
+			expectedError: true,
+			errorContains: "could not parse host as URL",
+		},
+		{
+			name:          "host without scheme returns error",
+			host:          "github.com",
+			expectedURL:   "",
+			expectedError: true,
+			errorContains: "host must have a scheme",
+		},
+		{
+			name:               "GHEC host returns correct authorization server URL",
+			host:               "https://test.ghe.com",
+			expectedURL:        "https://test.ghe.com/login/oauth",
+			expectedStatusCode: http.StatusOK,
+		},
+		{
+			name:               "GHES host returns correct authorization server URL",
+			host:               "https://ghe.example.com",
+			expectedURL:        "https://ghe.example.com/login/oauth",
+			expectedStatusCode: http.StatusOK,
+		},
+		{
+			name:               "GHES with http scheme returns the correct authorization server URL",
+			host:               "http://ghe.example.com",
+			expectedURL:        "http://ghe.example.com/login/oauth",
+			expectedStatusCode: http.StatusOK,
+		},
+		{
+			name: "custom authorization server in config takes precedence",
+			host: "https://github.com",
+			oauthConfig: &Config{
+				AuthorizationServer: "https://custom.auth.example.com/oauth",
+			},
+			expectedURL:        "https://custom.auth.example.com/oauth",
+			expectedStatusCode: http.StatusOK,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			apiHost, err := utils.NewAPIHost(tc.host)
+			if tc.expectedError {
+				require.Error(t, err)
+				if tc.errorContains != "" {
+					assert.Contains(t, err.Error(), tc.errorContains)
+				}
+				return
+			}
+			require.NoError(t, err)
+
+			config := tc.oauthConfig
+			if config == nil {
+				config = &Config{}
+			}
+			config.BaseURL = tc.host
+
+			handler, err := NewAuthHandler(config, apiHost)
+			require.NoError(t, err)
+
+			router := chi.NewRouter()
+			handler.RegisterRoutes(router)
+
+			req := httptest.NewRequest(http.MethodGet, OAuthProtectedResourcePrefix, nil)
+			req.Host = "api.example.com"
+
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, req)
+
+			require.Equal(t, http.StatusOK, rec.Code)
+
+			var response map[string]any
+			err = json.Unmarshal(rec.Body.Bytes(), &response)
+			require.NoError(t, err)
+
+			assert.Contains(t, response, "authorization_servers")
+			if tc.expectedStatusCode != http.StatusOK {
+				require.Equal(t, tc.expectedStatusCode, rec.Code)
+				if tc.errorContains != "" {
+					assert.Contains(t, rec.Body.String(), tc.errorContains)
+				}
+				return
+			}
+
+			responseAuthServers, ok := response["authorization_servers"].([]any)
+			require.True(t, ok)
+			require.Len(t, responseAuthServers, 1)
+			assert.Equal(t, tc.expectedURL, responseAuthServers[0])
+		})
+	}
 }

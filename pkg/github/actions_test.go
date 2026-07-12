@@ -8,7 +8,7 @@ import (
 
 	"github.com/aifity/omnigit-mcp/internal/toolsnaps"
 	"github.com/aifity/omnigit-mcp/pkg/translations"
-	"github.com/google/go-github/v82/github"
+	"github.com/google/go-github/v89/github"
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,19 +45,19 @@ func Test_ActionsList_ListWorkflows(t *testing.T) {
 			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
 				GetReposActionsWorkflowsByOwnerByRepo: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 					workflows := &github.Workflows{
-						TotalCount: new(2),
+						TotalCount: github.Ptr(2),
 						Workflows: []*github.Workflow{
 							{
-								ID:    new(int64(1)),
-								Name:  new("CI"),
-								Path:  new(".github/workflows/ci.yml"),
-								State: new("active"),
+								ID:    github.Ptr(int64(1)),
+								Name:  github.Ptr("CI"),
+								Path:  github.Ptr(".github/workflows/ci.yml"),
+								State: github.Ptr("active"),
 							},
 							{
-								ID:    new(int64(2)),
-								Name:  new("Deploy"),
-								Path:  new(".github/workflows/deploy.yml"),
-								State: new("active"),
+								ID:    github.Ptr(int64(2)),
+								Name:  github.Ptr("Deploy"),
+								Path:  github.Ptr(".github/workflows/deploy.yml"),
+								State: github.Ptr("active"),
 							},
 						},
 					}
@@ -86,7 +86,7 @@ func Test_ActionsList_ListWorkflows(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			client := github.NewClient(tc.mockedClient)
+			client := mustNewGHClient(t, tc.mockedClient)
 			deps := BaseDeps{
 				Client: client,
 			}
@@ -121,13 +121,13 @@ func Test_ActionsList_ListWorkflowRuns(t *testing.T) {
 		mockedClient := MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
 			GetReposActionsWorkflowsRunsByOwnerByRepoByWorkflowID: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				runs := &github.WorkflowRuns{
-					TotalCount: new(1),
+					TotalCount: github.Ptr(1),
 					WorkflowRuns: []*github.WorkflowRun{
 						{
-							ID:         new(int64(123)),
-							Name:       new("CI"),
-							Status:     new("completed"),
-							Conclusion: new("success"),
+							ID:         github.Ptr(int64(123)),
+							Name:       github.Ptr("CI"),
+							Status:     github.Ptr("completed"),
+							Conclusion: github.Ptr("success"),
 						},
 					},
 				}
@@ -136,7 +136,7 @@ func Test_ActionsList_ListWorkflowRuns(t *testing.T) {
 			}),
 		})
 
-		client := github.NewClient(mockedClient)
+		client := mustNewGHClient(t, mockedClient)
 		deps := BaseDeps{
 			Client: client,
 		}
@@ -164,18 +164,18 @@ func Test_ActionsList_ListWorkflowRuns(t *testing.T) {
 		mockedClient := MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
 			GetReposActionsRunsByOwnerByRepo: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				runs := &github.WorkflowRuns{
-					TotalCount: new(2),
+					TotalCount: github.Ptr(2),
 					WorkflowRuns: []*github.WorkflowRun{
 						{
-							ID:         new(int64(123)),
-							Name:       new("CI"),
-							Status:     new("completed"),
-							Conclusion: new("success"),
+							ID:         github.Ptr(int64(123)),
+							Name:       github.Ptr("CI"),
+							Status:     github.Ptr("completed"),
+							Conclusion: github.Ptr("success"),
 						},
 						{
-							ID:         new(int64(456)),
-							Name:       new("Deploy"),
-							Status:     new("in_progress"),
+							ID:         github.Ptr(int64(456)),
+							Name:       github.Ptr("Deploy"),
+							Status:     github.Ptr("in_progress"),
 							Conclusion: nil,
 						},
 					},
@@ -185,7 +185,7 @@ func Test_ActionsList_ListWorkflowRuns(t *testing.T) {
 			}),
 		})
 
-		client := github.NewClient(mockedClient)
+		client := mustNewGHClient(t, mockedClient)
 		deps := BaseDeps{
 			Client: client,
 		}
@@ -231,17 +231,17 @@ func Test_ActionsGet_GetWorkflow(t *testing.T) {
 		mockedClient := MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
 			GetReposActionsWorkflowsByOwnerByRepoByWorkflowID: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				workflow := &github.Workflow{
-					ID:    new(int64(1)),
-					Name:  new("CI"),
-					Path:  new(".github/workflows/ci.yml"),
-					State: new("active"),
+					ID:    github.Ptr(int64(1)),
+					Name:  github.Ptr("CI"),
+					Path:  github.Ptr(".github/workflows/ci.yml"),
+					State: github.Ptr("active"),
 				}
 				w.WriteHeader(http.StatusOK)
 				_ = json.NewEncoder(w).Encode(workflow)
 			}),
 		})
 
-		client := github.NewClient(mockedClient)
+		client := mustNewGHClient(t, mockedClient)
 		deps := BaseDeps{
 			Client: client,
 		}
@@ -274,17 +274,17 @@ func Test_ActionsGet_GetWorkflowRun(t *testing.T) {
 		mockedClient := MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
 			GetReposActionsRunsByOwnerByRepoByRunID: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				run := &github.WorkflowRun{
-					ID:         new(int64(12345)),
-					Name:       new("CI"),
-					Status:     new("completed"),
-					Conclusion: new("success"),
+					ID:         github.Ptr(int64(12345)),
+					Name:       github.Ptr("CI"),
+					Status:     github.Ptr("completed"),
+					Conclusion: github.Ptr("success"),
 				}
 				w.WriteHeader(http.StatusOK)
 				_ = json.NewEncoder(w).Encode(run)
 			}),
 		})
 
-		client := github.NewClient(mockedClient)
+		client := mustNewGHClient(t, mockedClient)
 		deps := BaseDeps{
 			Client: client,
 		}
@@ -377,11 +377,42 @@ func Test_ActionsRunTrigger_RunWorkflow(t *testing.T) {
 			expectError:    true,
 			expectedErrMsg: "ref is required for run_workflow action",
 		},
+		{
+			name: "successful workflow run with inputs",
+			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
+				PostReposActionsWorkflowsDispatchesByOwnerByRepoByWorkflowID: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusNoContent)
+				}),
+			}),
+			requestArgs: map[string]any{
+				"method":      "run_workflow",
+				"owner":       "owner",
+				"repo":        "repo",
+				"workflow_id": "12345",
+				"ref":         "main",
+				"inputs":      map[string]any{"FIELD1": "value1", "FIELD2": "value2"},
+			},
+			expectError: false,
+		},
+		{
+			name:         "invalid inputs type returns error",
+			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{}),
+			requestArgs: map[string]any{
+				"method":      "run_workflow",
+				"owner":       "owner",
+				"repo":        "repo",
+				"workflow_id": "12345",
+				"ref":         "main",
+				"inputs":      "not a map",
+			},
+			expectError:    true,
+			expectedErrMsg: "parameter inputs is not of type map[string]interface {}, is string",
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			client := github.NewClient(tc.mockedClient)
+			client := mustNewGHClient(t, tc.mockedClient)
 			deps := BaseDeps{
 				Client: client,
 			}
@@ -418,7 +449,7 @@ func Test_ActionsRunTrigger_CancelWorkflowRun(t *testing.T) {
 			}),
 		})
 
-		client := github.NewClient(mockedClient)
+		client := mustNewGHClient(t, mockedClient)
 		deps := BaseDeps{
 			Client: client,
 		}
@@ -449,7 +480,7 @@ func Test_ActionsRunTrigger_CancelWorkflowRun(t *testing.T) {
 			}),
 		})
 
-		client := github.NewClient(mockedClient)
+		client := mustNewGHClient(t, mockedClient)
 		deps := BaseDeps{
 			Client: client,
 		}
@@ -473,7 +504,7 @@ func Test_ActionsRunTrigger_CancelWorkflowRun(t *testing.T) {
 	t.Run("missing run_id for non-run_workflow methods", func(t *testing.T) {
 		mockedClient := MockHTTPClientWithHandlers(map[string]http.HandlerFunc{})
 
-		client := github.NewClient(mockedClient)
+		client := mustNewGHClient(t, mockedClient)
 		deps := BaseDeps{
 			Client: client,
 		}
@@ -525,7 +556,7 @@ func Test_ActionsGetJobLogs_SingleJob(t *testing.T) {
 			}),
 		})
 
-		client := github.NewClient(mockedClient)
+		client := mustNewGHClient(t, mockedClient)
 		deps := BaseDeps{
 			Client:            client,
 			ContentWindowSize: 5000,
@@ -559,22 +590,22 @@ func Test_ActionsGetJobLogs_FailedJobs(t *testing.T) {
 		mockedClient := MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
 			GetReposActionsRunsJobsByOwnerByRepoByRunID: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				jobs := &github.Jobs{
-					TotalCount: new(3),
+					TotalCount: github.Ptr(3),
 					Jobs: []*github.WorkflowJob{
 						{
-							ID:         new(int64(1)),
-							Name:       new("test-job-1"),
-							Conclusion: new("success"),
+							ID:         github.Ptr(int64(1)),
+							Name:       github.Ptr("test-job-1"),
+							Conclusion: github.Ptr("success"),
 						},
 						{
-							ID:         new(int64(2)),
-							Name:       new("test-job-2"),
-							Conclusion: new("failure"),
+							ID:         github.Ptr(int64(2)),
+							Name:       github.Ptr("test-job-2"),
+							Conclusion: github.Ptr("failure"),
 						},
 						{
-							ID:         new(int64(3)),
-							Name:       new("test-job-3"),
-							Conclusion: new("failure"),
+							ID:         github.Ptr(int64(3)),
+							Name:       github.Ptr("test-job-3"),
+							Conclusion: github.Ptr("failure"),
 						},
 					},
 				}
@@ -587,7 +618,7 @@ func Test_ActionsGetJobLogs_FailedJobs(t *testing.T) {
 			}),
 		})
 
-		client := github.NewClient(mockedClient)
+		client := mustNewGHClient(t, mockedClient)
 		deps := BaseDeps{
 			Client:            client,
 			ContentWindowSize: 5000,
@@ -618,17 +649,17 @@ func Test_ActionsGetJobLogs_FailedJobs(t *testing.T) {
 		mockedClient := MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
 			GetReposActionsRunsJobsByOwnerByRepoByRunID: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				jobs := &github.Jobs{
-					TotalCount: new(2),
+					TotalCount: github.Ptr(2),
 					Jobs: []*github.WorkflowJob{
 						{
-							ID:         new(int64(1)),
-							Name:       new("test-job-1"),
-							Conclusion: new("success"),
+							ID:         github.Ptr(int64(1)),
+							Name:       github.Ptr("test-job-1"),
+							Conclusion: github.Ptr("success"),
 						},
 						{
-							ID:         new(int64(2)),
-							Name:       new("test-job-2"),
-							Conclusion: new("success"),
+							ID:         github.Ptr(int64(2)),
+							Name:       github.Ptr("test-job-2"),
+							Conclusion: github.Ptr("success"),
 						},
 					},
 				}
@@ -637,7 +668,7 @@ func Test_ActionsGetJobLogs_FailedJobs(t *testing.T) {
 			}),
 		})
 
-		client := github.NewClient(mockedClient)
+		client := mustNewGHClient(t, mockedClient)
 		deps := BaseDeps{
 			Client:            client,
 			ContentWindowSize: 5000,

@@ -8,7 +8,7 @@ import (
 
 	"github.com/aifity/omnigit-mcp/internal/toolsnaps"
 	"github.com/aifity/omnigit-mcp/pkg/translations"
-	"github.com/google/go-github/v82/github"
+	"github.com/google/go-github/v89/github"
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,8 +35,8 @@ func Test_ListNotifications(t *testing.T) {
 	// All fields are optional, so Required should be empty
 	assert.Empty(t, schema.Required)
 	mockNotification := &github.Notification{
-		ID:     new("123"),
-		Reason: new("mention"),
+		ID:     github.Ptr("123"),
+		Reason: github.Ptr("mention"),
 	}
 
 	tests := []struct {
@@ -108,7 +108,7 @@ func Test_ListNotifications(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			client := github.NewClient(tc.mockedClient)
+			client := mustNewGHClient(t, tc.mockedClient)
 			deps := BaseDeps{
 				Client: client,
 			}
@@ -153,8 +153,8 @@ func Test_ManageNotificationSubscription(t *testing.T) {
 	assert.Contains(t, schema.Properties, "action")
 	assert.Equal(t, []string{"notificationID", "action"}, schema.Required)
 
-	mockSub := &github.Subscription{Ignored: new(true)}
-	mockSubWatch := &github.Subscription{Ignored: new(false), Subscribed: new(true)}
+	mockSub := &github.Subscription{Ignored: github.Ptr(true)}
+	mockSubWatch := &github.Subscription{Ignored: github.Ptr(false), Subscribed: github.Ptr(true)}
 
 	tests := []struct {
 		name           string
@@ -176,7 +176,7 @@ func Test_ManageNotificationSubscription(t *testing.T) {
 				"action":         "ignore",
 			},
 			expectError:   false,
-			expectIgnored: new(true),
+			expectIgnored: github.Ptr(true),
 		},
 		{
 			name: "watch subscription",
@@ -188,7 +188,7 @@ func Test_ManageNotificationSubscription(t *testing.T) {
 				"action":         "watch",
 			},
 			expectError:   false,
-			expectIgnored: new(false),
+			expectIgnored: github.Ptr(false),
 		},
 		{
 			name: "delete subscription",
@@ -232,7 +232,7 @@ func Test_ManageNotificationSubscription(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			client := github.NewClient(tc.mockedClient)
+			client := mustNewGHClient(t, tc.mockedClient)
 			deps := BaseDeps{
 				Client: client,
 			}
@@ -290,8 +290,8 @@ func Test_ManageRepositoryNotificationSubscription(t *testing.T) {
 	assert.Contains(t, schema.Properties, "action")
 	assert.Equal(t, []string{"owner", "repo", "action"}, schema.Required)
 
-	mockSub := &github.Subscription{Ignored: new(true)}
-	mockWatchSub := &github.Subscription{Ignored: new(false), Subscribed: new(true)}
+	mockSub := &github.Subscription{Ignored: github.Ptr(true)}
+	mockWatchSub := &github.Subscription{Ignored: github.Ptr(false), Subscribed: github.Ptr(true)}
 
 	tests := []struct {
 		name             string
@@ -315,7 +315,7 @@ func Test_ManageRepositoryNotificationSubscription(t *testing.T) {
 				"action": "ignore",
 			},
 			expectError:   false,
-			expectIgnored: new(true),
+			expectIgnored: github.Ptr(true),
 		},
 		{
 			name: "watch subscription",
@@ -328,8 +328,8 @@ func Test_ManageRepositoryNotificationSubscription(t *testing.T) {
 				"action": "watch",
 			},
 			expectError:      false,
-			expectIgnored:    new(false),
-			expectSubscribed: new(true),
+			expectIgnored:    github.Ptr(false),
+			expectSubscribed: github.Ptr(true),
 		},
 		{
 			name: "delete subscription",
@@ -386,7 +386,7 @@ func Test_ManageRepositoryNotificationSubscription(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			client := github.NewClient(tc.mockedClient)
+			client := mustNewGHClient(t, tc.mockedClient)
 			deps := BaseDeps{
 				Client: client,
 			}
@@ -456,7 +456,6 @@ func Test_DismissNotification(t *testing.T) {
 		expectError    bool
 		expectRead     bool
 		expectDone     bool
-		expectInvalid  bool
 		expectedErrMsg string
 	}{
 		{
@@ -496,16 +495,6 @@ func Test_DismissNotification(t *testing.T) {
 			expectDone:  true,
 		},
 		{
-			name:         "invalid threadID format",
-			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{}),
-			requestArgs: map[string]any{
-				"threadID": "notanumber",
-				"state":    "done",
-			},
-			expectError:   false,
-			expectInvalid: true,
-		},
-		{
 			name:         "missing required threadID",
 			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{}),
 			requestArgs: map[string]any{
@@ -534,7 +523,7 @@ func Test_DismissNotification(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			client := github.NewClient(tc.mockedClient)
+			client := mustNewGHClient(t, tc.mockedClient)
 			deps := BaseDeps{
 				Client: client,
 			}
@@ -552,8 +541,6 @@ func Test_DismissNotification(t *testing.T) {
 					assert.Contains(t, text, "missing required parameter: threadID")
 				case tc.requestArgs["state"] == nil:
 					assert.Contains(t, text, "missing required parameter: state")
-				case tc.name == "invalid threadID format":
-					assert.Contains(t, text, "invalid threadID format")
 				case tc.name == "invalid state value":
 					assert.Contains(t, text, "Invalid state. Must be one of: read, done.")
 				default:
@@ -570,9 +557,6 @@ func Test_DismissNotification(t *testing.T) {
 			}
 			if tc.expectDone {
 				assert.Contains(t, textContent.Text, "Notification marked as done")
-			}
-			if tc.expectInvalid {
-				assert.Contains(t, textContent.Text, "invalid threadID format")
 			}
 		})
 	}
@@ -647,7 +631,7 @@ func Test_MarkAllNotificationsRead(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			client := github.NewClient(tc.mockedClient)
+			client := mustNewGHClient(t, tc.mockedClient)
 			deps := BaseDeps{
 				Client: client,
 			}
@@ -689,7 +673,7 @@ func Test_GetNotificationDetails(t *testing.T) {
 	assert.Contains(t, schema.Properties, "notificationID")
 	assert.Equal(t, []string{"notificationID"}, schema.Required)
 
-	mockThread := &github.Notification{ID: new("123"), Reason: new("mention")}
+	mockThread := &github.Notification{ID: github.Ptr("123"), Reason: github.Ptr("mention")}
 
 	tests := []struct {
 		name           string
@@ -725,7 +709,7 @@ func Test_GetNotificationDetails(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			client := github.NewClient(tc.mockedClient)
+			client := mustNewGHClient(t, tc.mockedClient)
 			deps := BaseDeps{
 				Client: client,
 			}

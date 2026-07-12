@@ -47,7 +47,7 @@ The GitHub MCP Server provides access to GitHub resources and capabilities throu
 * **Token Storage:** Tokens should be stored securely using platform-appropriate credential storage
 * **Audit Trail:** All underlying API calls are logged in GitHub's audit log when available
 
-For integration architecture and implementation details, see the [Host Integration Guide](https://github.com/github/github-mcp-server/blob/main/docs/host-integration.md).
+For integration architecture and implementation details, see the [Host Integration Guide](https://github.com/aifity/omnigit-mcp/blob/main/docs/host-integration.md).
 
 ## Where It's Used
 
@@ -211,6 +211,6 @@ Until those arrive, teams can continue to monitor MCP activity through existing 
 
 **Questions or Feedback?**
 
-Open an [issue in the github-mcp-server repository](https://github.com/github/github-mcp-server/issues) with the label "policies & governance" attached.
+Open an [issue in the omnigit-mcp repository](https://github.com/aifity/omnigit-mcp/issues) with the label "policies & governance" attached.
 
 This document reflects GitHub MCP Server policies as of July 2025. Policies and capabilities continue to evolve based on customer feedback and security best practices.

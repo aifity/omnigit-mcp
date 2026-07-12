@@ -3,8 +3,11 @@ package inventory
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"maps"
 
 	"github.com/aifity/omnigit-mcp/pkg/octicons"
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -63,9 +66,9 @@ type ServerTool struct {
 	// to be available. If set and the flag is not enabled, the tool is omitted.
 	FeatureFlagEnable string
 
-	// FeatureFlagDisable specifies a feature flag that, when enabled, causes this tool
-	// to be omitted. Used to disable tools when a feature flag is on.
-	FeatureFlagDisable string
+	// FeatureFlagDisable specifies feature flags that, when any is enabled, cause this
+	// tool to be omitted. Used to disable tools when a feature flag is on.
+	FeatureFlagDisable []string
 
 	// Enabled is an optional function called at build/filter time to determine
 	// if this tool should be available. If nil, the tool is considered enabled
@@ -82,10 +85,6 @@ type ServerTool struct {
 	// This includes the required scopes plus any higher-level scopes that provide
 	// the necessary permissions due to scope hierarchy.
 	AcceptedScopes []string
-
-	// InsidersOnly marks this tool as only available when insiders mode is enabled.
-	// When insiders mode is disabled, tools with this flag set are completely omitted.
-	InsidersOnly bool
 }
 
 // IsReadOnly returns true if this tool is marked as read-only via annotations.
@@ -119,31 +118,62 @@ func (st *ServerTool) RegisterFunc(s *mcp.Server, deps any) {
 	if len(toolCopy.Icons) == 0 {
 		toolCopy.Icons = st.Toolset.Icons()
 	}
+	// Project routing-relevant params to standard MCP-Param-* headers (SEP-2243)
+	// so a remote proxy can read owner/repo from headers instead of re-parsing the
+	// JSON-RPC body. No-op for tools without these params.
+	AnnotateHeaderParams(&toolCopy)
 	s.AddTool(&toolCopy, handler)
 }
 
-// NewServerTool creates a ServerTool from a tool definition, toolset metadata, and a typed handler function.
-// The handler function takes dependencies (as any) and returns a typed handler.
-// Callers should type-assert deps to their typed dependencies struct.
-//
-// Deprecated: This creates closures at registration time. For better performance in
-// per-request server scenarios, use NewServerToolWithContextHandler instead.
-func NewServerTool[In any, Out any](tool mcp.Tool, toolset ToolsetMetadata, handlerFn func(deps any) mcp.ToolHandlerFor[In, Out]) ServerTool {
-	return ServerTool{
-		Tool:    tool,
-		Toolset: toolset,
-		HandlerFunc: func(deps any) mcp.ToolHandler {
-			typedHandler := handlerFn(deps)
-			return func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				var arguments In
-				if err := json.Unmarshal(req.Params.Arguments, &arguments); err != nil {
-					return nil, err
-				}
-				resp, _, err := typedHandler(ctx, req, arguments)
-				return resp, err
-			}
-		},
+// HeaderParams maps tool input properties to the MCP-Param-* header name a
+// header-aware proxy reads, avoiding a second parse of the request body. New
+// routing-relevant params should be added here so projection stays automatic
+// for every tool; the enforcement test in pkg/github guards full coverage.
+var HeaderParams = map[string]string{"owner": "owner", "repo": "repo"}
+
+// AnnotateHeaderParams returns a copy of tool whose routing-relevant input
+// properties (per HeaderParams) carry an "x-mcp-header" annotation, which the
+// SDK projects onto Mcp-Param-{name} request headers. It never mutates the
+// input tool's schema or any map shared with the original tool definition:
+// callers shallow-copy ServerTool.Tool, so the *jsonschema.Schema (and its
+// per-property Extra maps) are shared, and per-request registration must not
+// race on them. Only the schema, its Properties map, and the specific property
+// schemas/Extra maps that gain an annotation are cloned.
+func AnnotateHeaderParams(tool *mcp.Tool) {
+	schema, ok := tool.InputSchema.(*jsonschema.Schema)
+	if !ok || schema == nil {
+		return
 	}
+
+	// Collect params that actually need an annotation, so a tool without
+	// owner/repo (or already annotated) is left untouched and unCloned.
+	var toAnnotate []string
+	for prop := range HeaderParams {
+		if ps := schema.Properties[prop]; ps != nil {
+			if _, exists := ps.Extra["x-mcp-header"]; !exists {
+				toAnnotate = append(toAnnotate, prop)
+			}
+		}
+	}
+	if len(toAnnotate) == 0 {
+		return
+	}
+
+	// Clone only what we mutate: a fresh schema value, a fresh Properties map,
+	// and fresh property schemas with fresh Extra maps. The original schema and
+	// its maps are never written to, so concurrent per-request registration is
+	// race-free and deterministic.
+	schemaCopy := *schema
+	schemaCopy.Properties = maps.Clone(schema.Properties)
+	for _, prop := range toAnnotate {
+		propCopy := *schemaCopy.Properties[prop]
+		extra := make(map[string]any, len(propCopy.Extra)+1)
+		maps.Copy(extra, propCopy.Extra)
+		extra["x-mcp-header"] = HeaderParams[prop]
+		propCopy.Extra = extra
+		schemaCopy.Properties[prop] = &propCopy
+	}
+	tool.InputSchema = &schemaCopy
 }
 
 // NewServerToolWithContextHandler creates a ServerTool with a handler that receives deps via context.
@@ -161,7 +191,12 @@ func NewServerToolWithContextHandler[In any, Out any](tool mcp.Tool, toolset Too
 			return func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 				var arguments In
 				if err := json.Unmarshal(req.Params.Arguments, &arguments); err != nil {
-					return nil, err
+					return &mcp.CallToolResult{
+						Content: []mcp.Content{
+							&mcp.TextContent{Text: fmt.Sprintf("invalid arguments: %s", err)},
+						},
+						IsError: true,
+					}, nil
 				}
 				resp, _, err := handler(ctx, req, arguments)
 				return resp, err
@@ -170,22 +205,14 @@ func NewServerToolWithContextHandler[In any, Out any](tool mcp.Tool, toolset Too
 	}
 }
 
-// NewServerToolFromHandler creates a ServerTool from a tool definition, toolset metadata, and a raw handler function.
-// Use this when you have a handler that already conforms to mcp.ToolHandler.
-//
-// Deprecated: This creates closures at registration time. For better performance in
-// per-request server scenarios, use NewServerToolWithRawContextHandler instead.
-func NewServerToolFromHandler(tool mcp.Tool, toolset ToolsetMetadata, handlerFn func(deps any) mcp.ToolHandler) ServerTool {
-	return ServerTool{Tool: tool, Toolset: toolset, HandlerFunc: handlerFn}
-}
-
-// NewServerToolWithRawContextHandler creates a ServerTool with a raw handler that receives deps via context.
-// This is the preferred approach for tools that use mcp.ToolHandler directly because it doesn't
-// create closures at registration time.
+// NewServerTool creates a ServerTool with a raw handler that receives deps via context.
+// This is the preferred constructor for tools that use mcp.ToolHandler directly because
+// it doesn't create closures at registration time, which is critical for performance in
+// servers that create a new instance per request.
 //
 // The handler function is stored directly without wrapping in a deps closure.
 // Dependencies should be injected into context before calling tool handlers.
-func NewServerToolWithRawContextHandler(tool mcp.Tool, toolset ToolsetMetadata, handler mcp.ToolHandler) ServerTool {
+func NewServerTool(tool mcp.Tool, toolset ToolsetMetadata, handler mcp.ToolHandler) ServerTool {
 	return ServerTool{
 		Tool:    tool,
 		Toolset: toolset,

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/aifity/omnigit-mcp/pkg/http/headers"
+	"github.com/aifity/omnigit-mcp/pkg/utils"
 	"github.com/go-chi/chi/v5"
 	"github.com/modelcontextprotocol/go-sdk/auth"
 	"github.com/modelcontextprotocol/go-sdk/oauthex"
@@ -16,12 +17,15 @@ import (
 const (
 	// OAuthProtectedResourcePrefix is the well-known path prefix for OAuth protected resource metadata.
 	OAuthProtectedResourcePrefix = "/.well-known/oauth-protected-resource"
-
-	// DefaultAuthorizationServer is GitHub's OAuth authorization server.
-	DefaultAuthorizationServer = "https://github.com/login/oauth"
 )
 
-// SupportedScopes lists all OAuth scopes that may be required by MCP tools.
+// SupportedScopes lists every OAuth scope that an MCP tool may require. It is the
+// source of truth in two places: HTTP mode advertises it as scopes_supported in
+// the protected-resource metadata, and stdio OAuth login requests it by default
+// and then filters the exposed tools to the granted scopes. A tool whose required
+// scope is absent here is therefore hidden under default OAuth even though a PAT
+// carrying that scope would expose it, so keep this list in sync with tool scope
+// requirements when scopes change.
 var SupportedScopes = []string{
 	"repo",
 	"read:org",
@@ -51,26 +55,40 @@ type Config struct {
 	// This is used to restore the original path when a proxy strips a base path before forwarding.
 	// If empty, requests are treated as already using the external path.
 	ResourcePath string
+
+	// TrustProxyHeaders indicates whether X-Forwarded-Host and X-Forwarded-Proto
+	// should be honored when deriving the effective host and scheme for OAuth
+	// resource URLs. This must only be enabled when the server is deployed
+	// behind a trusted proxy that sets these headers; otherwise an untrusted
+	// client can influence the OAuth resource metadata URL advertised to MCP
+	// clients. When BaseURL is set, it always takes precedence and these
+	// headers are unused.
+	TrustProxyHeaders bool
 }
 
 // AuthHandler handles OAuth-related HTTP endpoints.
 type AuthHandler struct {
-	cfg *Config
+	cfg     *Config
+	apiHost utils.APIHostResolver
 }
 
 // NewAuthHandler creates a new OAuth auth handler.
-func NewAuthHandler(cfg *Config) (*AuthHandler, error) {
+func NewAuthHandler(cfg *Config, apiHost utils.APIHostResolver) (*AuthHandler, error) {
 	if cfg == nil {
 		cfg = &Config{}
 	}
 
-	// Default authorization server to GitHub
-	if cfg.AuthorizationServer == "" {
-		cfg.AuthorizationServer = DefaultAuthorizationServer
+	if apiHost == nil {
+		var err error
+		apiHost, err = utils.NewAPIHost("https://api.github.com")
+		if err != nil {
+			return nil, fmt.Errorf("failed to create default API host: %w", err)
+		}
 	}
 
 	return &AuthHandler{
-		cfg: cfg,
+		cfg:     cfg,
+		apiHost: apiHost,
 	}, nil
 }
 
@@ -95,15 +113,28 @@ func (h *AuthHandler) RegisterRoutes(r chi.Router) {
 
 func (h *AuthHandler) metadataHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		resourcePath := resolveResourcePath(
 			strings.TrimPrefix(r.URL.Path, OAuthProtectedResourcePrefix),
 			h.cfg.ResourcePath,
 		)
 		resourceURL := h.buildResourceURL(r, resourcePath)
 
+		var authorizationServerURL string
+		if h.cfg.AuthorizationServer != "" {
+			authorizationServerURL = h.cfg.AuthorizationServer
+		} else {
+			authURL, err := h.apiHost.AuthorizationServerURL(ctx)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("failed to resolve authorization server URL: %v", err), http.StatusInternalServerError)
+				return
+			}
+			authorizationServerURL = authURL.String()
+		}
+
 		metadata := &oauthex.ProtectedResourceMetadata{
 			Resource:               resourceURL,
-			AuthorizationServers:   []string{h.cfg.AuthorizationServer},
+			AuthorizationServers:   []string{authorizationServerURL},
 			ResourceName:           "GitHub MCP Server",
 			ScopesSupported:        SupportedScopes,
 			BearerMethodsSupported: []string{"header"},
@@ -180,18 +211,31 @@ func (h *AuthHandler) buildResourceURL(r *http.Request, resourcePath string) str
 }
 
 // GetEffectiveHostAndScheme returns the effective host and scheme for a request.
+//
+// X-Forwarded-Host and X-Forwarded-Proto are only honored when cfg.TrustProxyHeaders
+// is true. Without that opt-in, an untrusted client could otherwise influence the
+// OAuth resource metadata URL advertised to MCP clients.
 func GetEffectiveHostAndScheme(r *http.Request, cfg *Config) (host, scheme string) { //nolint:revive
-	if fh := r.Header.Get(headers.ForwardedHostHeader); fh != "" {
-		host = fh
-	} else {
+	trustProxy := cfg != nil && cfg.TrustProxyHeaders
+
+	if trustProxy {
+		if fh := r.Header.Get(headers.ForwardedHostHeader); fh != "" {
+			host = fh
+		}
+	}
+	if host == "" {
 		host = r.Host
 	}
 	if host == "" {
 		host = "localhost"
 	}
-	if fp := r.Header.Get(headers.ForwardedProtoHeader); fp != "" {
-		scheme = strings.ToLower(fp)
-	} else {
+
+	if trustProxy {
+		if fp := r.Header.Get(headers.ForwardedProtoHeader); fp != "" {
+			scheme = strings.ToLower(fp)
+		}
+	}
+	if scheme == "" {
 		if r.TLS != nil {
 			scheme = "https"
 		} else {

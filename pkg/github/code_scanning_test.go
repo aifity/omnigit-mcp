@@ -8,7 +8,7 @@ import (
 
 	"github.com/aifity/omnigit-mcp/internal/toolsnaps"
 	"github.com/aifity/omnigit-mcp/pkg/translations"
-	"github.com/google/go-github/v82/github"
+	"github.com/google/go-github/v89/github"
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,10 +32,10 @@ func Test_GetCodeScanningAlert(t *testing.T) {
 
 	// Setup mock alert for success case
 	mockAlert := &github.Alert{
-		Number:  new(42),
-		State:   new("open"),
-		Rule:    &github.Rule{ID: new("test-rule"), Description: new("Test Rule Description")},
-		HTMLURL: new("https://github.com/owner/repo/security/code-scanning/42"),
+		Number:  github.Ptr(42),
+		State:   github.Ptr("open"),
+		Rule:    &github.Rule{ID: github.Ptr("test-rule"), Description: github.Ptr("Test Rule Description")},
+		HTMLURL: github.Ptr("https://github.com/owner/repo/security/code-scanning/42"),
 	}
 
 	tests := []struct {
@@ -80,7 +80,7 @@ func Test_GetCodeScanningAlert(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
-			client := github.NewClient(tc.mockedClient)
+			client := mustNewGHClient(t, tc.mockedClient)
 			deps := BaseDeps{
 				Client: client,
 			}
@@ -137,21 +137,23 @@ func Test_ListCodeScanningAlerts(t *testing.T) {
 	assert.Contains(t, schema.Properties, "state")
 	assert.Contains(t, schema.Properties, "severity")
 	assert.Contains(t, schema.Properties, "tool_name")
+	assert.Contains(t, schema.Properties, "page")
+	assert.Contains(t, schema.Properties, "perPage")
 	assert.ElementsMatch(t, schema.Required, []string{"owner", "repo"})
 
 	// Setup mock alerts for success case
 	mockAlerts := []*github.Alert{
 		{
-			Number:  new(42),
-			State:   new("open"),
-			Rule:    &github.Rule{ID: new("test-rule-1"), Description: new("Test Rule 1")},
-			HTMLURL: new("https://github.com/owner/repo/security/code-scanning/42"),
+			Number:  github.Ptr(42),
+			State:   github.Ptr("open"),
+			Rule:    &github.Rule{ID: github.Ptr("test-rule-1"), Description: github.Ptr("Test Rule 1")},
+			HTMLURL: github.Ptr("https://github.com/owner/repo/security/code-scanning/42"),
 		},
 		{
-			Number:  new(43),
-			State:   new("fixed"),
-			Rule:    &github.Rule{ID: new("test-rule-2"), Description: new("Test Rule 2")},
-			HTMLURL: new("https://github.com/owner/repo/security/code-scanning/43"),
+			Number:  github.Ptr(43),
+			State:   github.Ptr("fixed"),
+			Rule:    &github.Rule{ID: github.Ptr("test-rule-2"), Description: github.Ptr("Test Rule 2")},
+			HTMLURL: github.Ptr("https://github.com/owner/repo/security/code-scanning/43"),
 		},
 	}
 
@@ -171,6 +173,8 @@ func Test_ListCodeScanningAlerts(t *testing.T) {
 					"state":     "open",
 					"severity":  "high",
 					"tool_name": "codeql",
+					"page":      "1",
+					"per_page":  "30",
 				}).andThen(
 					mockResponse(t, http.StatusOK, mockAlerts),
 				),
@@ -182,6 +186,25 @@ func Test_ListCodeScanningAlerts(t *testing.T) {
 				"state":     "open",
 				"severity":  "high",
 				"tool_name": "codeql",
+			},
+			expectError:    false,
+			expectedAlerts: mockAlerts,
+		},
+		{
+			name: "successful alerts listing with custom pagination",
+			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
+				GetReposCodeScanningAlertsByOwnerByRepo: expectQueryParams(t, map[string]string{
+					"page":     "2",
+					"per_page": "50",
+				}).andThen(
+					mockResponse(t, http.StatusOK, mockAlerts),
+				),
+			}),
+			requestArgs: map[string]any{
+				"owner":   "owner",
+				"repo":    "repo",
+				"page":    float64(2),
+				"perPage": float64(50),
 			},
 			expectError:    false,
 			expectedAlerts: mockAlerts,
@@ -206,7 +229,7 @@ func Test_ListCodeScanningAlerts(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
-			client := github.NewClient(tc.mockedClient)
+			client := mustNewGHClient(t, tc.mockedClient)
 			deps := BaseDeps{
 				Client: client,
 			}

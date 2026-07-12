@@ -6,6 +6,7 @@ import (
 	"time"
 
 	ghErrors "github.com/aifity/omnigit-mcp/pkg/errors"
+	"github.com/aifity/omnigit-mcp/pkg/ifc"
 	"github.com/aifity/omnigit-mcp/pkg/inventory"
 	"github.com/aifity/omnigit-mcp/pkg/scopes"
 	"github.com/aifity/omnigit-mcp/pkg/translations"
@@ -57,6 +58,7 @@ func GetMe(t translations.TranslationHelperFunc) inventory.ServerTool {
 			Meta: mcp.Meta{
 				"ui": map[string]any{
 					"resourceUri": GetMeUIResourceURI,
+					"visibility":  []string{"model", "app"},
 				},
 			},
 		},
@@ -103,7 +105,9 @@ func GetMe(t translations.TranslationHelperFunc) inventory.ServerTool {
 				},
 			}
 
-			return MarshalledTextResult(minimalUser), nil, nil
+			result := MarshalledTextResult(minimalUser)
+			result = attachStaticIFCLabel(ctx, deps, result, ifc.LabelGetMe())
+			return result, nil, nil
 		},
 	)
 }
@@ -212,7 +216,12 @@ func GetTeams(t translations.TranslationHelperFunc) inventory.ServerTool {
 				organizations = append(organizations, orgTeams)
 			}
 
-			return MarshalledTextResult(organizations), nil, nil
+			result := MarshalledTextResult(organizations)
+			// Team membership is maintained by GitHub and cannot be forged by
+			// outside contributors (trusted). Org team rosters are visible only
+			// to org members, so confidentiality is private.
+			result = attachStaticIFCLabel(ctx, deps, result, ifc.LabelTeam())
+			return result, nil, nil
 		},
 	)
 }
@@ -283,7 +292,12 @@ func GetTeamMembers(t translations.TranslationHelperFunc) inventory.ServerTool {
 				members = append(members, string(member.Login))
 			}
 
-			return MarshalledTextResult(members), nil, nil
+			result := MarshalledTextResult(members)
+			// Team membership is maintained by GitHub and cannot be forged by
+			// outside contributors (trusted). A team's member roster is visible
+			// only to org members, so confidentiality is private.
+			result = attachStaticIFCLabel(ctx, deps, result, ifc.LabelTeam())
+			return result, nil, nil
 		},
 	)
 }

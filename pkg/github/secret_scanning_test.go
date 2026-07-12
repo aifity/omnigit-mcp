@@ -8,7 +8,7 @@ import (
 
 	"github.com/aifity/omnigit-mcp/internal/toolsnaps"
 	"github.com/aifity/omnigit-mcp/pkg/translations"
-	"github.com/google/go-github/v82/github"
+	"github.com/google/go-github/v89/github"
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,9 +32,9 @@ func Test_GetSecretScanningAlert(t *testing.T) {
 
 	// Setup mock alert for success case
 	mockAlert := &github.SecretScanningAlert{
-		Number:  new(42),
-		State:   new("open"),
-		HTMLURL: new("https://github.com/owner/private-repo/security/secret-scanning/42"),
+		Number:  github.Ptr(42),
+		State:   github.Ptr("open"),
+		HTMLURL: github.Ptr("https://github.com/owner/private-repo/security/secret-scanning/42"),
 	}
 
 	tests := []struct {
@@ -79,7 +79,7 @@ func Test_GetSecretScanningAlert(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup client with mock
-			client := github.NewClient(tc.mockedClient)
+			client := mustNewGHClient(t, tc.mockedClient)
 			deps := BaseDeps{
 				Client: client,
 			}
@@ -139,18 +139,18 @@ func Test_ListSecretScanningAlerts(t *testing.T) {
 
 	// Setup mock alerts for success case
 	resolvedAlert := github.SecretScanningAlert{
-		Number:     new(2),
-		HTMLURL:    new("https://github.com/owner/private-repo/security/secret-scanning/2"),
-		State:      new("resolved"),
-		Resolution: new("false_positive"),
-		SecretType: new("adafruit_io_key"),
+		Number:     github.Ptr(2),
+		HTMLURL:    github.Ptr("https://github.com/owner/private-repo/security/secret-scanning/2"),
+		State:      github.Ptr("resolved"),
+		Resolution: github.Ptr("false_positive"),
+		SecretType: github.Ptr("adafruit_io_key"),
 	}
 	openAlert := github.SecretScanningAlert{
-		Number:     new(2),
-		HTMLURL:    new("https://github.com/owner/private-repo/security/secret-scanning/3"),
-		State:      new("open"),
-		Resolution: new("false_positive"),
-		SecretType: new("adafruit_io_key"),
+		Number:     github.Ptr(2),
+		HTMLURL:    github.Ptr("https://github.com/owner/private-repo/security/secret-scanning/3"),
+		State:      github.Ptr("open"),
+		Resolution: github.Ptr("false_positive"),
+		SecretType: github.Ptr("adafruit_io_key"),
 	}
 
 	tests := []struct {
@@ -165,7 +165,9 @@ func Test_ListSecretScanningAlerts(t *testing.T) {
 			name: "successful resolved alerts listing",
 			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
 				GetReposSecretScanningAlertsByOwnerByRepo: expectQueryParams(t, map[string]string{
-					"state": "resolved",
+					"state":    "resolved",
+					"page":     "1",
+					"per_page": "30",
 				}).andThen(
 					mockResponse(t, http.StatusOK, []*github.SecretScanningAlert{&resolvedAlert}),
 				),
@@ -181,7 +183,10 @@ func Test_ListSecretScanningAlerts(t *testing.T) {
 		{
 			name: "successful alerts listing",
 			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
-				GetReposSecretScanningAlertsByOwnerByRepo: expectQueryParams(t, map[string]string{}).andThen(
+				GetReposSecretScanningAlertsByOwnerByRepo: expectQueryParams(t, map[string]string{
+					"page":     "1",
+					"per_page": "30",
+				}).andThen(
 					mockResponse(t, http.StatusOK, []*github.SecretScanningAlert{&resolvedAlert, &openAlert}),
 				),
 			}),
@@ -191,6 +196,25 @@ func Test_ListSecretScanningAlerts(t *testing.T) {
 			},
 			expectError:    false,
 			expectedAlerts: []*github.SecretScanningAlert{&resolvedAlert, &openAlert},
+		},
+		{
+			name: "successful alerts listing with custom pagination",
+			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
+				GetReposSecretScanningAlertsByOwnerByRepo: expectQueryParams(t, map[string]string{
+					"page":     "2",
+					"per_page": "50",
+				}).andThen(
+					mockResponse(t, http.StatusOK, []*github.SecretScanningAlert{&openAlert}),
+				),
+			}),
+			requestArgs: map[string]any{
+				"owner":   "owner",
+				"repo":    "repo",
+				"page":    float64(2),
+				"perPage": float64(50),
+			},
+			expectError:    false,
+			expectedAlerts: []*github.SecretScanningAlert{&openAlert},
 		},
 		{
 			name: "alerts listing fails",
@@ -211,7 +235,7 @@ func Test_ListSecretScanningAlerts(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			client := github.NewClient(tc.mockedClient)
+			client := mustNewGHClient(t, tc.mockedClient)
 			deps := BaseDeps{
 				Client: client,
 			}

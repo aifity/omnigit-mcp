@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # Check out the actual PR branch so we can push changes back if needed
       - name: Check out PR branch
@@ -32,15 +32,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh pr checkout ${{ github.event.pull_request.number }}
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: ui/package-lock.json
-
       - name: Build UI
-        run: script/build-ui
+        uses: ./.github/actions/build-ui
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -120,4 +113,3 @@ jobs:
       - name: Fail check if changes needed
         if: steps.changes.outcome == 'failure'
         run: exit 1
-
