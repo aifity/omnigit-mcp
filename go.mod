@@ -3,7 +3,7 @@ module github.com/aifity/omnigit-mcp
 go 1.26.0
 
 require (
-	github.com/go-chi/chi/v5 v5.3.0
+	github.com/go-chi/chi/v5 v5.3.1
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/google/go-github/v89 v89.0.0
 	github.com/google/jsonschema-go v0.4.3
