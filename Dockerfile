@@ -35,7 +35,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     -o /bin/omnigit-mcp ./cmd/omnigit-mcp
 
 # Make a stage to run the app
-FROM gcr.io/distroless/base-debian12@sha256:62730825d3cf03571e0a1b8f014748de94d0404500f063593b614c23da38841d
+FROM gcr.io/distroless/base-debian12@sha256:76b3162a31477bca4a245b836c624f4c4a1a3705e99b9003907d992bec2c4bca
 
 # Add required MCP server annotation
 LABEL io.modelcontextprotocol.server.name="io.github.aifity/omnigit-mcp"
